@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "src-tauri/**"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "*.config.*",
+        "tests/**"
+      ],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

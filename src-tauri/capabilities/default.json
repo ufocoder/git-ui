@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Filesystem read access and native dialogs for project windows",
+  "windows": [
+    "main",
+    "history-*",
+    "updates"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "http:default",
+    "fs:default",
+    "dialog:default",
+    {
+      "identifier": "fs:read-all",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    }
+  ]
+}

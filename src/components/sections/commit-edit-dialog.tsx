@@ -1,0 +1,78 @@
+import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { t } from "~/lib/i18n";
+import { git, type Commit, type CommitOperation } from "~/lib/git";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Button } from "~/components/ui/button";
+import { NativeSelect } from "~/components/ui/native-select";
+
+export type CommitEditAction = { kind: "cherry_pick" | "revert" | "amend"; commit: Commit; head: string; branch: string };
+export default function CommitEditDialog(props: {
+  action: CommitEditAction | undefined;
+  onClose: () => void;
+  onExecute: (head: string, branch: string, operation: CommitOperation) => Promise<void>;
+}) {
+  const [message, setMessage] = createSignal("");
+  const [mainline, setMainline] = createSignal(1);
+  const [confirmed, setConfirmed] = createSignal(false);
+  const [pending, setPending] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
+  let generation = 0;
+  createEffect(() => {
+    const action = props.action;
+    const request = ++generation;
+    setMessage(""); setMainline(1); setConfirmed(false); setLoading(false);
+    if (action?.kind === "amend") {
+      setLoading(true);
+      void git.getCommitDetails(action.commit.hash)
+        .then(details => { if (request === generation) setMessage(details.message); })
+        .catch(() => { if (request === generation) props.onClose(); })
+        .finally(() => { if (request === generation) setLoading(false); });
+    }
+  });
+  onCleanup(() => { generation++; });
+  const title = () => props.action?.kind === "amend" ? t("op03") : props.action?.kind === "revert" ? t("op02") : t("op01");
+  async function submit(event: SubmitEvent) {
+    event.preventDefault();
+    const action = props.action;
+    if (!action || pending() || loading() || (action.kind === "amend" && (!confirmed() || !message().trim()))) return;
+    setPending(true);
+    const operation: CommitOperation = action.kind === "amend" ? { kind: "amend", commit: action.commit.hash, message: message().trim(), confirmed: confirmed() }
+      : { kind: action.kind, commit: action.commit.hash, mainline: action.commit.parents.length > 1 ? mainline() : undefined };
+    try { await props.onExecute(action.head, action.branch, operation); props.onClose(); }
+    catch { props.onClose(); /* Errors are shown in the terminal. */ }
+    finally { setPending(false); }
+  }
+  return <Dialog open={Boolean(props.action)} onOpenChange={value => { if (!value && !pending()) props.onClose(); }}>
+    <Show when={props.action}>{action => <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{title()}</DialogTitle>
+        <DialogDescription>{action().kind === "amend" ? t("op06") : action().kind === "revert" ? t("op05", { branch: action().branch }) : t("op04", { branch: action().branch })}</DialogDescription>
+      </DialogHeader>
+      <p class="break-words text-sm"><code>{action().commit.hash.slice(0, 8)}</code> · {action().commit.subject}</p>
+      <form onSubmit={submit} class="space-y-4">
+        <Show when={action().kind === "amend"} fallback={
+          <Show when={action().commit.parents.length > 1}>
+            <label class="block space-y-2 text-sm"><span class="font-medium">{t("op07")}</span>
+              <NativeSelect value={mainline()} disabled={pending()} onChange={event => setMainline(Number(event.currentTarget.value))}>
+                <For each={action().commit.parents}>{(hash, index) => <option value={index() + 1}>{index() + 1} · {hash.slice(0, 8)}</option>}</For>
+              </NativeSelect>
+            </label>
+            <p class="text-xs text-muted-foreground">{t("op08")}</p>
+          </Show>
+        }>
+          <TextField value={message()} onChange={setMessage} disabled={pending() || loading()} required>
+            <TextFieldLabel>{t("commit13")}</TextFieldLabel>
+            <TextFieldTextArea class="max-h-56 min-h-28" rows={5} />
+          </TextField>
+          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending() || loading()} />{t("op09")}</label>
+        </Show>
+        <DialogFooter class="gap-2">
+          <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("add09")}</Button>
+          <Button type="submit" disabled={pending() || loading() || (action().kind === "amend" && (!confirmed() || !message().trim()))}>{pending() ? t("act16") : action().kind === "amend" ? t("op10") : title()}</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>}</Show>
+  </Dialog>;
+}
