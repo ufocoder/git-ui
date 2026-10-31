@@ -14,6 +14,7 @@ type WorktreeCommitProps = {
   active?: boolean;
   history?: History;
   onCommitted?: (history: History) => void;
+  onCommitCreated?: () => void;
   disabled: boolean;
   onBusyChange: (busy: boolean) => void;
 };
@@ -89,6 +90,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       if (!mounted) return;
       setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
       props.onCommitted(history);
+      props.onCommitCreated?.();
       try { const details = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(details.files); }
       catch (error) { reportTerminalError(t("commit01", { p1: String(error) }), t("commit02")); }
       if (shouldPush) {

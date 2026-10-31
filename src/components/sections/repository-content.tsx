@@ -35,7 +35,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
       <CommitTable scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
       </div>
       <div class="h-full min-h-0" hidden={props.mode !== "commit"}>
-        <WorktreeCommit history={props.history} active={props.mode === "commit"} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} />
+        <WorktreeCommit history={props.history} active={props.mode === "commit"} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />
       </div>
       <div class="h-full min-h-0" hidden={props.mode !== "conflicts"}>
         <ConflictResolution history={props.history} active={props.mode === "conflicts"} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} onRefresh={props.onRefresh} onCreateCommit={() => props.onModeChange("commit")} />
