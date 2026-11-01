@@ -419,5 +419,9 @@
   "lang04": "Settings",
   "lang05": "Language applies immediately and is saved for all projects",
   "lang06": "Could not save language: {error}",
-  "lang07": "Invalid interface language"
+  "lang07": "Invalid interface language",
+  "commit20": "Sign with GPG/SSH",
+  "commit21": "Create a cryptographic signature using the key configured in Git (user.signingKey and gpg.format)",
+  "commit22": "Amend last commit",
+  "commit23": "Amending commit {sha}. You can edit its message without staging files."
 }

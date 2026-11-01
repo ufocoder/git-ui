@@ -19,6 +19,12 @@ type WorktreeCommitProps = {
   onBusyChange: (busy: boolean) => void;
 };
 export default function WorktreeCommit(props: WorktreeCommitProps) {
+  const [sign, setSign] = createSignal(false);
+  const [amendTarget, setAmendTarget] = createSignal<{ head: string; branch: string }>();
+  const [amendConfirmed, setAmendConfirmed] = createSignal(false);
+  const [amendLoading, setAmendLoading] = createSignal(false);
+  let newCommitMessage = "";
+  let messageRequest = 0;
   const [pushRemote, setPushRemote] = createSignal("");
   const [pushAfterCommit, setPushAfterCommit] = createSignal(false);
   const [committing, setCommitting] = createSignal(false);
@@ -31,7 +37,24 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [diff, setDiff] = createSignal<FileDiff>();
   const [diffLoading, setDiffLoading] = createSignal(false);
   const stagedCount = createMemo(() => files().filter(file => file.staged).length);
-  const disabled = () => props.disabled || pending() || loading();
+  const disabled = () => props.disabled || pending() || loading() || amendLoading();
+  const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
+  const amendValid = () => { const target = amendTarget(); return Boolean(target && canAmend() && target.head === props.history?.tip && target.branch === props.history?.current_branch); };
+  const canSubmit = () => !disabled() && Boolean(message().trim()) && (amendTarget() ? amendValid() && amendConfirmed() : stagedCount() > 0);
+  async function toggleAmend(enabled: boolean) {
+    if (disabled()) return;
+    const request = ++messageRequest;
+    setAmendConfirmed(false);
+    if (!enabled) { setAmendTarget(undefined); setMessage(newCommitMessage); return; }
+    if (!canAmend()) return;
+    const target = { head: props.history!.tip, branch: props.history!.current_branch };
+    newCommitMessage = message(); setAmendTarget(target); setAmendLoading(true);
+    try {
+      const details = await git.getCommitDetails(target.head);
+      if (mounted && request === messageRequest) setMessage(details.message);
+    } catch { if (mounted && request === messageRequest) { setAmendTarget(undefined); setMessage(newCommitMessage); } }
+    finally { if (mounted && request === messageRequest) setAmendLoading(false); }
+  }
   createEffect(() => {
     const project = props.history;
     const remotes = project?.remotes ?? [];
@@ -40,7 +63,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   });
   let mounted = true;
   let diffRequest = 0;
-  onCleanup(() => { mounted = false; diffRequest++; });
+  onCleanup(() => { mounted = false; diffRequest++; messageRequest++; });
   let loadRequest = 0;
   createEffect(() => {
     if (props.active === false) return;
@@ -81,13 +104,18 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   }
   async function submit(event: SubmitEvent) {
     event.preventDefault();
-    if (!props.onCommitted || disabled() || !message().trim() || !stagedCount()) return;
+    if (!props.onCommitted || !canSubmit()) return;
+    const target = amendTarget();
+    const options = { sign: sign() };
     const shouldPush = pushAfterCommit();
     const remote = pushRemote();
     setCommitting(true); setPending(true); props.onBusyChange(true);
     try {
-      const history = await git.commitChanges(message().trim());
+      const history = target
+        ? await git.commitOperation(target.head, target.branch, { kind: "amend", commit: target.head, message: message().trim(), confirmed: amendConfirmed() }, options)
+        : await git.commitChanges(message().trim(), options);
       if (!mounted) return;
+      setAmendTarget(undefined); setAmendConfirmed(false); newCommitMessage = "";
       setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
       props.onCommitted(history);
       props.onCommitCreated?.();
@@ -142,8 +170,17 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <TextFieldLabel>{t("commit13")}</TextFieldLabel>
               <TextFieldTextArea placeholder={t("commit14")} class="max-h-28 min-h-16" rows={2} />
             </TextField>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <label class="flex items-center gap-2 text-sm" title={t("commit21")}><Checkbox checked={sign()} onChange={setSign} disabled={disabled()} />{t("commit20")}</label>
+              <label class="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} />{t("commit22")}</label>
+            </div>
+            <Show when={amendTarget()}>
+              <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
+              <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
+              <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
+            </Show>
             <div class="flex items-center justify-between gap-4">
-              <Button type="submit" class="order-last ml-auto" disabled={disabled() || !message().trim() || !stagedCount()}>{pushing() ? t("nav06") : committing() ? t("add10") : t("commit15")}</Button>
+              <Button type="submit" class="order-last ml-auto" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("commit15")}</Button>
               <label class="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
               <span>{t("commit16")}</span>

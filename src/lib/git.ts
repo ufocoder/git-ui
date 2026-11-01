@@ -5,6 +5,8 @@ import { clearTerminalError, reportTerminalError } from "./terminal";
 export type GitSettings = { values: Record<string, string>; effective: Record<string, string> };
 export type GitSettingChange = { key: string; value: string | null };
 
+export type CommitOptions = { sign?: boolean };
+
 export const WORKTREE = "WORKTREE";
 
 export type CommitReference = { name: string; kind: "branch" | "remote" | "tag" };
@@ -114,11 +116,11 @@ export const git = {
   createTag: (name: string) => request<History>("create_project_tag", { name }),
   addRemote: (name: string, url: string) => request<History>("add_project_remote", { name, url }),
   setFileStaged: (filePath: string, staged: boolean) => request<CommitDetails>("set_project_file_staged", { filePath, staged }),
-  commitChanges: (message: string) => request<History>("commit_project_changes", { message }),
+  commitChanges: (message: string, options?: CommitOptions) => request<History>("commit_project_changes", { message, options }),
   stash: (action: StashAction) => request<History>("stash_project", { action }),
   publishBranch: (branch: string, remote: string, remoteBranch: string) => request<History>("publish_project_branch", { branch, remote, remoteBranch }),
   setUpstream: (branch: string, remote: string, remoteBranch: string) => request<History>("set_project_upstream", { branch, remote, remoteBranch }),
-  commitOperation: (head: string, branch: string, action: CommitOperation) => request<History>("run_commit_operation", { head, branch, action }),
+  commitOperation: (head: string, branch: string, action: CommitOperation, options?: CommitOptions) => request<History>("run_commit_operation", { head, branch, action, options }),
   sync: (action: SyncAction) => request<History>("sync_project", { action }),
 };
 

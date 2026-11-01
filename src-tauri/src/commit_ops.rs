@@ -1,6 +1,6 @@
 use crate::{
-    ProjectHistory, Projects, commit_diff_args, git, locale, project_path, read_history,
-    read_worktree_files,
+    commit_diff_args, git, locale, project_path, read_history, read_worktree_files, ProjectHistory,
+    Projects,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -83,11 +83,28 @@ fn mainline_args(
     }
 }
 
+#[cfg(test)]
 pub fn run(
     path: &Path,
     head: &str,
     branch: &str,
     action: Action,
+) -> Result<ProjectHistory, String> {
+    run_with_options(
+        path,
+        head,
+        branch,
+        action,
+        &crate::commit_options::Options::default(),
+    )
+}
+
+pub fn run_with_options(
+    path: &Path,
+    head: &str,
+    branch: &str,
+    action: Action,
+    options: &crate::commit_options::Options,
 ) -> Result<ProjectHistory, String> {
     let current_branch = git(path, &["branch", "--show-current"])?.trim().to_string();
     if current_branch.is_empty() {
@@ -142,7 +159,7 @@ pub fn run(
             {
                 return Err(locale::text("op19").into());
             }
-            git(path, &["commit", "--amend", "-m", message.trim(), "--"])?;
+            crate::commit_options::commit(path, message.trim(), true, options)?;
         }
         Action::Continue => {
             let operation = read(path)?.ok_or(locale::text("op20"))?;
@@ -181,9 +198,18 @@ pub async fn run_commit_operation(
     head: String,
     branch: String,
     action: Action,
+    options: Option<crate::commit_options::Options>,
 ) -> Result<ProjectHistory, String> {
     let path = project_path(&window, &projects)?;
-    tauri::async_runtime::spawn_blocking(move || run(Path::new(&path), &head, &branch, action))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        run_with_options(
+            Path::new(&path),
+            &head,
+            &branch,
+            action,
+            &options.unwrap_or_default(),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

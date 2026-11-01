@@ -1,4 +1,5 @@
 mod commit_ops;
+mod commit_options;
 mod conflicts;
 mod history_search;
 mod git_settings;
@@ -1195,14 +1196,22 @@ fn set_file_staged(path: &Path, file_path: &str, staged: bool) -> Result<CommitD
     read_commit_details(path, WORKTREE)
 }
 
+#[cfg(test)]
 fn commit_staged(path: &Path, message: &str) -> Result<ProjectHistory, String> {
+    commit_staged_with_options(path, message, &commit_options::Options::default())
+}
+fn commit_staged_with_options(
+    path: &Path,
+    message: &str,
+    options: &commit_options::Options,
+) -> Result<ProjectHistory, String> {
     if message.trim().is_empty() {
         return Err(locale::text("err42").into());
     }
     if git(path, &["diff", "--cached", "--name-only", "-z"])?.is_empty() {
         return Err(locale::text("err43").into());
     }
-    git(path, &["commit", "-m", message, "--"])?;
+    commit_options::commit(path, message, false, options)?;
     read_history(path)
 }
 
@@ -1226,11 +1235,14 @@ async fn commit_project_changes(
     window: WebviewWindow,
     projects: State<'_, Projects>,
     message: String,
+    options: Option<commit_options::Options>,
 ) -> Result<ProjectHistory, String> {
     let path = project_path(&window, &projects)?;
-    tauri::async_runtime::spawn_blocking(move || commit_staged(Path::new(&path), &message))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        commit_staged_with_options(Path::new(&path), &message, &options.unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn sync_repository(path: &Path, action: &str) -> Result<ProjectHistory, String> {
@@ -2191,6 +2203,48 @@ mod tests {
             "main change"
         );
         assert_eq!(reverted.commits[0].parents, vec![picked.tip]);
+    }
+
+    #[test]
+    fn signs_new_and_amended_commits_with_configured_ssh_key() {
+        let repo = commit_operation_repo();
+        let key = repo.0.join("test signing key");
+        let output = std::process::Command::new("ssh-keygen").args(["-q", "-t", "ed25519", "-N", "", "-f"]).arg(&key).output().unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let public_key = std::fs::read_to_string(key.with_extension("pub")).unwrap();
+        let signers = repo.0.join("allowed-signers");
+        std::fs::write(&signers, format!("test@example.com {public_key}")).unwrap();
+        git(&repo.0, &["config", "gpg.format", "ssh"]).unwrap();
+        git(&repo.0, &["config", "user.signingkey", key.to_str().unwrap()]).unwrap();
+        git(&repo.0, &["config", "gpg.ssh.allowedSignersFile", signers.to_str().unwrap()]).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "staged").unwrap();
+        set_file_staged(&repo.0, "file.txt", true).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "unstaged").unwrap();
+        let options = commit_options::Options { sign: true };
+        let signed = commit_staged_with_options(&repo.0, "Signed commit", &options).unwrap();
+        git(&repo.0, &["verify-commit", &signed.tip]).unwrap();
+        assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "unstaged");
+        let parents = signed.commits[0].parents.clone();
+        let amended = commit_ops::run_with_options(&repo.0, &signed.tip, &signed.current_branch, commit_ops::Action::Amend { commit: signed.tip.clone(), message: "Amended signed message".into(), confirmed: true }, &options).unwrap();
+        assert_ne!(amended.tip, signed.tip);
+        assert_eq!(amended.commits[0].parents, parents);
+        git(&repo.0, &["verify-commit", &amended.tip]).unwrap();
+        assert_eq!(read_commit_details(&repo.0, &amended.tip).unwrap().message, "Amended signed message");
+        assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "unstaged");
+    }
+
+    #[test]
+    fn signing_failure_preserves_head_and_staged_changes() {
+        let repo = commit_operation_repo();
+        let before = read_history(&repo.0).unwrap();
+        git(&repo.0, &["config", "gpg.format", "ssh"]).unwrap();
+        git(&repo.0, &["config", "user.signingkey", repo.0.join("missing-key").to_str().unwrap()]).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "staged").unwrap();
+        set_file_staged(&repo.0, "file.txt", true).unwrap();
+        let index = git(&repo.0, &["diff", "--cached"]).unwrap();
+        assert!(commit_staged_with_options(&repo.0, "Should fail", &commit_options::Options { sign: true }).is_err());
+        assert_eq!(read_history(&repo.0).unwrap().tip, before.tip);
+        assert_eq!(git(&repo.0, &["diff", "--cached"]).unwrap(), index);
     }
 
     #[test]
