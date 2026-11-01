@@ -21,7 +21,7 @@ type RepositoryToolbarProps = {
 export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   return (
         <nav aria-label={t("nav01")} class="flex shrink-0 flex-wrap items-center justify-start gap-3 border-b px-4 py-2">
-          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><h1 class="text-sm font-semibold">{props.mode === "commit" ? t("mode02") : props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1><Button size="sm" variant="ghost" disabled={props.busy} onClick={props.onRefresh}>{t("op28")}</Button></div>}>
+          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-semibold">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show><Button size="sm" variant="ghost" disabled={props.busy} onClick={props.onRefresh}>{t("op28")}</Button></div>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="outline" disabled={props.busy || !props.history?.remotes.length}
               onClick={() => void props.onSync("fetch")} title={t("sync02")}>{props.action === "fetch" ? t("sync03") : t("sync01")}</Button>

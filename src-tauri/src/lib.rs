@@ -20,7 +20,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
     },
 };
-use tauri::{Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 #[derive(Clone, Debug, Serialize)]
 struct CommitReference {
@@ -229,6 +229,7 @@ struct FileDiff {
 struct RecentProjects(Mutex<()>);
 #[derive(Serialize)]
 struct OpenProjectResult {
+    window_label: String,
     recent_projects: Vec<String>,
     warning: Option<String>,
 }
@@ -814,7 +815,10 @@ async fn open_project(
     let maximized = window.is_maximized().map_err(|e| e.to_string())?;
     let fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
     let label = format!("history-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
-    let title = locale::format("err05", &[("p1", (history.path).to_string())]);
+    let title = Path::new(&history.path)
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| history.path.clone());
     let canonical_path = history.path.clone();
     app.state::<Projects>()
         .0
@@ -864,10 +868,12 @@ async fn open_project(
     })();
     Ok(match saved {
         Ok(recent_projects) => OpenProjectResult {
+            window_label: label.clone(),
             recent_projects,
             warning: None,
         },
         Err(error) => OpenProjectResult {
+            window_label: label,
             recent_projects: vec![],
             warning: Some(locale::format("err07", &[("error", error.to_string())])),
         },
@@ -876,6 +882,10 @@ async fn open_project(
 
 #[tauri::command]
 fn frontend_ready(window: WebviewWindow) -> Result<(), String> {
+    let url = window.url().map_err(|e| e.to_string())?;
+    if !url.query_pairs().any(|(key, _)| key == "view") {
+        window.set_title("").map_err(|e| e.to_string())?;
+    }
     window.show().map_err(|e| e.to_string())
 }
 
@@ -890,11 +900,11 @@ fn show_project_chooser(
     url.set_query(None);
     url.set_fragment(None);
     window.navigate(url).map_err(|e| e.to_string())?;
-    projects
-        .0
-        .lock()
-        .map_err(|e| e.to_string())?
-        .remove(window.label());
+    window.set_title("").map_err(|e| e.to_string())?;
+    let was_project = projects.0.lock().map_err(|e| e.to_string())?.remove(window.label()).is_some();
+    if was_project {
+        window.app_handle().emit("project-page-closed", window.label()).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -1353,8 +1363,10 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                if let Ok(mut projects) = window.state::<Projects>().0.lock() {
-                    projects.remove(window.label());
+                let was_project = window.state::<Projects>().0.lock()
+                    .map(|mut projects| projects.remove(window.label()).is_some()).unwrap_or(false);
+                if was_project {
+                    let _ = window.app_handle().emit("project-page-closed", window.label());
                 }
             }
         })
@@ -2579,6 +2591,33 @@ mod tests {
         let empty = TempRepo::new();
         empty.init();
         assert!(tracking::publish(&empty.0, "main", "origin", "trunk").is_err());
+    }
+
+    #[test]
+    fn stash_all_with_default_message_preserves_every_file_and_head() {
+        let repo = TempRepo::new();
+        repo.init();
+        git(&repo.0, &["config", "user.name", "Test"]).unwrap();
+        git(&repo.0, &["config", "user.email", "test@example.com"]).unwrap();
+        git(&repo.0, &["config", "commit.gpgsign", "false"]).unwrap();
+        commit_file(&repo, "base", "Base");
+        let head = read_history(&repo.0).unwrap().tip;
+        std::fs::write(repo.0.join("file.txt"), "staged").unwrap();
+        git(&repo.0, &["add", "file.txt"]).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "unstaged").unwrap();
+        std::fs::create_dir(repo.0.join("new folder")).unwrap();
+        std::fs::write(repo.0.join("new folder/new file.txt"), "untracked").unwrap();
+        let saved = stash::run(&repo.0, stash::StashAction::Save { message: String::new(), include_untracked: true }).unwrap();
+        assert!(!saved.has_changes);
+        assert_eq!(saved.tip, head);
+        assert_eq!(saved.stashes.len(), 1);
+        let id = saved.stashes[0].id.clone();
+        assert_eq!(stash::details(&repo.0, &id).unwrap().files.len(), 2);
+        stash::run(&repo.0, stash::StashAction::Apply { id, restore_index: true }).unwrap();
+        assert_eq!(git(&repo.0, &["show", ":file.txt"]).unwrap(), "staged");
+        assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "unstaged");
+        assert_eq!(std::fs::read_to_string(repo.0.join("new folder/new file.txt")).unwrap(), "untracked");
+        assert_eq!(read_history(&repo.0).unwrap().tip, head);
     }
 
     #[test]

@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "git-ui",
+        "title": "",
         "width": 960,
         "height": 720,
         "visible": false

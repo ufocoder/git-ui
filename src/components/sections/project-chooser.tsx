@@ -5,7 +5,8 @@ import { Button } from "~/components/ui/button";
 
 type ProjectChooserProps = {
   busy: boolean;
-  selected: string;
+  projectOpen: boolean;
+  choosingProject: boolean;
   recentProjects: string[];
   onSelectProject: () => void;
   onOpenRecent: (path: string) => void;
@@ -24,14 +25,13 @@ export default function ProjectChooser(props: ProjectChooserProps) {
         <p class="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
           {t("home03")}<br class="hidden sm:block" /> {t("home04")}
         </p>
-        <Button size="lg" class="mt-6 h-12 gap-3 rounded-lg px-6" onClick={props.onSelectProject} disabled={props.busy}>
+        <Button size="lg" class="mt-6 h-12 gap-3 rounded-lg px-6" onClick={props.onSelectProject} disabled={props.busy || props.projectOpen} aria-busy={props.busy}>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 17V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v2" />
             <path d="M5 11h16a1 1 0 0 1 1 1.3l-2 6A2.5 2.5 0 0 1 17.6 20H5a2 2 0 0 1-2-2l1-6a1 1 0 0 1 1-1Z" />
           </svg>
-          {props.busy ? t("init03") : t("home05")}
+          {props.choosingProject ? t("init03") : t("home05")}
         </Button>
-        <Show when={props.selected}><p class="mt-3 max-w-full break-all text-xs text-muted-foreground" role="status">{t("home06", { path: props.selected })}</p></Show>
       </section>
       <Show when={props.recentProjects.length > 0}>
       <section aria-labelledby="recent-projects-title" class="mx-auto w-full max-w-lg">
@@ -42,7 +42,7 @@ export default function ProjectChooser(props: ProjectChooserProps) {
           <ul class="max-h-60 space-y-1 overflow-y-auto">
             <For each={props.recentProjects.slice(0, 3)}>{path =>
               <li>
-                <Button variant="ghost" class="group h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-left" disabled={props.busy}
+                <Button variant="ghost" class="group h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-left" disabled={props.busy || props.projectOpen}
                   onClick={() => void props.onOpenRecent(path)} title={path}>
                   <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FolderIcon /></span>
                   <span class="flex min-w-0 flex-1 flex-col gap-0.5">

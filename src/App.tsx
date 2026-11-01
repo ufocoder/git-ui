@@ -1,11 +1,12 @@
 import GitSettingsDialog from "~/components/sections/git-settings-dialog";
 import UpdateWindow from "~/components/sections/update-window";
 import { t } from "~/lib/i18n";
-import { Show, createEffect, createSignal, onMount } from "solid-js";
+import { Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { git, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type SyncAction } from "~/lib/git";
 import { terminalError } from "~/lib/terminal";
 import TerminalPanel from "~/components/sections/terminal-panel";
 import { isTauri } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import RepositorySidebar from "~/components/sections/repository-sidebar";
@@ -24,12 +25,18 @@ function App() {
   const isHistory = new URLSearchParams(window.location.search).get("view") === "history";
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
+  const [openedProjectWindow, setOpenedProjectWindow] = createSignal<string>();
+  let unlistenProjectClosed: UnlistenFn | undefined;
+  let disposed = false;
+  let openingProjectWindow = false;
+  const closedProjectWindows = new Set<string>();
+  onCleanup(() => { disposed = true; unlistenProjectClosed?.(); });
+  const [choosingProject, setChoosingProject] = createSignal(false);
   const [historyScope, setHistoryScope] = createSignal<HistoryScope>("all");
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
   const [terminalOpen, setTerminalOpen] = createSignal(false);
   const [error, setError] = createSignal("");
   const [history, setHistory] = createSignal<History>();
-  const [selected, setSelected] = createSignal("");
   const [initializePath, setInitializePath] = createSignal("");
   const [initializeError, setInitializeError] = createSignal("");
   const [recentProjects, setRecentProjects] = createSignal<string[]>([]);
@@ -67,7 +74,17 @@ function App() {
   onMount(async () => {
     if (!isHistory) {
       setBusy(true);
-      try { if (isTauri()) setRecentProjects(await git.getRecentProjects()); }
+      try {
+        if (isTauri()) {
+          const unlisten = await listen<string>("project-page-closed", event => {
+            if (openingProjectWindow) closedProjectWindows.add(event.payload);
+            if (openedProjectWindow() === event.payload) setOpenedProjectWindow(undefined);
+          });
+          if (disposed) { unlisten(); return; }
+          unlistenProjectClosed = unlisten;
+          setRecentProjects(await git.getRecentProjects());
+        }
+      }
       catch { setRecentProjects([]); }
       finally { setBusy(false); }
       return;
@@ -79,10 +96,14 @@ function App() {
   });
 
   async function selectProject() {
+    if (busy() || openedProjectWindow()) return;
     setError("");
     setBusy(true);
     try {
-      const path = await open({ directory: true, multiple: false, title: t("app01") });
+      setChoosingProject(true);
+      let path: string | null;
+      try { path = await open({ directory: true, multiple: false, title: t("app01") }); }
+      finally { setChoosingProject(false); }
       if (!path) return;
       await openSelectedProject(path);
     } catch (e) { setError(String(e)); }
@@ -94,14 +115,21 @@ function App() {
       setInitializeError(""); setInitializePath(path);
       return;
     }
-    const result = await git.openProject(path);
-    setSelected(path);
-    if (!result.warning) setRecentProjects(result.recent_projects);
+    openingProjectWindow = true;
+    closedProjectWindows.clear();
+    try {
+      const result = await git.openProject(path);
+      if (!closedProjectWindows.has(result.window_label)) setOpenedProjectWindow(result.window_label);
+      if (!result.warning) setRecentProjects(result.recent_projects);
+    } finally {
+      openingProjectWindow = false;
+      closedProjectWindows.clear();
+    }
   }
 
   async function initializeProject() {
     const path = initializePath();
-    if (!path || busy()) return;
+    if (!path || busy() || openedProjectWindow()) return;
     setBusy(true); setInitializeError(""); setError("");
     try {
       if (await git.canInitializeProject(path)) await git.initializeProject(path);
@@ -112,7 +140,7 @@ function App() {
   }
 
   async function openRecentProject(path: string) {
-    if (busy()) return;
+    if (busy() || openedProjectWindow()) return;
     setBusy(true);
     setError("");
     try { await openSelectedProject(path); }
@@ -183,7 +211,15 @@ function App() {
   async function runStash(action: StashAction) {
     if (busy()) throw new Error(t("hist01"));
     setBusy(true);
-    try { setHistory(await git.stash(action)); }
+    try {
+      const updated = await git.stash(action);
+      batch(() => {
+        setHistory(updated);
+        if (updated.conflicts.length) setRepositoryMode("conflicts");
+        else if ((action.kind === "apply" && !updated.stashes.some(entry => entry.id !== action.id))
+          || (repositoryMode() === "stash" && !updated.stashes.length)) setRepositoryMode("commit");
+      });
+    }
     catch (error) {
       try { setHistory(await git.getHistory()); } catch { /* Preserve the last available state. */ }
       throw error;
@@ -228,7 +264,7 @@ function App() {
       onCreateTag={createTag} onAddRemote={addRemote} />}</Show>
     <main class={isHistory ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
       <Show when={isHistory} fallback={
-        <ProjectChooser busy={busy()} selected={selected()} recentProjects={recentProjects()}
+        <ProjectChooser projectOpen={Boolean(openedProjectWindow())} choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
         <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} onRefresh={() => void refreshHistory()} scope={historyScope()} onScopeChange={scope => { setHistoryScope(scope); setRepositoryMode("history"); }} busy={busy()} history={history()} action={syncAction()} status={syncStatus()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />

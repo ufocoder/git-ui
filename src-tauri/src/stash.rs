@@ -1,5 +1,5 @@
 use crate::{
-    ProjectHistory, Projects, git, locale, project_path, read_history, read_worktree_files,
+    git, locale, project_path, read_history, read_worktree_files, ProjectHistory, Projects,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -71,12 +71,30 @@ pub(crate) fn ensure_no_operation(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn ensure_source_is_not_running(path: &Path) -> Result<(), String> {
+    // Saving or applying a stash in this checkout changes files watched by Vite/Cargo.
+    // Release builds have embedded assets and can safely operate on this repo.
+    #[cfg(debug_assertions)]
+    {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent();
+        if let (Some(source), Ok(repository)) = (source, path.canonicalize()) {
+            if source.canonicalize().ok().as_ref() == Some(&repository) {
+                return Err(locale::text("stash26").into());
+            }
+        }
+    }
+    #[cfg(not(debug_assertions))]
+    let _ = path;
+    Ok(())
+}
+
 pub fn run(path: &Path, action: StashAction) -> Result<ProjectHistory, String> {
     match action {
         StashAction::Save {
             message,
             include_untracked,
         } => {
+            ensure_source_is_not_running(path)?;
             ensure_no_operation(path)?;
             if git(path, &["rev-parse", "--revs-only", "HEAD"])?
                 .trim()
@@ -108,6 +126,7 @@ pub fn run(path: &Path, action: StashAction) -> Result<ProjectHistory, String> {
             git(path, &args)?;
         }
         StashAction::Apply { id, restore_index } => {
+            ensure_source_is_not_running(path)?;
             ensure_no_operation(path)?;
             let entry = selected(path, &id)?;
             let mut args = vec!["stash", "apply"];
@@ -195,4 +214,35 @@ pub async fn get_stash_diff(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[cfg(debug_assertions)]
+    fn prevents_save_and_apply_before_touching_running_sources() {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        for action in [
+            StashAction::Save {
+                message: String::new(),
+                include_untracked: true,
+            },
+            StashAction::Apply {
+                id: "invalid-id".into(),
+                restore_index: true,
+            },
+        ] {
+            assert_eq!(run(source, action).unwrap_err(), locale::text("stash26"));
+        }
+    }
+    #[test]
+    fn prevents_stashing_the_running_development_checkout() {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        assert_eq!(
+            ensure_source_is_not_running(source).is_err(),
+            cfg!(debug_assertions)
+        );
+        assert!(ensure_source_is_not_running(Path::new(env!("CARGO_MANIFEST_DIR"))).is_ok());
+    }
 }
