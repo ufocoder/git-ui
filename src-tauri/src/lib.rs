@@ -4,6 +4,7 @@ mod conflicts;
 mod history_search;
 mod git_settings;
 mod locale;
+mod process;
 mod stash;
 mod sync_status;
 mod terminal_log;
@@ -15,7 +16,6 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     path::Path,
-    process::Command,
     sync::{
         Mutex,
         atomic::{AtomicUsize, Ordering},
@@ -290,7 +290,7 @@ fn git(path: &Path, args: &[&str]) -> Result<String, String> {
 
 fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     let log_id = terminal_log::begin(path, args);
-    let output = Command::new("git")
+    let output = process::background("git")
         .arg("-C")
         .arg(path)
         .args(args)
