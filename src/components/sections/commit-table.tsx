@@ -1,5 +1,5 @@
 import { locale, t } from "~/lib/i18n";
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, on, untrack } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, on, untrack } from "solid-js";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
 import CommitEditDialog, { type CommitEditAction } from "./commit-edit-dialog";
 import CommitActionsDialog, { type CommitDialogAction } from "./commit-actions-dialog";
@@ -19,6 +19,9 @@ const ROW_HEIGHT = 34;
 export default function CommitTable(props: { scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
   let header!: HTMLTableSectionElement;
+  let searchButton!: HTMLButtonElement;
+  const searchId = createUniqueId();
+  const [searchOpen, setSearchOpen] = createSignal(false);
   const [headerHeight, setHeaderHeight] = createSignal(ROW_HEIGHT);
   let generation = 0;
   const emptyFilter: HistoryFilter = { text: "", sha: "", author: "", file: "" };
@@ -144,13 +147,27 @@ export default function CommitTable(props: { scope: HistoryScope; history: Histo
           "aria-busy": loading() || debouncing(),
         }}>
         <colgroup><col style={{ width: `${graph().width}px` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
-        <TableHeader ref={element => { header = element; }} class="sticky top-0 z-10 bg-background">
+        <TableHeader ref={element => { header = element; }} class="sticky top-0 z-10 bg-background" onKeyDown={event => {
+          if (event.key === "Escape" && searchOpen()) {
+            event.preventDefault(); setSearchOpen(false); searchButton.focus();
+          }
+        }}>
           <TableRow class="hover:bg-transparent">
-            <For each={[t("hist06"), t("hist07"), t("hist08"), t("hist09"), t("hist10")]}>{heading =>
-              <TableHead scope="col" class="h-[34px] border-b">{heading}</TableHead>
+            <For each={[t("hist06"), t("hist07"), t("hist08"), t("hist09"), t("hist10")]}>{(heading, index) =>
+              <TableHead scope="col" class="h-[34px] border-b">
+                <Show when={index() === 1} fallback={heading}>
+                  <div class="flex items-center justify-between gap-2"><span>{heading}</span>
+                    <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
+                      aria-label={searchOpen() ? t("find13") : t("find01")} title={searchOpen() ? t("find13") : t("find01")}
+                      aria-expanded={searchOpen()} aria-controls={`${searchId}-fields ${searchId}-path`} onClick={() => setSearchOpen(open => !open)}>
+                      <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
+                    </Button>
+                  </div>
+                </Show>
+              </TableHead>
             }</For>
           </TableRow>
-          <HistoryFilters filter={filter()} onChange={setFilter} disabled={props.disabled} />
+          <Show when={searchOpen()}><HistoryFilters id={searchId} filter={filter()} onChange={setFilter} disabled={props.disabled} /></Show>
         </TableHeader>
         <TableBody>
           <Show when={start() > 0}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${start() * ROW_HEIGHT}px` }} /></TableRow></Show>

@@ -423,5 +423,6 @@
   "commit20": "Sign with GPG/SSH",
   "commit21": "Create a cryptographic signature using the key configured in Git (user.signingKey and gpg.format)",
   "commit22": "Amend last commit",
-  "commit23": "Amending commit {sha}. You can edit its message without staging files."
+  "commit23": "Amending commit {sha}. You can edit its message without staging files.",
+  "find13": "Hide search"
 }
