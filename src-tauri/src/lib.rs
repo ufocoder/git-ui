@@ -1,6 +1,7 @@
 mod commit_ops;
 mod conflicts;
 mod history_search;
+mod git_settings;
 mod locale;
 mod stash;
 mod sync_status;
@@ -1261,6 +1262,7 @@ async fn sync_project(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            locale::load(app.handle());
             update_menu::install(app.handle())?;
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) {
@@ -1308,6 +1310,10 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            git_settings::get_git_settings,
+            git_settings::save_git_settings,
+            locale::get_app_language,
+            locale::set_app_language,
             updates::get_update_settings,
             updates::check_app_update,
             updates::install_app_update,

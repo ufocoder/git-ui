@@ -105,7 +105,7 @@ export default function CommitTable(props: { scope: HistoryScope; history: Histo
   const start = createMemo(() => Math.max(0, Math.floor(Math.max(0, scrollTop() - headerHeight()) / ROW_HEIGHT) - Math.ceil(height() / ROW_HEIGHT)));
   const end = createMemo(() => Math.min(displayedCommits().length, start() + Math.ceil(height() / ROW_HEIGHT) * 3 + 4));
   const visibleRows = createMemo(() => displayedCommits().slice(start(), end()).map((commit, index) => ({ commit, graph: graph().rows[start() + index] })));
-  const date = (value: string) => new Date(value).toLocaleString(locale, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const date = (value: string) => new Date(value).toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   async function runAction(operation: () => Promise<History>) {
     if (props.disabled) throw new Error(t("hist01"));

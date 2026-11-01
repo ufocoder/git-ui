@@ -1,3 +1,4 @@
+import GitSettingsDialog from "~/components/sections/git-settings-dialog";
 import UpdateWindow from "~/components/sections/update-window";
 import { t } from "~/lib/i18n";
 import { Show, createEffect, createSignal, onMount } from "solid-js";
@@ -21,6 +22,7 @@ import RepositoryContent from "~/components/sections/repository-content";
 function App() {
   if (new URLSearchParams(window.location.search).get("view") === "updates") return <UpdateWindow />;
   const isHistory = new URLSearchParams(window.location.search).get("view") === "history";
+  const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [historyScope, setHistoryScope] = createSignal<HistoryScope>("all");
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
@@ -221,7 +223,7 @@ function App() {
 
   return (
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory ? "" : "contents"}>
-    <Show when={isHistory && history()}>{project => <RepositorySidebar history={project()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={() => { if (!busy()) void git.showProjectChooser().catch(() => setTerminalOpen(true)); }} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
+    <Show when={isHistory && history()}>{project => <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={project()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={() => { if (!busy()) void git.showProjectChooser().catch(() => setTerminalOpen(true)); }} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
       onCreateTag={createTag} onAddRemote={addRemote} />}</Show>
     <main class={isHistory ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
@@ -249,6 +251,7 @@ function App() {
       </Show>
       <Show when={!isHistory && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
     </main>
+    <Show when={isHistory}><GitSettingsDialog hasProject open={settingsOpen()} onClose={() => setSettingsOpen(false)} /></Show>
     <InitializeRepositoryDialog path={initializePath()} pending={busy()} error={initializeError()}
       onConfirm={() => void initializeProject()} onCancel={() => { setInitializePath(""); setInitializeError(""); }} />
     </SidebarProvider>

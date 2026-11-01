@@ -46,7 +46,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
             <dt class="text-muted-foreground">{t("cf04")}</dt><dd class="break-all font-mono">{props.commit.uncommitted ? "*" : props.commit.hash}</dd>
             <dt class="text-muted-foreground">{props.stash ? t("mode05") : t("cf05")}</dt><dd class="break-words">{props.commit.author}</dd>
-            <dt class="text-muted-foreground">{t("cf06")}</dt><dd><Show when={props.commit.date} fallback="—"><time dateTime={props.commit.date}>{new Date(props.commit.date).toLocaleString(locale)}</time></Show></dd>
+            <dt class="text-muted-foreground">{t("cf06")}</dt><dd><Show when={props.commit.date} fallback="—"><time dateTime={props.commit.date}>{new Date(props.commit.date).toLocaleString(locale())}</time></Show></dd>
           </dl>
           <p class="cursor-text select-text whitespace-pre-wrap break-words text-sm">{message()}</p>
           <Show when={props.commit.parents.length > 1}><p class="text-xs text-muted-foreground">{t("cf07")}</p></Show>

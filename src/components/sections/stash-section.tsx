@@ -49,7 +49,7 @@ export default function StashSection(props: { history: History; selected?: strin
               <Button variant="ghost" class="h-auto min-w-0 flex-1 flex-col items-start gap-1 px-2 py-2 text-left" disabled={props.disabled}
                 title={props.onSelect ? saved.message : t("stash23", { name: saved.message })} aria-pressed={props.selected === saved.id} classList={{ "bg-blue-500/10": props.selected === saved.id }} onClick={() => props.onSelect ? props.onSelect(saved) : open({ kind: "apply", entry: saved })}>
                 <span class="w-full truncate text-xs">{saved.message}</span>
-                <span class="w-full truncate text-[10px] font-normal text-muted-foreground">{saved.reference} · {new Date(saved.date).toLocaleString(locale)}</span>
+                <span class="w-full truncate text-[10px] font-normal text-muted-foreground">{saved.reference} · {new Date(saved.date).toLocaleString(locale())}</span>
               </Button>
               <Button variant="ghost" size="icon" class="size-7 shrink-0 text-muted-foreground hover:text-destructive" disabled={props.disabled}
                 title={t("stash09")} aria-label={t("stash09")} onClick={() => open({ kind: "drop", entry: saved })}>

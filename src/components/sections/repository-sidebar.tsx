@@ -13,7 +13,7 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   return <Sidebar collapsible="none" class="relative h-dvh shrink-0 border-r" aria-label={t("repo01")}>
     <SidebarHeader class="border-b p-4">
       <div class="flex min-w-0 items-center gap-2">
@@ -99,7 +99,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
       </SidebarSection>
 
     </SidebarContent>
-    <SidebarFooter class="border-t p-2"><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onChangeProject}>{t("nav12")}</Button></SidebarFooter>
+    <SidebarFooter class="border-t p-2"><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onSettings}>{t("lang04")}</Button><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onChangeProject}>{t("nav12")}</Button></SidebarFooter>
     <SidebarResizeHandle />
   </Sidebar>;
 }

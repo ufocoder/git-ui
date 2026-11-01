@@ -2,6 +2,9 @@ import { t } from "~/lib/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { clearTerminalError, reportTerminalError } from "./terminal";
 
+export type GitSettings = { values: Record<string, string>; effective: Record<string, string> };
+export type GitSettingChange = { key: string; value: string | null };
+
 export const WORKTREE = "WORKTREE";
 
 export type CommitReference = { name: string; kind: "branch" | "remote" | "tag" };
@@ -53,7 +56,8 @@ export type ResetMode = "soft" | "mixed" | "hard";
 export type TerminalLog = { id: number; command: string; output: string; status: "running" | "success" | "error"; exit_code: number | null };
 export type SyncAction = "fetch" | "pull" | "push";
 
-const operationLabels: Record<string, string> = {
+const operationLabels = (): Record<string, string> => ({
+  get_git_settings: t("cfg01"), save_git_settings: t("cfg01"),
   stash_project: t("stash01"), get_stash_details: t("stash01"), get_stash_diff: t("stash01"),
   publish_project_branch: t("track01"), set_project_upstream: t("track02"),
   run_commit_operation: t("op27"),
@@ -67,21 +71,23 @@ const operationLabels: Record<string, string> = {
   create_project_tag: t("cmd04"), create_project_tag_at_commit: t("cmd04"), add_project_remote: t("cmd05"),
   checkout_project_commit: t("cmd06"), reset_project_commit: t("cmd07"), set_project_file_staged: t("git06"),
   commit_project_changes: t("cmd08"), initialize_project: t("cmd09"), can_initialize_project: t("git07"),
-};
-const mutations = new Set(["resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+});
+const mutations = new Set(["save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 async function request<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (mutations.has(command)) clearTerminalError();
   try { return await invoke<T>(command, args); }
   catch (error) {
     // Polling failures are rendered by the terminal itself, avoiding a feedback loop.
-    if (command !== "get_project_terminal_log") reportTerminalError(error, command === "sync_project" ? t("git08", { p1: String(args?.action) }) : operationLabels[command] ?? command);
+    if (command !== "get_project_terminal_log") reportTerminalError(error, command === "sync_project" ? t("git08", { p1: String(args?.action) }) : operationLabels()[command] ?? command);
     throw error;
   }
 }
 
 // The Rust backend owns repository access; components use this typed API.
 export const git = {
+  getSettings: (scope: string) => request<GitSettings>("get_git_settings", { scope }),
+  saveSettings: (scope: string, changes: GitSettingChange[]) => request<GitSettings>("save_git_settings", { scope, changes }),
   showProjectChooser: () => request<void>("show_project_chooser"),
   getStashDetails: (id: string) => request<CommitDetails>("get_stash_details", { id }),
   getStashDiff: (id: string, filePath: string) => request<FileDiff>("get_stash_diff", { id, filePath }),
@@ -121,7 +127,7 @@ export function createWorktreeCommit(tip: string): Commit {
     hash: WORKTREE,
     author: "*",
     date: "",
-    subject: t("cf02"),
+    get subject() { return t("cf02"); },
     parents: tip ? [tip] : [],
     refs: [],
     uncommitted: true,
