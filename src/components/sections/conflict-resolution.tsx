@@ -1,6 +1,7 @@
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { createConflictDraft, type ConflictDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
-import { git, type ConflictFile, type ConflictVersion, type History } from "~/lib/git";
+import { git, type ConflictVersion, type History } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Resizable, ResizableHandle, ResizablePanel } from "~/components/ui/resizable";
 import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
@@ -8,8 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import ChangedFilesTree from "./changed-files-tree";
 
 type Props = {
+  draft?: ConflictDraft;
   history: History;
-  active: boolean;
   disabled: boolean;
   onHistoryChange: (history: History) => void;
   onBusyChange: (busy: boolean) => void;
@@ -17,19 +18,20 @@ type Props = {
   onCreateCommit: () => void;
 };
 export default function ConflictResolution(props: Props) {
-  const [selected, setSelected] = createSignal("");
-  const [data, setData] = createSignal<ConflictFile>();
-  const [draft, setDraft] = createSignal("");
-  const [choice, setChoice] = createSignal<"manual" | "ours" | "theirs">("manual");
+  const state = props.draft ?? createConflictDraft();
+  const [selected, setSelected] = state.selected;
+  const [data, setData] = state.data;
+  const [draft, setDraft] = state.text;
+  const [choice, setChoice] = state.choice;
   const [loading, setLoading] = createSignal(false);
   const [pending, setPending] = createSignal(false);
   const [navigation, setNavigation] = createSignal<{ kind: "file"; path: string } | { kind: "refresh" }>();
-  const [resolved, setResolved] = createSignal(false);
+  const [resolved, setResolved] = state.resolved;
   const dirty = createMemo(() => Boolean(data()) && (choice() !== "manual" || draft() !== (data()?.working_text ?? "")));
   const disabled = () => props.disabled || pending() || loading();
   const chosenVersion = () => choice() === "ours" ? data()?.ours : choice() === "theirs" ? data()?.theirs : undefined;
   const deleting = () => Boolean(chosenVersion()) && !chosenVersion()!.exists;
-  let loadedPath = "";
+  let loadedPath = data()?.file.path ?? "";
   let generation = 0;
   let mounted = true;
   onCleanup(() => { mounted = false; generation++; });
@@ -39,7 +41,7 @@ export default function ConflictResolution(props: Props) {
   });
   createEffect(() => {
     const path = selected();
-    if (props.active && path && loadedPath !== path) void load(path);
+    if (path && loadedPath !== path) void load(path);
     else if (!path) { loadedPath = ""; generation++; setData(undefined); setDraft(""); setLoading(false); }
   });
   async function load(path: string) {
@@ -61,7 +63,7 @@ export default function ConflictResolution(props: Props) {
     if (props.disabled || pending()) return;
     if (dirty()) { setNavigation({ kind: "refresh" }); return; }
     setData(undefined); await props.onRefresh();
-    if (selected() && props.active) await load(selected());
+    if (selected()) await load(selected());
   }
   async function discardDraft() {
     const next = navigation(); setNavigation(undefined); setData(undefined); setDraft("");
@@ -97,7 +99,7 @@ export default function ConflictResolution(props: Props) {
         <Show when={resolved() && props.history.has_changes && !props.history.operation}><Button variant="outline" onClick={props.onCreateCommit}>{t("conf30")}</Button></Show>
       </div>
     }>
-      <Resizable orientation="horizontal" initialSizes={[0.25, 0.75]} class="min-h-0 flex-1">
+      <Resizable layoutId="conflicts.columns" orientation="horizontal" initialSizes={[1 / 3, 2 / 3]} class="min-h-0 flex-1">
         <ResizablePanel minSize={0.15} class="min-h-0 min-w-0 overflow-auto p-3">
           <ChangedFilesTree files={props.history.conflicts ?? []} selectedPath={selected()} disabled={props.disabled || pending()} onSelect={file => selectFile(file.path)} />
         </ResizablePanel>
@@ -106,7 +108,7 @@ export default function ConflictResolution(props: Props) {
           <Show when={!loading()} fallback={<p class="p-4 text-sm text-muted-foreground" role="status">{t("cf13")}</p>}>
             <Show when={data()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("conf11")}</p>}>{current => <section class="flex h-full min-h-0 flex-col gap-3 p-4">
               <h3 class="shrink-0 break-all font-mono text-sm font-semibold">{current().file.path}</h3>
-              <Resizable orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
+              <Resizable layoutId="conflicts.result" orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
                 <ResizablePanel minSize={0.15} class="min-h-0 overflow-hidden pb-3">
                   <div class="grid h-full min-h-0 grid-cols-2 gap-3">
                     <ConflictSide title={t("conf02")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conf05")} />

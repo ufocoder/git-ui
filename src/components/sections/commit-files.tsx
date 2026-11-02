@@ -39,7 +39,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
     finally { if (request === diffRequest) setOpening(false); }
   }
   return (
-    <Resizable orientation="horizontal" initialSizes={[0.35, 0.65]} class="min-h-0 min-w-0">
+    <Resizable layoutId={props.stash ? "stash.details" : "history.details"} orientation="horizontal" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0">
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-auto">
         <section class="space-y-4 p-4" aria-label={t("cf01")}>
           <h2 class="text-sm font-semibold">{props.stash ? t("mode04") : props.commit.uncommitted ? t("cf02") : t("cf03")}</h2>

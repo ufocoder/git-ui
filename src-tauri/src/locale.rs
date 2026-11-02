@@ -58,9 +58,6 @@ pub fn set_app_language(app: AppHandle, language: String) -> Result<(), String> 
         .map_err(|error| format("lang06", &[("error", error.to_string())]))?;
     ENGLISH.store(language == "en", Ordering::Relaxed);
     let _ = crate::update_menu::install(&app);
-    if let Some(window) = app.get_webview_window("updates") {
-        let _ = window.set_title(text("upd02"));
-    }
     // Notify every open WebView, including the updater.
     app.emit("language-changed", &language)
         .map_err(|e| e.to_string())?;

@@ -16,12 +16,9 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     path::Path,
-    sync::{
-        Mutex,
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::Mutex,
 };
-use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Manager, State, WebviewWindow};
 
 #[derive(Clone, Debug, Serialize)]
 struct CommitReference {
@@ -230,7 +227,7 @@ struct FileDiff {
 struct RecentProjects(Mutex<()>);
 #[derive(Serialize)]
 struct OpenProjectResult {
-    window_label: String,
+    history: ProjectHistory,
     recent_projects: Vec<String>,
     warning: Option<String>,
 }
@@ -282,7 +279,8 @@ fn get_recent_projects(
     load_recent(&file)
 }
 
-static NEXT_WINDOW: AtomicUsize = AtomicUsize::new(1);
+#[cfg(test)]
+static NEXT_TEST_REPO: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
 
 fn git(path: &Path, args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&git_bytes(path, args)?).into_owned())
@@ -400,25 +398,25 @@ fn read_commit_page(path: &Path, tip: &str, offset: usize) -> Result<CommitPage,
     if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit()) {
         return Err(locale::text("err12").into());
     }
-    read_commit_range(path, tip, offset)
+    read_commit_range_with_refs(path, tip, offset, true)
 }
 
 fn read_commit_range(path: &Path, revision: &str, offset: usize) -> Result<CommitPage, String> {
-    let log = git(
-        path,
-        &[
-            "--no-pager",
-            "log",
-            "--topo-order",
-            &format!("--max-count={}", PAGE_SIZE + 1),
-            &format!("--skip={offset}"),
-            "--no-show-signature",
-            "--format=%H%x00%an%x00%aI%x00%s%x00%P",
-            "-z",
-            revision,
-            "--",
-        ],
-    )?;
+    read_commit_range_with_refs(path, revision, offset, false)
+}
+
+fn read_commit_range_with_refs(path: &Path, revision: &str, offset: usize, include_refs: bool) -> Result<CommitPage, String> {
+    let count = format!("--max-count={}", PAGE_SIZE + 1);
+    let skip = format!("--skip={offset}");
+    let mut args = vec![
+        "--no-pager", "log", "--topo-order", &count, &skip,
+        "--no-show-signature", "--format=%H%x00%an%x00%aI%x00%s%x00%P", "-z",
+    ];
+    if include_refs {
+        args.extend(["--remotes"]);
+    }
+    args.extend([revision, "--"]);
+    let log = git(path, &args)?;
     parse_commit_log(path, &log)
 }
 
@@ -548,11 +546,32 @@ fn read_worktree_files(path: &Path) -> Result<Vec<CommitFile>, String> {
     Ok(files)
 }
 
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WorktreeDiffScope {
+    Staged,
+    Unstaged,
+}
+
 fn read_worktree_diff(path: &Path, file_path: &str) -> Result<FileDiff, String> {
+    read_worktree_diff_scoped(path, file_path, None)
+}
+fn read_worktree_diff_scoped(
+    path: &Path,
+    file_path: &str,
+    scope: Option<WorktreeDiffScope>,
+) -> Result<FileDiff, String> {
     let file = read_worktree_files(path)?
         .into_iter()
         .find(|file| file.path == file_path)
         .ok_or(locale::text("err16"))?;
+    if matches!(scope, Some(WorktreeDiffScope::Staged)) && !file.staged
+        || matches!(scope, Some(WorktreeDiffScope::Unstaged))
+            && file.staged
+            && !file.partially_staged
+    {
+        return Err(locale::text("err16").into());
+    }
     let untracked = git(
         path,
         &[
@@ -566,6 +585,7 @@ fn read_worktree_diff(path: &Path, file_path: &str) -> Result<FileDiff, String> 
     )?;
     let mut args: Vec<String> = vec![
         "diff".into(),
+        "--unified=12".into(),
         "--no-color".into(),
         "--no-ext-diff".into(),
         "--no-textconv".into(),
@@ -588,7 +608,11 @@ fn read_worktree_diff(path: &Path, file_path: &str) -> Result<FileDiff, String> 
         } else {
             head
         };
-        args.push(base.trim().into());
+        match scope {
+            Some(WorktreeDiffScope::Staged) => args.push("--cached".into()),
+            Some(WorktreeDiffScope::Unstaged) => {}
+            None => args.push(base.trim().into()),
+        }
         args.extend(["--find-renames".into(), "--".into()]);
         if let Some(old) = &file.old_path {
             args.push(format!(":(literal){old}"));
@@ -665,6 +689,7 @@ fn read_file_diff(path: &Path, commit: &str, file_path: &str) -> Result<FileDiff
     args.extend(
         [
             "--patch",
+            "--unified=12",
             "--no-color",
             "--no-ext-diff",
             "--no-textconv",
@@ -756,10 +781,16 @@ async fn get_file_diff(
     projects: State<'_, Projects>,
     commit: String,
     file_path: String,
+    scope: Option<WorktreeDiffScope>,
 ) -> Result<FileDiff, String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
-        read_file_diff(Path::new(&path), &commit, &file_path)
+        if scope.is_some() {
+            if commit != WORKTREE { return Err(locale::text("stage09").into()); }
+            read_worktree_diff_scoped(Path::new(&path), &file_path, scope)
+        } else {
+            read_file_diff(Path::new(&path), &commit, &file_path)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -810,53 +841,14 @@ async fn open_project(
     let history = tauri::async_runtime::spawn_blocking(move || read_history(Path::new(&path)))
         .await
         .map_err(|e| e.to_string())??;
-    let scale = window.scale_factor().map_err(|e| e.to_string())?;
-    let physical_size = window.inner_size().map_err(|e| e.to_string())?;
-    let size = physical_size.to_logical::<f64>(scale);
-    let maximized = window.is_maximized().map_err(|e| e.to_string())?;
-    let fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
-    let label = format!("history-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
     let title = Path::new(&history.path)
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| history.path.clone());
+    window.set_title(&title).map_err(|e| e.to_string())?;
     let canonical_path = history.path.clone();
-    app.state::<Projects>()
-        .0
-        .lock()
-        .map_err(|e| e.to_string())?
-        .insert(label.clone(), history);
-    let result = WebviewWindowBuilder::new(
-        &app,
-        &label,
-        WebviewUrl::App("index.html?view=history".into()),
-    )
-    .title(title)
-    .visible(false)
-    .inner_size(size.width, size.height)
-    .maximized(maximized)
-    .fullscreen(fullscreen)
-    .build()
-    .and_then(|history_window| {
-        let configure = (|| {
-            if !maximized && !fullscreen {
-                history_window.set_size(tauri::Size::Physical(physical_size))?;
-            }
-            Ok(())
-        })();
-        if configure.is_err() {
-            let _ = history_window.close();
-        }
-        configure
-    });
-    if let Err(error) = result {
-        app.state::<Projects>()
-            .0
-            .lock()
-            .map_err(|e| e.to_string())?
-            .remove(&label);
-        return Err(locale::format("err06", &[("error", error.to_string())]));
-    }
+    app.state::<Projects>().0.lock().map_err(|e| e.to_string())?
+        .insert(window.label().to_owned(), history.clone());
     let saved = (|| {
         let recent = app.state::<RecentProjects>();
         let _guard = recent.0.lock().map_err(|e| e.to_string())?;
@@ -869,12 +861,12 @@ async fn open_project(
     })();
     Ok(match saved {
         Ok(recent_projects) => OpenProjectResult {
-            window_label: label.clone(),
+            history,
             recent_projects,
             warning: None,
         },
         Err(error) => OpenProjectResult {
-            window_label: label,
+            history,
             recent_projects: vec![],
             warning: Some(locale::format("err07", &[("error", error.to_string())])),
         },
@@ -895,17 +887,8 @@ fn show_project_chooser(
     window: WebviewWindow,
     projects: State<'_, Projects>,
 ) -> Result<(), String> {
-    // Keep the native window and its geometry; only replace the screen inside it.
-    // Moving another window in/out of fullscreen triggers macOS Space animations.
-    let mut url = window.url().map_err(|e| e.to_string())?;
-    url.set_query(None);
-    url.set_fragment(None);
-    window.navigate(url).map_err(|e| e.to_string())?;
     window.set_title("").map_err(|e| e.to_string())?;
-    let was_project = projects.0.lock().map_err(|e| e.to_string())?.remove(window.label()).is_some();
-    if was_project {
-        window.app_handle().emit("project-page-closed", window.label()).map_err(|e| e.to_string())?;
-    }
+    projects.0.lock().map_err(|e| e.to_string())?.remove(window.label());
     Ok(())
 }
 
@@ -1315,11 +1298,11 @@ pub fn run() {
         .on_menu_event(|app, event| {
             if event.id().as_ref() == update_menu::CHECK_UPDATES {
                 if let Err(error) = update_menu::show(app) {
-                    use tauri_plugin_dialog::DialogExt;
-                    app.dialog()
-                        .message(error.to_string())
-                        .title(locale::text("upd31"))
-                        .show(|_| {});
+                    eprintln!("{error}");
+                }
+            } else if event.id().as_ref() == update_menu::KEYBOARD_SHORTCUTS {
+                if let Err(error) = update_menu::show_dialog(app, update_menu::KEYBOARD_SHORTCUTS) {
+                    eprintln!("{error}");
                 }
             }
         })
@@ -1375,10 +1358,8 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                let was_project = window.state::<Projects>().0.lock()
-                    .map(|mut projects| projects.remove(window.label()).is_some()).unwrap_or(false);
-                if was_project {
-                    let _ = window.app_handle().emit("project-page-closed", window.label());
+                if let Ok(mut projects) = window.state::<Projects>().0.lock() {
+                    projects.remove(window.label());
                 }
             }
         })
@@ -1395,7 +1376,7 @@ mod tests {
             let p = std::env::temp_dir().join(format!(
                 "git-ui-test-{}-{}",
                 std::process::id(),
-                NEXT_WINDOW.fetch_add(1, Ordering::Relaxed)
+                NEXT_TEST_REPO.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             ));
             std::fs::create_dir_all(&p).unwrap();
             Self(p)
@@ -3142,7 +3123,23 @@ mod tests {
             fetched.sync.upstream,
             Some(format!("origin/{}", initial.current_branch))
         );
-        let remote_tip = fetched.sync.remote_tip.unwrap();
+        let remote_tip = fetched.sync.remote_tip.clone().unwrap();
+        let mut tree_commits = fetched.commits.clone();
+        let mut more = fetched.has_more;
+        while more {
+            let page = read_commit_page(&local.0, &fetched.tip, tree_commits.len()).unwrap();
+            more = page.has_more;
+            tree_commits.extend(page.commits);
+        }
+        assert!(tree_commits.iter().any(|commit| commit.hash == remote_tip));
+        assert!(tree_commits.iter().any(|commit| commit.hash == fetched.tip));
+        assert_eq!(tree_commits.iter().map(|commit| &commit.hash).collect::<std::collections::HashSet<_>>().len(), tree_commits.len());
+        let remote_search = history_search::page(
+            &local.0, &fetched.tip, Some(&remote_tip), "all",
+            &history_search::HistoryFilter { sha: remote_tip[..8].into(), ..Default::default() }, 0,
+        ).unwrap();
+        assert_eq!(remote_search.commits.len(), 1);
+        assert_eq!(remote_search.commits[0].hash, remote_tip);
         let first = sync_status::page(&local.0, &fetched.tip, &remote_tip, "incoming", 0).unwrap();
         assert_eq!(first.commits.len(), PAGE_SIZE);
         assert!(first.has_more);
@@ -3404,6 +3401,33 @@ mod tests {
         commit_staged(&repo.0, "Delete original").unwrap();
         assert!(repo.0.join("new.txt").exists());
     }
+    #[test]
+    fn scoped_diffs_separate_index_and_worktree_for_partial_staging() {
+        let repo = commit_operation_repo();
+        std::fs::write(repo.0.join("file.txt"), "index version").unwrap();
+        set_file_staged(&repo.0, "file.txt", true).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "working version").unwrap();
+        let staged = read_worktree_diff_scoped(&repo.0, "file.txt", Some(WorktreeDiffScope::Staged)).unwrap();
+        assert!(staged.patch.contains("-base"));
+        assert!(staged.patch.contains("+index version"));
+        assert!(!staged.patch.contains("+working version"));
+        let unstaged = read_worktree_diff_scoped(&repo.0, "file.txt", Some(WorktreeDiffScope::Unstaged)).unwrap();
+        assert!(unstaged.patch.contains("-index version"));
+        assert!(unstaged.patch.contains("+working version"));
+        std::fs::write(repo.0.join("new[1].txt"), "untracked").unwrap();
+        assert!(read_worktree_diff_scoped(&repo.0, "new[1].txt", Some(WorktreeDiffScope::Unstaged)).unwrap().patch.contains("+untracked"));
+        assert!(read_worktree_diff_scoped(&repo.0, "new[1].txt", Some(WorktreeDiffScope::Staged)).is_err());
+    }
+
+    #[test]
+    fn scoped_staged_diff_works_before_first_commit() {
+        let repo = TempRepo::new();
+        repo.init();
+        std::fs::write(repo.0.join("first.txt"), "initial").unwrap();
+        set_file_staged(&repo.0, "first.txt", true).unwrap();
+        assert!(read_worktree_diff_scoped(&repo.0, "first.txt", Some(WorktreeDiffScope::Staged)).unwrap().patch.contains("+initial"));
+    }
+
     #[test]
     fn partial_staging_commits_index_snapshot_and_preserves_later_edits() {
         let repo = TempRepo::new();

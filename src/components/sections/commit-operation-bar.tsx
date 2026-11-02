@@ -4,7 +4,7 @@ import type { CommitOperation, History } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 
-export default function CommitOperationBar(props: { history: History; disabled: boolean; onShowConflicts: () => void; onRefresh: () => Promise<void>; onExecute: (head: string, branch: string, action: CommitOperation) => Promise<void> }) {
+export default function CommitOperationBar(props: { history: History; disabled: boolean; onShowConflicts?: () => void; onExecute: (head: string, branch: string, action: CommitOperation) => Promise<void> }) {
   const [confirmation, setConfirmation] = createSignal<{ kind: "abort" | "skip"; head: string; branch: string }>();
   const [pending, setPending] = createSignal(false);
   async function execute(head: string, branch: string, action: CommitOperation) {
@@ -22,8 +22,7 @@ export default function CommitOperationBar(props: { history: History; disabled: 
         <p class="text-xs text-muted-foreground">{operation().conflicts ? t("op22", { count: operation().conflicts }) : (operation().staged || operation().kind === "merge") ? t("op23") : t("op24")}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <Show when={operation().conflicts > 0}><Button size="sm" variant="secondary" disabled={props.disabled || pending()} onClick={props.onShowConflicts}>{t("conf01")}</Button></Show>
-        <Button size="sm" variant="ghost" disabled={props.disabled || pending()} onClick={() => void props.onRefresh()}>{t("op28")}</Button>
+        <Show when={operation().conflicts > 0 && props.onShowConflicts}><Button size="sm" variant="secondary" disabled={props.disabled || pending()} onClick={props.onShowConflicts}>{t("conf01")}</Button></Show>
         <Button size="sm" variant="outline" disabled={props.disabled || pending()} onClick={() => confirm("abort")}>{t("op12")}</Button>
         <Show when={operation().kind !== "merge" && !operation().conflicts && !operation().staged}>
           <Button size="sm" variant="outline" disabled={props.disabled || pending()} onClick={() => confirm("skip")}>{t("op13")}</Button>

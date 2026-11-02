@@ -1,14 +1,13 @@
 import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import gitForkIcon from "~/assets/logo.svg";
 import { t } from "~/lib/i18n";
 import { updates, type UpdateInfo, type UpdateProgress } from "~/lib/updates";
 import { Button } from "~/components/ui/button";
-import { Alert, AlertDescription } from "~/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 
-export default function UpdateWindow() {
+export default function UpdateDialog(props: { onClose: () => void; onInstallingChange: (installing: boolean) => void }) {
   const [repository, setRepository] = createSignal("");
   const [currentVersion, setCurrentVersion] = createSignal("");
   const [info, setInfo] = createSignal<UpdateInfo>();
@@ -42,16 +41,16 @@ export default function UpdateWindow() {
   });
   async function install() {
     if (busy() || !info()?.installable) return;
-    setInstalling(true); setError(""); setProgress({ phase: "downloading", downloaded: 0, total: null });
+    setInstalling(true); props.onInstallingChange(true); setError(""); setProgress({ phase: "downloading", downloaded: 0, total: null });
     try { await updates.install(status => { if (active) setProgress(status); }); }
     catch (failure) { if (active) { setError(String(failure)); setProgress(undefined); } }
-    finally { if (active) setInstalling(false); }
+    finally { if (active) { setInstalling(false); props.onInstallingChange(false); } }
   }
   async function showRelease(url: string) {
     try { await openUrl(url); }
     catch (failure) { if (active) setError(String(failure)); }
   }
-  return <main class="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 p-6 sm:p-8">
+  return <section class="flex min-h-80 flex-col gap-4 p-6">
     <header class="flex items-center gap-3">
       <img src={gitForkIcon} width="48" height="48" class="size-12 shrink-0" alt="" />
       <div>
@@ -73,12 +72,12 @@ export default function UpdateWindow() {
         <progress class="h-2 w-full accent-primary" max="100" value={percent()} aria-label={t("upd12")} />
         <Show when={progress()?.phase === "downloading"}><p class="text-xs text-muted-foreground">{percent() !== undefined ? `${percent()}%` : t("upd30", { size: ((progress()?.downloaded ?? 0) / 1048576).toFixed(1) })}</p></Show>
       </Show>
-      <Show when={error()}><Alert variant="destructive"><AlertDescription class="break-words">{error()}</AlertDescription></Alert></Show>
+      <Show when={error()}><Alert variant="destructive"><AlertTitle>{t("upd31")}</AlertTitle><AlertDescription class="break-words">{error()}</AlertDescription></Alert></Show>
     </section>
     <footer class="mt-auto space-y-3">
       <Show when={info()?.installable}><p class="text-sm text-muted-foreground">{t("upd17")}</p></Show>
       <div class="flex items-center justify-end gap-3">
-        <Button variant="outline" disabled={installing()} onClick={() => void getCurrentWindow().close()}>{t("upd11")}</Button>
+        <Button variant="outline" disabled={installing()} onClick={props.onClose}>{t("upd11")}</Button>
         <Show when={info()?.available}>
           <Button disabled={busy()} onClick={() => {
             if (info()?.installable) void install();
@@ -87,5 +86,5 @@ export default function UpdateWindow() {
         </Show>
       </div>
     </footer>
-  </main>;
+  </section>;
 }

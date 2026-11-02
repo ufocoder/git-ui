@@ -5,14 +5,12 @@ import type { History, HistoryScope, RepositoryMode, SyncAction } from "~/lib/gi
 
 type RepositoryToolbarProps = {
   mode: RepositoryMode;
-  onRefresh: () => void;
   onStashAll: () => void;
   scope: HistoryScope;
   onScopeChange: (scope: HistoryScope) => void;
   busy: boolean;
   history: History | undefined;
   action: SyncAction | null;
-  status: string;
   terminalOpen: boolean;
   onToggleTerminal: () => void;
   onConfigureUpstream: () => void;
@@ -21,7 +19,7 @@ type RepositoryToolbarProps = {
 export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   return (
         <nav aria-label={t("nav01")} class="flex shrink-0 flex-wrap items-center justify-start gap-3 border-b px-4 py-2">
-          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-semibold">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show><Button size="sm" variant="ghost" disabled={props.busy} onClick={props.onRefresh}>{t("op28")}</Button></div>}>
+          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-semibold">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show></div>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="outline" disabled={props.busy || !props.history?.remotes.length}
               onClick={() => void props.onSync("fetch")} title={t("sync02")}>{props.action === "fetch" ? t("sync03") : t("sync01")}</Button>
@@ -29,7 +27,6 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               onClick={() => void props.onSync("pull")} title={t("nav02")}>{props.action === "pull" ? t("nav03") : t("nav04")}</Button>
             <Button variant="outline" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
               onClick={() => void props.onSync("push")} title={t("nav05")}>{props.action === "push" ? t("nav06") : t("nav07")}</Button>
-            <span role="status" class="text-xs text-muted-foreground">{props.status}</span>
 
           </div>
           <Show when={props.history?.current_branch}>
@@ -41,11 +38,6 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
           <Show when={props.history?.sync.upstream}>
             <div class="flex flex-wrap items-center gap-1" title={t("sync12", { branch: props.history?.sync.upstream ?? "" })}>
               <Show when={props.scope !== "all"}><Button size="sm" variant="ghost" disabled={props.busy} onClick={() => props.onScopeChange("all")}>{t("sync06")}</Button></Show>
-              <Show when={(props.history?.sync.behind ?? 0) > 0 || props.scope === "incoming"}>
-                <Button size="sm" variant={props.scope === "incoming" ? "secondary" : "ghost"} aria-pressed={props.scope === "incoming"} disabled={props.busy} onClick={() => props.onScopeChange(props.scope === "incoming" ? "all" : "incoming")}>
-                  <span aria-hidden="true">↓</span>{t("sync04")}<Show when={props.history?.sync.behind}>{count => <span class="font-mono tabular-nums">{count()}</span>}</Show>
-                </Button>
-              </Show>
               <Show when={(props.history?.sync.ahead ?? 0) > 0 || props.scope === "outgoing"}>
                 <Button size="sm" variant={props.scope === "outgoing" ? "secondary" : "ghost"} aria-pressed={props.scope === "outgoing"} disabled={props.busy} onClick={() => props.onScopeChange(props.scope === "outgoing" ? "all" : "outgoing")}>
                   <span aria-hidden="true">↑</span>{t("sync05")}<Show when={props.history?.sync.ahead}>{count => <span class="font-mono tabular-nums">{count()}</span>}</Show>

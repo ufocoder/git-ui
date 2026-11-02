@@ -84,6 +84,9 @@ pub fn page(
         "--regexp-ignore-case".into(),
         "--fixed-strings".into(),
     ];
+    if scope == "all" {
+        args.extend(["--remotes".into()]);
+    }
     if !author.is_empty() {
         args.push(format!("--author={author}"));
     }
@@ -107,6 +110,9 @@ pub fn page(
         if !sha.is_empty() && !text.is_empty() {
             candidates.push(format!("--grep={text}"));
         }
+        if scope == "all" {
+            candidates.extend(["--remotes".into()]);
+        }
         candidates.extend([revision.clone(), "--".into()]);
         if !file.is_empty() {
             candidates.push(format!(":(literal){file}"));
@@ -126,6 +132,9 @@ pub fn page(
             revision,
             "--".into(),
         ];
+        if scope == "all" {
+            message_args.splice(2..2, ["--remotes".into()]);
+        }
         if !file.is_empty() {
             message_args.push(format!(":(literal){file}"));
         }
@@ -146,7 +155,10 @@ pub fn page(
         if matches.is_empty() {
             return Ok(empty_page());
         }
-        args.retain(|arg| arg != "--topo-order" && !arg.starts_with("--skip="));
+        args.retain(|arg| {
+            !["--topo-order", "--remotes"].contains(&arg.as_str())
+                && !arg.starts_with("--skip=")
+        });
         args.push("--no-walk=unsorted".into());
         args.extend(matches.into_iter().map(str::to_owned));
     } else {

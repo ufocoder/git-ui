@@ -1,3 +1,4 @@
+import { startOperation, finishOperation } from "./operation-feedback";
 import { t } from "~/lib/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { clearTerminalError, reportTerminalError } from "./terminal";
@@ -6,6 +7,8 @@ export type GitSettings = { values: Record<string, string>; effective: Record<st
 export type GitSettingChange = { key: string; value: string | null };
 
 export type CommitOptions = { sign?: boolean };
+
+export type WorktreeDiffScope = "staged" | "unstaged";
 
 export const WORKTREE = "WORKTREE";
 
@@ -53,7 +56,7 @@ export type CommitPage = { commits: Commit[]; has_more: boolean };
 export type CommitFile = { path: string; old_path: string | null; status: string; staged: boolean; partially_staged: boolean };
 export type CommitDetails = { message: string; files: CommitFile[] };
 export type FileDiff = { commit: string; file: CommitFile; patch: string; truncated: boolean };
-export type OpenProjectResult = { window_label: string; recent_projects: string[]; warning: string | null };
+export type OpenProjectResult = { history: History; recent_projects: string[]; warning: string | null };
 export type ResetMode = "soft" | "mixed" | "hard";
 export type TerminalLog = { id: number; command: string; output: string; status: "running" | "success" | "error"; exit_code: number | null };
 export type SyncAction = "fetch" | "pull" | "push";
@@ -76,9 +79,29 @@ const operationLabels = (): Record<string, string> => ({
 });
 const mutations = new Set(["save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
+function operationName(command: string, args?: Record<string, unknown>): string {
+  if (command === "sync_project") return String(args?.action ?? "Git");
+  if (command === "publish_project_branch") return t("track01");
+  if (command === "commit_project_changes") return t("notice11");
+  if (command === "run_commit_operation") return t("op27");
+  if (command === "stash_project") {
+    const kind = (args?.action as StashAction | undefined)?.kind;
+    return kind === "save" ? t("stash02") : kind === "apply" ? t("stash08") : t("stash09");
+  }
+  if (command === "switch_project_branch") return t("notice12");
+  if (command === "create_project_branch" || command === "create_project_branch_at_commit") return t("act17");
+  if (command === "create_project_tag" || command === "create_project_tag_at_commit") return t("add01");
+  if (command === "save_git_settings") return t("cfg01");
+  return operationLabels()[command] ?? command;
+}
 async function request<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (mutations.has(command)) clearTerminalError();
-  try { return await invoke<T>(command, args); }
+  const notice = mutations.has(command) && command !== "set_project_file_staged" ? startOperation(operationName(command, args)) : undefined;
+  try {
+    const result = await invoke<T>(command, args);
+    if (notice !== undefined) finishOperation(notice, operationName(command, args));
+    return result;
+  }
   catch (error) {
     // Polling failures are rendered by the terminal itself, avoiding a feedback loop.
     if (command !== "get_project_terminal_log") reportTerminalError(error, command === "sync_project" ? t("git08", { p1: String(args?.action) }) : operationLabels()[command] ?? command);
@@ -106,7 +129,7 @@ export const git = {
   getCommitDetails: (commit: string) => request<CommitDetails>("get_commit_details", { commit }),
   getConflictFile: (file: string) => request<ConflictFile>("get_conflict_file", { file }),
   resolveConflict: (file: string, token: string, resolution: ConflictResolution) => request<History>("resolve_conflict_file", { file, token, resolution }),
-  getFileDiff: (commit: string, filePath: string) => request<FileDiff>("get_file_diff", { commit, filePath }),
+  getFileDiff: (commit: string, filePath: string, scope?: WorktreeDiffScope) => request<FileDiff>("get_file_diff", { commit, filePath, scope }),
   switchBranch: (branch: string) => request<History>("switch_project_branch", { branch }),
   createBranch: (name: string) => request<History>("create_project_branch", { name }),
   createBranchAtCommit: (name: string, commit: string) => request<History>("create_project_branch_at_commit", { name, commit }),
@@ -136,29 +159,4 @@ export function createWorktreeCommit(tip: string): Commit {
   };
 }
 
-export type GraphEdge = { from: number; to: number; top: boolean; bottom: boolean };
-export type GraphRow = { column: number; edges: GraphEdge[] };
-
-export function buildCommitGraph(commits: readonly Commit[]): { rows: GraphRow[]; width: number } {
-  const lanes: string[] = [];
-  let width = 1;
-  const rows = commits.map((commit, index) => {
-    if (!lanes.includes(commit.hash)) lanes.push(commit.hash);
-    const before = [...lanes];
-    const column = before.indexOf(commit.hash);
-    lanes.splice(column, 1);
-    const newParents = commit.parents.filter(parent => !lanes.includes(parent));
-    lanes.splice(column, 0, ...newParents);
-    width = Math.max(width, before.length, lanes.length);
-    const edges: GraphEdge[] = [];
-    before.forEach((hash, from) => {
-      if (hash === commit.hash) {
-        if (index > 0) edges.push({ from, to: column, top: true, bottom: false });
-      }
-      else edges.push({ from, to: lanes.indexOf(hash), top: true, bottom: true });
-    });
-    commit.parents.forEach(parent => edges.push({ from: column, to: lanes.indexOf(parent), top: false, bottom: true }));
-    return { column, edges };
-  });
-  return { rows, width: Math.max(56, width * 16 + 16) };
-}
+export { buildCommitGraph, type GraphEdge, type GraphRow } from "./commit-graph";

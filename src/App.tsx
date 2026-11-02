@@ -1,9 +1,15 @@
+import KeyboardShortcutsDialog from "~/components/sections/keyboard-shortcuts-dialog";
+import { matchesShortcut } from "~/lib/keyboard-shortcuts";
+import { Button } from "~/components/ui/button";
+import OperationStatus from "~/components/sections/operation-status";
 import GitSettingsDialog from "~/components/sections/git-settings-dialog";
-import UpdateWindow from "~/components/sections/update-window";
+import UpdateDialog from "~/components/sections/update-dialog";
+import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { t } from "~/lib/i18n";
 import { Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { git, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type SyncAction } from "~/lib/git";
-import { terminalError } from "~/lib/terminal";
+import { terminalError, clearTerminalError } from "~/lib/terminal";
 import TerminalPanel from "~/components/sections/terminal-panel";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -21,16 +27,16 @@ import CreateBranchDialog from "~/components/sections/create-branch-dialog";
 import RepositoryContent from "~/components/sections/repository-content";
 
 function App() {
-  if (new URLSearchParams(window.location.search).get("view") === "updates") return <UpdateWindow />;
-  const isHistory = new URLSearchParams(window.location.search).get("view") === "history";
+  const [isHistory, setIsHistory] = createSignal(new URLSearchParams(window.location.search).get("view") === "history");
+  const [updatesOpen, setUpdatesOpen] = createSignal(new URLSearchParams(window.location.search).get("view") === "updates");
+  const [installingUpdate, setInstallingUpdate] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
-  const [openedProjectWindow, setOpenedProjectWindow] = createSignal<string>();
-  let unlistenProjectClosed: UnlistenFn | undefined;
+  let unlistenUpdates: UnlistenFn | undefined;
+  let unlistenShortcuts: UnlistenFn | undefined;
+  const [shortcutsOpen, setShortcutsOpen] = createSignal(false);
   let disposed = false;
-  let openingProjectWindow = false;
-  const closedProjectWindows = new Set<string>();
-  onCleanup(() => { disposed = true; unlistenProjectClosed?.(); });
+  onCleanup(() => { disposed = true; unlistenUpdates?.(); unlistenShortcuts?.(); });
   const [choosingProject, setChoosingProject] = createSignal(false);
   const [historyScope, setHistoryScope] = createSignal<HistoryScope>("all");
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
@@ -46,9 +52,8 @@ function App() {
   const [creatingBranch, setCreatingBranch] = createSignal(false);
   const [trackingMode, setTrackingMode] = createSignal<TrackingMode>();
   const [syncAction, setSyncAction] = createSignal<SyncAction | null>(null);
-  const [syncStatus, setSyncStatus] = createSignal("");
   createEffect(() => {
-    if (isHistory && terminalError()) setTerminalOpen(true);
+    if (isHistory() && terminalError()) setTerminalOpen(true);
   });
 
   let previousConflicts = new Set<string>();
@@ -71,32 +76,64 @@ function App() {
     if (branch !== syncBranch) { syncBranch = branch; setHistoryScope("all"); }
   });
 
-  onMount(async () => {
-    if (!isHistory) {
-      setBusy(true);
-      try {
-        if (isTauri()) {
-          const unlisten = await listen<string>("project-page-closed", event => {
-            if (openingProjectWindow) closedProjectWindows.add(event.payload);
-            if (openedProjectWindow() === event.payload) setOpenedProjectWindow(undefined);
-          });
-          if (disposed) { unlisten(); return; }
-          unlistenProjectClosed = unlisten;
-          setRecentProjects(await git.getRecentProjects());
-        }
+  onMount(() => {
+    const refreshShortcut = (event: KeyboardEvent) => {
+      if (matchesShortcut("help", event)) {
+        event.preventDefault();
+        if (!installingUpdate()) setShortcutsOpen(true);
+        return;
       }
-      catch { setRecentProjects([]); }
-      finally { setBusy(false); }
-      return;
-    }
-    setBusy(true);
-    try { setHistory(await git.getHistory()); }
-    catch (e) { setError(String(e)); }
-    finally { setBusy(false); }
+      if (!isHistory() || !matchesShortcut("refresh", event)) return;
+      event.preventDefault();
+      if (!event.repeat && !busy() && !installingUpdate()) void refreshHistory();
+    };
+    window.addEventListener("keydown", refreshShortcut, { capture: true });
+    onCleanup(() => window.removeEventListener("keydown", refreshShortcut, { capture: true }));
   });
 
+  onMount(async () => {
+    setBusy(true);
+    try {
+      if (isTauri()) {
+        const unlisten = await listen("check-updates", () => setUpdatesOpen(true));
+        if (disposed) { unlisten(); return; }
+        unlistenUpdates = unlisten;
+        const unlistenHelp = await listen("keyboard-shortcuts", () => {
+          if (!installingUpdate()) setShortcutsOpen(true);
+        });
+        if (disposed) { unlistenHelp(); return; }
+        unlistenShortcuts = unlistenHelp;
+      }
+      if (isHistory()) setHistory(await git.getHistory());
+      else if (isTauri()) setRecentProjects(await git.getRecentProjects());
+    } catch (failure) {
+      if (isHistory()) setError(String(failure));
+      else setRecentProjects([]);
+    } finally { setBusy(false); }
+  });
+
+  function clearProjectFeedback() {
+    clearTerminalError();
+    const notice = operationNotice();
+    if (notice) dismissOperation(notice.id);
+  }
+  async function changeProject() {
+    if (busy()) return;
+    setBusy(true);
+    try {
+      await git.showProjectChooser();
+      clearProjectFeedback();
+      batch(() => {
+        setIsHistory(false); setHistory(undefined); setRepositoryMode("history");
+        setHistoryScope("all"); setTerminalOpen(false); setSettingsOpen(false);
+        setTrackingMode(undefined); setBranchDialogOpen(false); setError("");
+      });
+    } catch { setTerminalOpen(true); }
+    finally { setBusy(false); }
+  }
+
   async function selectProject() {
-    if (busy() || openedProjectWindow()) return;
+    if (busy()) return;
     setError("");
     setBusy(true);
     try {
@@ -115,21 +152,18 @@ function App() {
       setInitializeError(""); setInitializePath(path);
       return;
     }
-    openingProjectWindow = true;
-    closedProjectWindows.clear();
-    try {
-      const result = await git.openProject(path);
-      if (!closedProjectWindows.has(result.window_label)) setOpenedProjectWindow(result.window_label);
+    const result = await git.openProject(path);
+    clearProjectFeedback();
+    batch(() => {
+      setHistory(result.history); setRepositoryMode("history"); setHistoryScope("all");
+      setTerminalOpen(false); setIsHistory(true);
       if (!result.warning) setRecentProjects(result.recent_projects);
-    } finally {
-      openingProjectWindow = false;
-      closedProjectWindows.clear();
-    }
+    });
   }
 
   async function initializeProject() {
     const path = initializePath();
-    if (!path || busy() || openedProjectWindow()) return;
+    if (!path || busy()) return;
     setBusy(true); setInitializeError(""); setError("");
     try {
       if (await git.canInitializeProject(path)) await git.initializeProject(path);
@@ -140,7 +174,7 @@ function App() {
   }
 
   async function openRecentProject(path: string) {
-    if (busy() || openedProjectWindow()) return;
+    if (busy()) return;
     setBusy(true);
     setError("");
     try { await openSelectedProject(path); }
@@ -161,10 +195,9 @@ function App() {
 
   async function syncProject(action: SyncAction) {
     if (busy()) return;
-    setBusy(true); setError(""); setSyncStatus(""); setSyncAction(action);
+    setBusy(true); setError(""); setSyncAction(action);
     try {
       setHistory(await git.sync(action));
-      setSyncStatus(action === "push" ? t("app02") : "");
     } catch (e) {
       setError(String(e));
       try { setHistory(await git.getHistory()); } catch { /* Keep the loaded history. */ }
@@ -179,11 +212,10 @@ function App() {
   }
   async function configureTracking(mode: TrackingMode, branch: string, remote: string, remoteBranch: string, url?: string) {
     if (busy()) throw new Error(t("hist01"));
-    setBusy(true); setSyncStatus("");
+    setBusy(true);
     try {
       if (mode === "publish" && url) setHistory(await git.addRemote("origin", url));
       setHistory(mode === "publish" ? await git.publishBranch(branch, remote, remoteBranch) : await git.setUpstream(branch, remote, remoteBranch));
-      if (mode === "publish") setSyncStatus(t("app02"));
     } catch (error) {
       try { setHistory(await git.getHistory()); } catch { /* Preserve the last available state. */ }
       throw error;
@@ -258,17 +290,25 @@ function App() {
   }
 
   return (
-    <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory ? "" : "contents"}>
-    <Show when={isHistory && history()}>{project => <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={project()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={() => { if (!busy()) void git.showProjectChooser().catch(() => setTerminalOpen(true)); }} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
+    <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
+    <Show when={isHistory() && history()}>{project => { const initial = project(); return <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={history() ?? initial} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={() => void changeProject()} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
-      onCreateTag={createTag} onAddRemote={addRemote} />}</Show>
-    <main class={isHistory ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
-      <Show when={isHistory} fallback={
-        <ProjectChooser projectOpen={Boolean(openedProjectWindow())} choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
+      onCreateTag={createTag} onAddRemote={addRemote} />; }}</Show>
+    <main class={isHistory() ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
+      <Show when={isHistory()} fallback={
+        <ProjectChooser choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
-        <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} onRefresh={() => void refreshHistory()} scope={historyScope()} onScopeChange={scope => { setHistoryScope(scope); setRepositoryMode("history"); }} busy={busy()} history={history()} action={syncAction()} status={syncStatus()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
-        <Show when={history()}>{project => <CommitOperationBar history={project()} disabled={busy()} onShowConflicts={() => changeRepositoryMode("conflicts")} onRefresh={refreshHistory} onExecute={runCommitOperation} />}</Show>
+        <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} scope={historyScope()} onScopeChange={scope => { setHistoryScope(scope); setRepositoryMode("history"); }} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} />
+        <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts"} fallback={
+          <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">
+            <p class="text-xs text-muted-foreground">{t("op21", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
+            <Button size="sm" variant="ghost" disabled={busy()} onClick={() => changeRepositoryMode(operation().conflicts ? "conflicts" : "commit")}>{t("ui02")}</Button>
+          </div>
+        }>
+          <CommitOperationBar history={history()!} disabled={busy()} onShowConflicts={repositoryMode() === "conflicts" ? undefined : () => changeRepositoryMode("conflicts")} onExecute={runCommitOperation} />
+        </Show>}</Show>
         <BranchTrackingDialog mode={trackingMode()} history={history()} busy={busy()} onClose={() => setTrackingMode(undefined)} onSubmit={configureTracking} />
         <CreateBranchDialog open={branchDialogOpen()} pending={creatingBranch()} name={branchName()} error={branchError()}
           onOpenChange={value => {
@@ -279,15 +319,21 @@ function App() {
           onNameChange={value => { setBranchName(value); setBranchError(""); }}
           onSubmit={event => void createBranch(event)} />
         <Show when={busy()}><p role="status" class="sr-only">{t("app04")}</p></Show>
-        <Show when={history()} fallback={<Show when={terminalOpen()}><section class="min-h-0 flex-1"><TerminalPanel busy={busy()} /></section></Show>}>{project =>
-            <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
-              <RepositoryContent onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={project()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
-            </section>
-        }</Show>
+        <Show when={history()} fallback={<Show when={terminalOpen()}><section class="min-h-0 flex-1"><TerminalPanel busy={busy()} /></section></Show>}>{project => { const initial = project(); return <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
+              <RepositoryContent onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+            </section>;
+        }}</Show>
       </Show>
-      <Show when={!isHistory && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
+      <Show when={!isHistory() && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
     </main>
-    <Show when={isHistory}><GitSettingsDialog hasProject open={settingsOpen()} onClose={() => setSettingsOpen(false)} /></Show>
+    <Show when={isHistory()}><GitSettingsDialog hasProject open={settingsOpen()} onClose={() => setSettingsOpen(false)} /></Show>
+    <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
+      <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">
+        <DialogHeader class="sr-only"><DialogTitle>{t("upd02")}</DialogTitle><DialogDescription>{t("upd17")}</DialogDescription></DialogHeader>
+        <UpdateDialog onClose={() => setUpdatesOpen(false)} onInstallingChange={setInstallingUpdate} />
+      </DialogContent></Show>
+    </Dialog>
+    <KeyboardShortcutsDialog open={shortcutsOpen()} onOpenChange={setShortcutsOpen} />
     <InitializeRepositoryDialog path={initializePath()} pending={busy()} error={initializeError()}
       onConfirm={() => void initializeProject()} onCancel={() => { setInitializePath(""); setInitializeError(""); }} />
     </SidebarProvider>

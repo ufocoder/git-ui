@@ -1,3 +1,4 @@
+import { failOperation } from "./operation-feedback";
 import { t } from "~/lib/i18n";
 import { createSignal } from "solid-js";
 
@@ -7,6 +8,7 @@ let nextId = 0;
 export { terminalError };
 
 export function reportTerminalError(error: unknown, operation = t("term01")) {
+  failOperation(error);
   setTerminalError({ id: ++nextId, operation, message: error instanceof Error ? error.message : String(error) });
 }
 export function clearTerminalError() { setTerminalError(null); }

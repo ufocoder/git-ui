@@ -1,6 +1,7 @@
+import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
-import { git, WORKTREE, type CommitFile, type FileDiff, type History } from "~/lib/git";
+import { git, WORKTREE, type CommitFile, type FileDiff, type History, type WorktreeDiffScope } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import { NativeSelect } from "~/components/ui/native-select";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -11,7 +12,7 @@ import ChangedFilesTree from "./changed-files-tree";
 import FileDiffView from "./file-diff-view";
 
 type WorktreeCommitProps = {
-  active?: boolean;
+  draft?: CommitDraft;
   history?: History;
   onCommitted?: (history: History) => void;
   onCommitCreated?: () => void;
@@ -19,23 +20,27 @@ type WorktreeCommitProps = {
   onBusyChange: (busy: boolean) => void;
 };
 export default function WorktreeCommit(props: WorktreeCommitProps) {
-  const [sign, setSign] = createSignal(false);
-  const [amendTarget, setAmendTarget] = createSignal<{ head: string; branch: string }>();
-  const [amendConfirmed, setAmendConfirmed] = createSignal(false);
+  const draft = props.draft ?? createCommitDraft();
+  const [sign, setSign] = draft.sign;
+  const [amendTarget, setAmendTarget] = draft.amendTarget;
+  const [amendConfirmed, setAmendConfirmed] = draft.amendConfirmed;
   const [amendLoading, setAmendLoading] = createSignal(false);
-  let newCommitMessage = "";
+  const [newCommitMessage, setNewCommitMessage] = draft.newCommitMessage;
   let messageRequest = 0;
-  const [pushRemote, setPushRemote] = createSignal("");
-  const [pushAfterCommit, setPushAfterCommit] = createSignal(false);
+  const [pushRemote, setPushRemote] = draft.pushRemote;
+  const [pushAfterCommit, setPushAfterCommit] = draft.pushAfterCommit;
   const [committing, setCommitting] = createSignal(false);
   const [pushing, setPushing] = createSignal(false);
-  const [message, setMessage] = createSignal("");
+  const [message, setMessage] = draft.message;
   const [files, setFiles] = createSignal<CommitFile[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [pending, setPending] = createSignal(false);
+  const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
   const [selectedPath, setSelectedPath] = createSignal("");
   const [diff, setDiff] = createSignal<FileDiff>();
   const [diffLoading, setDiffLoading] = createSignal(false);
+  const stagedFiles = createMemo(() => files().filter(file => file.staged));
+  const unstagedFiles = createMemo(() => files().filter(file => !file.staged || file.partially_staged));
   const stagedCount = createMemo(() => files().filter(file => file.staged).length);
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
@@ -45,14 +50,14 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     if (disabled()) return;
     const request = ++messageRequest;
     setAmendConfirmed(false);
-    if (!enabled) { setAmendTarget(undefined); setMessage(newCommitMessage); return; }
+    if (!enabled) { setAmendTarget(undefined); setMessage(newCommitMessage()); return; }
     if (!canAmend()) return;
     const target = { head: props.history!.tip, branch: props.history!.current_branch };
-    newCommitMessage = message(); setAmendTarget(target); setAmendLoading(true);
+    setNewCommitMessage(message()); setAmendTarget(target); setAmendLoading(true);
     try {
       const details = await git.getCommitDetails(target.head);
       if (mounted && request === messageRequest) setMessage(details.message);
-    } catch { if (mounted && request === messageRequest) { setAmendTarget(undefined); setMessage(newCommitMessage); } }
+    } catch { if (mounted && request === messageRequest) { setAmendTarget(undefined); setMessage(newCommitMessage()); } }
     finally { if (mounted && request === messageRequest) setAmendLoading(false); }
   }
   createEffect(() => {
@@ -63,10 +68,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   });
   let mounted = true;
   let diffRequest = 0;
-  onCleanup(() => { mounted = false; diffRequest++; messageRequest++; });
+  onCleanup(() => {
+    mounted = false; diffRequest++; messageRequest++;
+    if (amendLoading()) { setAmendTarget(undefined); setAmendConfirmed(false); }
+  });
   let loadRequest = 0;
   createEffect(() => {
-    if (props.active === false) return;
     void props.history;
     diffRequest++; setSelectedPath(""); setDiff(undefined); setDiffLoading(false);
     const request = ++loadRequest;
@@ -88,17 +95,18 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         if (staged ? file.staged && !file.partially_staged : !file.staged) continue;
         updated = (await git.setFileStaged(file.path, staged)).files;
       }
-      if (mounted && updated) setFiles(updated);
+      if (mounted && updated) { setFiles(updated); diffRequest++; setDiff(undefined); setSelectedPath(""); setDiffLoading(false); }
       if (mounted && props.history?.operation && props.onCommitted) props.onCommitted(await git.getHistory());
     } catch {
       try { const result = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(result.files); } catch { /* Preserve the last known staging state. */ }
     } finally { setPending(false); props.onBusyChange(false); }
   }
-  async function openFile(file: CommitFile) {
+  async function openFile(file: CommitFile, scope?: WorktreeDiffScope) {
     if (disabled()) return;
     const request = ++diffRequest;
+    if (scope) setSelectedGroup(scope);
     setSelectedPath(file.path); setDiff(undefined); setDiffLoading(true);
-    try { const result = await git.getFileDiff(WORKTREE, file.path); if (request === diffRequest) setDiff(result); }
+    try { const result = await git.getFileDiff(WORKTREE, file.path, scope); if (request === diffRequest) setDiff(result); }
     catch { /* The Git API reports failures in the terminal. */ }
     finally { if (request === diffRequest) setDiffLoading(false); }
   }
@@ -115,10 +123,9 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         ? await git.commitOperation(target.head, target.branch, { kind: "amend", commit: target.head, message: message().trim(), confirmed: amendConfirmed() }, options)
         : await git.commitChanges(message().trim(), options);
       if (!mounted) return;
-      setAmendTarget(undefined); setAmendConfirmed(false); newCommitMessage = "";
+      setAmendTarget(undefined); setAmendConfirmed(false); setNewCommitMessage("");
       setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
       props.onCommitted(history);
-      props.onCommitCreated?.();
       try { const details = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(details.files); }
       catch (error) { reportTerminalError(t("commit01", { p1: String(error) }), t("commit02")); }
       if (shouldPush) {
@@ -130,26 +137,33 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
           reportTerminalError(t("commit03", { p1: String(error) }), t("cmd10"));
         } finally { setPushing(false); }
       }
+      props.onCommitCreated?.();
     } catch { /* Preserve the message and report failures in the terminal. */ }
     finally { setCommitting(false); setPending(false); props.onBusyChange(false); }
   }
-  return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable orientation="horizontal" initialSizes={[0.28, 0.72]} class="min-h-0 min-w-0">
+  return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0">
     <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-auto">
       <section class="space-y-3 p-4" aria-label={t("commit04")}>
         <Show when={props.onCommitted}>
-          <p class="text-xs text-muted-foreground">{t("commit05", { count: stagedCount(), total: files().length })}</p>
+          <p class="sr-only" role="status">{t("commit05", { count: stagedCount(), total: files().length })}</p>
         </Show>
         <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("commit07")}</p></Show>
-        <Show when={!loading() && !files().length}><p class="text-sm text-muted-foreground">{t("commit08")}</p></Show>
-        <ChangedFilesTree files={files()} selectedPath={selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)}
-          renderDirectoryControl={props.onCommitted ? (path, descendants) => <Checkbox
-            checked={descendants.length > 0 && descendants.every(file => file.staged && !file.partially_staged)}
-            indeterminate={descendants.some(file => file.staged) && !descendants.every(file => file.staged && !file.partially_staged)}
-            disabled={disabled()} onChange={checked => void stageFiles(descendants, checked)}
-            aria-label={t("commit09", { p1: path })} /> : undefined}
-          renderControl={props.onCommitted ? file => <Checkbox checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
-            onChange={checked => void stageFile(file, checked)} aria-label={t("commit10", { p1: file.path })}
-            title={file.partially_staged ? t("commit11") : t("commit10", { p1: file.path })} /> : undefined} />
+        <Show when={!props.onCommitted && !loading() && !files().length}><p class="text-sm text-muted-foreground">{t("commit08")}</p></Show>
+        <Show when={props.onCommitted} fallback={<ChangedFilesTree files={files()} selectedPath={selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} />}>
+          <For each={[
+            { kind: "unstaged" as const, label: t("stage02"), files: unstagedFiles, action: t("stage03"), staged: false },
+            { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
+          ]}>{group => <section class="space-y-1" aria-label={group.label}>
+            <header class="flex flex-wrap items-center justify-between gap-1 border-b pb-1">
+              <h2 class="text-xs font-semibold">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
+              <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
+            </header>
+            <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
+            <ChangedFilesTree files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)}
+              renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage07", { path }) : t("stage06", { path })} />}
+              renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage07", { path: file.path }) : t("stage06", { path: file.path })} />} />
+          </section>}</For>
+        </Show>
       </section>
     </ResizablePanel>
     <ResizableHandle withHandle aria-label={t("commit12")} />
@@ -157,14 +171,14 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("cf12")}>
         <div class="min-h-0 flex-1">
           <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("cf13")}</p></Show>
-          <Show when={diff()}>{data => <FileDiffView diff={data()} />}</Show>
+          <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
           <Show when={!selectedPath()}><p class="text-sm text-muted-foreground">{t("commit17")}</p></Show>
         </div>
       </section>
     </ResizablePanel>
   </Resizable></div>
-    <div class="shrink-0 border-t bg-muted/20 p-4">
-        <Show when={props.onCommitted}>
+    <Show when={props.onCommitted && !props.history?.operation}>
+      <div class="shrink-0 border-t bg-muted/20 p-4">
           <form onSubmit={submit} class="shrink-0 space-y-3">
             <TextField value={message()} onChange={setMessage} disabled={disabled()} required>
               <TextFieldLabel>{t("commit13")}</TextFieldLabel>
@@ -180,7 +194,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
             </Show>
             <div class="flex items-center justify-between gap-4">
-              <Button type="submit" class="order-last ml-auto" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("commit15")}</Button>
+              <Button type="submit" class="order-last ml-auto" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
               <label class="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
               <span>{t("commit16")}</span>
@@ -195,7 +209,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               </label>
             </Show>
           </form>
-        </Show>
-    </div>
+      </div>
+    </Show>
   </div>;
 }

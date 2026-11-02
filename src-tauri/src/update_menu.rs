@@ -1,10 +1,11 @@
 use crate::locale;
 use tauri::{
-    AppHandle, Manager, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Emitter, Manager,
     menu::{Menu, MenuItem},
 };
 
 pub const CHECK_UPDATES: &str = "check-updates";
+pub const KEYBOARD_SHORTCUTS: &str = "keyboard-shortcuts";
 
 pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::default(app)?;
@@ -31,26 +32,28 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     {
         submenu.append(&check)?;
     }
+    let shortcuts = MenuItem::with_id(
+        app, KEYBOARD_SHORTCUTS, locale::text("key01"), true, None::<&str>,
+    )?;
+    if let Some(help) = menu.get(tauri::menu::HELP_SUBMENU_ID)
+        .and_then(|item| item.as_submenu().cloned())
+    {
+        help.append(&shortcuts)?;
+    }
     app.set_menu(menu)?;
     Ok(())
 }
 
 pub fn show(app: &AppHandle) -> tauri::Result<()> {
-    if let Some(window) = app.get_webview_window("updates") {
+    show_dialog(app, CHECK_UPDATES)
+}
+
+pub fn show_dialog(app: &AppHandle, event: &str) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.emit(event, ())?;
         window.unminimize()?;
         window.show()?;
-        return window.set_focus();
+        window.set_focus()?;
     }
-    WebviewWindowBuilder::new(
-        app,
-        "updates",
-        WebviewUrl::App("index.html?view=updates".into()),
-    )
-    .title(locale::text("upd02"))
-    .visible(false)
-    .inner_size(600., 360.)
-    .resizable(true)
-    .center()
-    .build()?;
     Ok(())
 }

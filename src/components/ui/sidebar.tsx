@@ -1,3 +1,5 @@
+import { matchesShortcut } from "~/lib/keyboard-shortcuts"
+import { readSidebarWidth, saveSidebarWidth } from "~/lib/layout-preferences";
 import { t } from "~/lib/i18n";
 import type { Accessor, Component, ComponentProps, JSX, ValidComponent } from "solid-js"
 import {
@@ -33,7 +35,6 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
   state: Accessor<"expanded" | "collapsed">
@@ -96,10 +97,14 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = createSignal(false)
-  const [width, updateWidth] = createSignal(256)
+  const [width, updateWidth] = createSignal(Math.min(readSidebarWidth(), Math.max(180, Math.min(480, window.innerWidth - 360))))
   const [maxWidth, setMaxWidth] = createSignal(480)
   const [resizing, setResizing] = createSignal(false)
-  const setWidth = (value: number) => updateWidth(Math.min(maxWidth(), Math.max(180, value)))
+  const setWidth = (value: number) => {
+    const next = Math.min(maxWidth(), Math.max(180, value))
+    updateWidth(next)
+    saveSidebarWidth(next)
+  }
   createEffect(() => {
     const resize = () => {
       setMaxWidth(Math.max(180, Math.min(480, window.innerWidth - 360)))
@@ -130,19 +135,6 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
   const toggleSidebar = () => {
     return isMobile() ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }
-
-  // Adds a keyboard shortcut to toggle the sidebar.
-  createEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault()
-        toggleSidebar()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    onCleanup(() => window.removeEventListener("keydown", handleKeyDown))
-  })
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
@@ -376,10 +368,10 @@ const SidebarResizeHandle = () => {
       onDblClick={() => setWidth(256)}
       onKeyDown={event => {
         const step = event.shiftKey ? 40 : 10
-        if (event.key === "ArrowLeft") setWidth(width() - step)
-        else if (event.key === "ArrowRight") setWidth(width() + step)
-        else if (event.key === "Home") setWidth(180)
-        else if (event.key === "End") setWidth(maxWidth())
+        if (matchesShortcut("sidebarResize", event) && event.key === "ArrowLeft") setWidth(width() - step)
+        else if (matchesShortcut("sidebarResize", event) && event.key === "ArrowRight") setWidth(width() + step)
+        else if (matchesShortcut("sidebarBounds", event) && event.key === "Home") setWidth(180)
+        else if (matchesShortcut("sidebarBounds", event) && event.key === "End") setWidth(maxWidth())
         else return
         event.preventDefault()
       }}>

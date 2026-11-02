@@ -1,3 +1,5 @@
+import { matchesShortcut } from "~/lib/keyboard-shortcuts";
+import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
 import { locale, t } from "~/lib/i18n";
 import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, on, untrack } from "solid-js";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
@@ -16,17 +18,17 @@ import { git, buildCommitGraph, createWorktreeCommit, type Commit, type HistoryS
 
 const ROW_HEIGHT = 34;
 
-export default function CommitTable(props: { scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
+export default function CommitTable(props: { search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
   let header!: HTMLTableSectionElement;
   let searchButton!: HTMLButtonElement;
   const searchId = createUniqueId();
-  const [searchOpen, setSearchOpen] = createSignal(false);
+  const search = props.search ?? createHistorySearch();
+  const [searchOpen, setSearchOpen] = search.open;
   const [headerHeight, setHeaderHeight] = createSignal(ROW_HEIGHT);
   let generation = 0;
-  const emptyFilter: HistoryFilter = { text: "", sha: "", author: "", file: "" };
-  const [filter, setFilter] = createSignal<HistoryFilter>(emptyFilter);
-  const [appliedFilter, setAppliedFilter] = createSignal<HistoryFilter>(emptyFilter);
+  const [filter, setFilter] = search.filter;
+  const [appliedFilter, setAppliedFilter] = createSignal<HistoryFilter>(untrack(filter));
   const [debouncing, setDebouncing] = createSignal(false);
   const filtered = createMemo(() => Boolean(appliedFilter().text.trim() || appliedFilter().sha.trim() || appliedFilter().author.trim() || appliedFilter().file));
   createEffect(on(filter, value => {
@@ -134,7 +136,7 @@ export default function CommitTable(props: { scope: HistoryScope; history: Histo
   }
 
   return (
-    <Resizable orientation="vertical" initialSizes={[0.55, 0.45]} class="min-h-0 min-w-0 overflow-hidden">
+    <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.55, 0.45]} class="min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("find07")}</span></Show>
       <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-[13px] font-normal leading-5" aria-label={t("app05")}
@@ -148,7 +150,7 @@ export default function CommitTable(props: { scope: HistoryScope; history: Histo
         }}>
         <colgroup><col style={{ width: `${graph().width}px` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
         <TableHeader ref={element => { header = element; }} class="sticky top-0 z-10 bg-background" onKeyDown={event => {
-          if (event.key === "Escape" && searchOpen()) {
+          if (matchesShortcut("dismiss", event) && searchOpen()) {
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
         }}>
@@ -177,7 +179,7 @@ export default function CommitTable(props: { scope: HistoryScope; history: Histo
               data-state={selectedCommit()?.hash === row.commit.hash ? "selected" : undefined}
               aria-selected={selectedCommit()?.hash === row.commit.hash} tabindex={props.disabled ? -1 : 0}
               onClick={() => { if (!props.disabled) setSelectedCommit(row.commit); }}
-              onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedCommit(row.commit); } }}
+              onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(row.commit); } }}
               class="data-[state=selected]:bg-primary/10 data-[state=selected]:hover:bg-primary/20 data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
               <TableCell class="px-0">
                 <svg class={row.commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: row.commit.parents.length })}>

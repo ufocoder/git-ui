@@ -33,6 +33,11 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
       </nav>
     </SidebarHeader>
     <SidebarContent>
+      <Show when={props.mode === "history"} fallback={
+        <div class="mx-3 mt-3 flex items-center gap-2 rounded-md border px-3 py-2 text-xs text-muted-foreground" title={props.history.current_branch || t("repo04")}>
+          <SectionIcon name="branches" /><span class="truncate">{props.history.current_branch || t("repo04")}</span>
+        </div>
+      }>
       <SidebarSection title={t("repo03")} count={props.history.branches.length} icon={<SectionIcon name="branches" />} action={<Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled || !props.history.tip} onClick={props.onCreateBranch} aria-label={t("act17")} title={t("act17")}>+</Button>}>
         <SidebarGroupContent>
           <Show when={!props.history.current_branch}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo04")}</p></Show>
@@ -44,15 +49,15 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
               <SidebarMenuButton disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
-                class="h-auto min-h-9 justify-between gap-2 py-2 data-[active=true]:bg-sidebar-foreground/5 data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal">
+                class="group/branch h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-[#c8c8c8] data-[active=true]:text-[#3d3d3d] data-[active=true]:font-normal data-[active=true]:hover:bg-[#c8c8c8] data-[active=true]:hover:text-[#3d3d3d]">
                 <span class="min-w-0 truncate">{branch}</span>
                 <Show when={props.history.branch_comparisons[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
-                  <span class="flex shrink-0 gap-1 font-mono text-[10px] font-normal tabular-nums text-muted-foreground"
+                  <span class="flex shrink-0 gap-1 font-mono text-[10px] font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-zinc-100"
                     title={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}
                     aria-label={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}>
-                    <Show when={comparison().ahead > 0}><span>↑{comparison().ahead}</span></Show>
-                    <Show when={comparison().behind > 0}><span>↓{comparison().behind}</span></Show>
+                    <Show when={comparison().ahead > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-[#808080] group-data-[active=true]/branch:bg-[#808080] group-data-[active=true]/branch:text-white px-1 leading-4"><span aria-hidden="true">↑</span><span>{comparison().ahead}</span></span></Show>
+                    <Show when={comparison().behind > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-[#808080] group-data-[active=true]/branch:bg-[#808080] group-data-[active=true]/branch:text-white px-1 leading-4"><span aria-hidden="true">↓</span><span>{comparison().behind}</span></span></Show>
                   </span>
                   </Show>
                 }</Show>
@@ -67,7 +72,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
         <SidebarGroupContent>
           <SidebarMenu>
             <For each={props.history.tags}>{tag => <SidebarMenuItem>
-              <div class="truncate px-2 py-2 text-sm" title={tag}>{tag}</div>
+              <div class="flex h-8 items-center px-2 py-1 text-sm leading-5" title={tag}><span class="truncate">{tag}</span></div>
             </SidebarMenuItem>}</For>
           </SidebarMenu>
           <Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show>
@@ -79,7 +84,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
           <SidebarMenu>
             <For each={props.history.remotes}>{remote => <SidebarMenuItem>
               <Collapsible defaultOpen>
-              <SidebarMenuButton as={CollapsibleTrigger} class="group/section font-medium" title={remote.name}>
+              <SidebarMenuButton as={CollapsibleTrigger} class="group/section h-8 px-2 py-1 text-sm font-medium leading-5" title={remote.name}>
                 <span class="min-w-0 truncate">{remote.name}</span><Chevron />
               </SidebarMenuButton>
               <CollapsibleContent>
@@ -98,6 +103,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
         </SidebarGroupContent>
       </SidebarSection>
 
+      </Show>
     </SidebarContent>
     <SidebarFooter class="border-t p-2"><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onSettings}>{t("lang04")}</Button><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onChangeProject}>{t("nav12")}</Button></SidebarFooter>
     <SidebarResizeHandle />
