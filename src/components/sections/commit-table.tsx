@@ -1,7 +1,8 @@
+import { preservedSelection, anchoredScroll } from "~/lib/history-view";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
 import { locale, t } from "~/lib/i18n";
-import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, on, untrack } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, on, untrack, batch } from "solid-js";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
 import CommitEditDialog, { type CommitEditAction } from "./commit-edit-dialog";
 import CommitActionsDialog, { type CommitDialogAction } from "./commit-actions-dialog";
@@ -48,29 +49,59 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
   const [height, setHeight] = createSignal(500);
   const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
   const displayedCommits = createMemo(() => props.scope === "all" && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
+  let previousContext = "";
   createEffect(() => {
     const history = props.history;
     const scope = props.scope;
     const search = appliedFilter();
     const hasFilter = filtered();
+    const context = JSON.stringify([history.path, history.current_branch, scope, search]);
+    const preserve = previousContext === context;
+    previousContext = context;
+    const previous = untrack(selectedCommit);
+    const previousRows = untrack(displayedCommits);
+    const previousCount = untrack(commits).length;
+    const top = viewport?.scrollTop ?? untrack(scrollTop);
+    const anchorIndex = Math.floor(Math.max(0, top - untrack(headerHeight)) / ROW_HEIGHT);
+    const anchor = previousRows[anchorIndex]?.hash;
+    const offset = top - anchorIndex * ROW_HEIGHT;
     const request = ++generation;
-    setError(""); setScrollTop(0);
-    if (viewport) viewport.scrollTop = 0;
-    if (scope === "all" && !hasFilter) {
-      setCommits(history.commits);
-      setSelectedCommit(history.has_changes ? worktreeCommit() : history.commits[0]);
-      setHasMore(history.has_more); setLoading(false);
-    } else {
-      setCommits([]); setSelectedCommit(undefined); setHasMore(false); setLoading(true);
-      const remoteTip = history.sync.remote_tip;
-      if ((scope !== "all" && !remoteTip) || !history.tip) { setLoading(false); return; }
-      const firstPage = hasFilter ? git.getFilteredCommitPage(history.tip, remoteTip, scope, search, 0)
-        : git.getSyncCommitPage(history.tip, remoteTip!, scope as "incoming" | "outgoing", 0);
-      void firstPage
-        .then(page => { if (request === generation) { setCommits(page.commits); setSelectedCommit(page.commits[0]); setHasMore(page.has_more); } })
-        .catch(e => { if (request === generation) setError(String(e)); })
-        .finally(() => { if (request === generation) setLoading(false); });
+    setError(""); setLoading(true);
+    if (!preserve) {
+      setScrollTop(0); if (viewport) viewport.scrollTop = 0;
+      setSelectedCommit(undefined);
     }
+    const pageAt = (offset: number) => hasFilter
+      ? git.getFilteredCommitPage(history.tip, history.sync.remote_tip, scope, search, offset)
+      : scope === "all" ? git.getCommitPage(history.tip, offset)
+      : history.sync.remote_tip ? git.getSyncCommitPage(history.tip, history.sync.remote_tip, scope, offset)
+      : Promise.resolve({ commits: [], has_more: false });
+    void (async () => {
+      try {
+        let page = scope === "all" && !hasFilter
+          ? { commits: history.commits, has_more: history.has_more }
+          : await pageAt(0);
+        let updated = [...page.commits];
+        while (preserve && page.has_more && (updated.length < previousCount || (previous && !previous.uncommitted && !updated.some(commit => commit.hash === previous.hash)))) {
+          page = await pageAt(updated.length);
+          if (request !== generation) return;
+          if (!page.commits.length) break;
+          updated.push(...page.commits);
+        }
+        if (request !== generation) return;
+        const rows = scope === "all" && !hasFilter && history.has_changes ? [createWorktreeCommit(history.tip), ...updated] : updated;
+        batch(() => {
+          setCommits(updated); setHasMore(page.has_more);
+          setSelectedCommit(preserve ? preservedSelection(previous, rows) : rows[0]);
+        });
+        const restored = preserve ? anchoredScroll(rows, anchor, offset, top, ROW_HEIGHT) : 0;
+        queueMicrotask(() => {
+          if (request !== generation || !viewport) return;
+          viewport.scrollTop = restored; setScrollTop(viewport.scrollTop);
+        });
+      } catch (failure) { if (request === generation) setError(String(failure)); }
+      finally { if (request === generation) setLoading(false); }
+    })();
   });
   onMount(() => {
     const observer = new ResizeObserver(() => { setHeight(viewport.clientHeight); setHeaderHeight(header.clientHeight); });
@@ -227,12 +258,12 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
       <ResizableHandle withHandle aria-label={t("hist18")} />
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-hidden">
         <Show when={selectedCommit()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("hist19")}</p>}>{commit => <Show when={commit().uncommitted} fallback={<CommitFiles commit={commit()} disabled={props.disabled} />}>
-          <WorktreeCommit disabled={props.disabled} onBusyChange={props.onBusyChange} />
+          <WorktreeCommit history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} />
         </Show>}</Show>
       </ResizablePanel>
       <CommitEditDialog action={editAction()} onClose={() => setEditAction(undefined)} onExecute={(head, branch, operation) => runAction(() => git.commitOperation(head, branch, operation))} />
-      <CommitActionsDialog action={dialogAction()} branch={props.history.current_branch} onClose={() => setDialogAction(undefined)}
-        onReset={(commit, mode, confirmed) => runAction(() => git.resetToCommit(commit, mode, confirmed))}
+      <CommitActionsDialog action={dialogAction()} branch={props.history.current_branch} head={props.history.tip} disabled={props.disabled} hasChanges={props.history.has_changes} onClose={() => setDialogAction(undefined)}
+        onReset={(commit, mode, confirmed, head, branch) => runAction(() => git.resetToCommit(commit, mode, confirmed, head, branch))}
         onBranch={(name, commit) => runAction(() => git.createBranchAtCommit(name, commit))}
         onTag={(name, commit) => runAction(() => git.createTagAtCommit(name, commit))} />
     </Resizable>

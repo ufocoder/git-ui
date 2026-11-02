@@ -69,7 +69,7 @@ function App() {
     if (mode === "conflicts" && !history()?.conflicts.length) return;
     if (mode === "stash" && !history()?.stashes.length) return;
     setRepositoryMode(mode);
-    if (mode === "conflicts" || mode === "commit") void refreshHistory();
+    if (mode === "conflicts" || mode === "commit" || mode === "stash") void refreshHistory();
   }
 
   let syncBranch = "";
@@ -92,6 +92,34 @@ function App() {
     };
     window.addEventListener("keydown", refreshShortcut, { capture: true });
     onCleanup(() => window.removeEventListener("keydown", refreshShortcut, { capture: true }));
+  });
+
+  onMount(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending = false;
+    let nativeUnlisten: UnlistenFn | undefined;
+    const flush = () => {
+      if (!pending || busy() || !isHistory() || document.visibilityState === "hidden") return;
+      pending = false;
+      void refreshHistory();
+    };
+    const schedule = () => {
+      if (!isHistory()) return;
+      pending = true;
+      clearTimeout(timer);
+      timer = setTimeout(flush, 400);
+    };
+    window.addEventListener("focus", schedule);
+    document.addEventListener("visibilitychange", schedule);
+    createEffect(() => { if (!busy() && pending) { clearTimeout(timer); timer = setTimeout(flush, 400); } });
+    if (isTauri()) void listen("tauri://focus", schedule).then(unlisten => {
+      if (disposed) unlisten(); else nativeUnlisten = unlisten;
+    }).catch(() => { /* DOM focus remains available. */ });
+    onCleanup(() => {
+      clearTimeout(timer); nativeUnlisten?.();
+      window.removeEventListener("focus", schedule);
+      document.removeEventListener("visibilitychange", schedule);
+    });
   });
 
   onMount(async () => {

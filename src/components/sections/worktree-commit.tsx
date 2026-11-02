@@ -75,13 +75,23 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   let loadRequest = 0;
   createEffect(() => {
     void props.history;
-    diffRequest++; setSelectedPath(""); setDiff(undefined); setDiffLoading(false);
+    const path = untrack(selectedPath);
+    const group = untrack(selectedGroup);
     const request = ++loadRequest;
+    const diffVersion = ++diffRequest;
     setLoading(true);
-    void git.getCommitDetails(WORKTREE)
-      .then(result => { if (mounted && request === loadRequest) setFiles(result.files); })
-      .catch(() => { /* The Git API reports failures in the terminal. */ })
-      .finally(() => { if (mounted && request === loadRequest) setLoading(false); });
+    void (async () => {
+      try {
+        const result = await git.getCommitDetails(WORKTREE);
+        if (!mounted || request !== loadRequest) return;
+        setFiles(result.files);
+        const file = result.files.find(file => file.path === path && (!props.onCommitted || (group === "staged" ? file.staged : !file.staged || file.partially_staged)));
+        if (!path || !file) { setSelectedPath(""); setDiff(undefined); setDiffLoading(false); return; }
+        const next = await git.getFileDiff(WORKTREE, path, props.onCommitted ? group : undefined);
+        if (mounted && request === loadRequest && diffVersion === diffRequest) setDiff(next);
+      } catch { /* Preserve the current view; the terminal reports failures. */ }
+      finally { if (mounted && request === loadRequest) setLoading(false); }
+    })();
   });
   async function stageFile(file: CommitFile, staged: boolean) {
     await stageFiles([file], staged);

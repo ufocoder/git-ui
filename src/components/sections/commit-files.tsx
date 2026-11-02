@@ -1,5 +1,5 @@
 import { locale, t } from "~/lib/i18n";
-import { Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup, on, createMemo } from "solid-js";
 import { git, type Commit, type CommitFile, type FileDiff } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import { Separator } from "~/components/ui/separator";
@@ -17,7 +17,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   const [diff, setDiff] = createSignal<FileDiff>();
   let diffRequest = 0;
   let generation = 0;
-  createEffect(() => {
+  createEffect(on(createMemo(() => `${props.commit.hash}:${Boolean(props.stash)}`), () => {
     const hash = props.commit.hash;
     const request = ++generation;
     diffRequest++; setDiff(undefined); setOpening(false);
@@ -26,7 +26,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
       .then(result => { if (request === generation) { setFiles(result.files); setMessage(result.message); } })
       .catch(e => { if (request === generation) setError(String(e)); })
       .finally(() => { if (request === generation) setLoading(false); });
-  });
+  }));
   onCleanup(() => { generation++; diffRequest++; });
   async function openFile(file: CommitFile) {
     if (props.disabled) return;

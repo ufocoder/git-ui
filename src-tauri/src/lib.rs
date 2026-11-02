@@ -8,6 +8,7 @@ mod locale;
 mod process;
 mod stash;
 mod sync_status;
+mod fetch_status;
 mod terminal_log;
 mod tracking;
 mod update_menu;
@@ -200,6 +201,7 @@ struct ProjectHistory {
     remotes: Vec<Remote>,
     current_branch: String,
     sync: sync_status::SyncStatus,
+    last_fetch: Option<u64>,
     operation: Option<commit_ops::Operation>,
     conflicts: Vec<CommitFile>,
     tip: String,
@@ -357,6 +359,7 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         operation: commit_ops::read(&path)?,
         stashes: stash::list(&path)?,
         sync: sync_status::read(&path, &tip, &current_branch)?,
+        last_fetch: fetch_status::read(&path),
         path: path.to_string_lossy().into_owned(),
         commits: page.commits,
         branch_comparisons: read_branch_comparisons(&path, &tip)?,
@@ -1067,6 +1070,18 @@ async fn checkout_project_commit(
         .map_err(|e| e.to_string())?
 }
 
+fn reset_branch_to_commit_checked(
+    path: &Path, commit: &str, mode: &str, confirmed: bool,
+    expected_head: &str, expected_branch: &str,
+) -> Result<ProjectHistory, String> {
+    if git(path, &["rev-parse", "HEAD"])?.trim() != expected_head
+        || git(path, &["branch", "--show-current"])?.trim() != expected_branch
+    {
+        return Err(locale::text("safe05").into());
+    }
+    reset_branch_to_commit(path, commit, mode, confirmed)
+}
+
 #[tauri::command]
 async fn reset_project_commit(
     window: WebviewWindow,
@@ -1074,10 +1089,15 @@ async fn reset_project_commit(
     commit: String,
     mode: String,
     discard_confirmed: bool,
+    expected_head: String,
+    expected_branch: String,
 ) -> Result<ProjectHistory, String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
-        reset_branch_to_commit(Path::new(&path), &commit, &mode, discard_confirmed)
+        reset_branch_to_commit_checked(
+            Path::new(&path), &commit, &mode, discard_confirmed,
+            &expected_head, &expected_branch,
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -1240,9 +1260,11 @@ fn sync_repository(path: &Path, action: &str) -> Result<ProjectHistory, String> 
     match action {
         "fetch" => {
             git(path, &["fetch", "--all", "--prune"])?;
+            fetch_status::record(path);
         }
         "pull" => {
             tracking::pull_current(path)?;
+            fetch_status::record(path);
         }
         "push" => {
             tracking::push_current(path)?;
@@ -3194,6 +3216,11 @@ mod tests {
         let detached = sync_repository(&local.0, "fetch").unwrap();
         assert!(detached.current_branch.is_empty());
         assert!(detached.sync.upstream.is_none());
+        let timestamp = detached.last_fetch.expect("successful fetch records its time");
+        assert_eq!(read_history(&local.0).unwrap().last_fetch, Some(timestamp));
+        git(&local.0, &["remote", "set-url", "origin", "/git-ui-missing-remote"]).unwrap();
+        assert!(sync_repository(&local.0, "fetch").is_err());
+        assert_eq!(read_history(&local.0).unwrap().last_fetch, Some(timestamp));
     }
 
     #[test]
@@ -3558,6 +3585,21 @@ mod tests {
         assert!(reset_branch_to_commit(&repo.0, &base, "mixed", false).is_err());
         assert!(checkout_commit(&repo.0, "WORKTREE").is_err());
     }
+    #[test]
+    fn reset_rejects_changed_head_or_branch_before_touching_files() {
+        let repo = TempRepo::new();
+        repo.init();
+        commit_file(&repo, "base", "Base");
+        let first = read_history(&repo.0).unwrap();
+        commit_file(&repo, "next", "Next");
+        let current = read_history(&repo.0).unwrap();
+        std::fs::write(repo.0.join("file.txt"), "keep these edits").unwrap();
+        assert!(reset_branch_to_commit_checked(&repo.0, &first.tip, "hard", true, &first.tip, &current.current_branch).is_err());
+        assert!(reset_branch_to_commit_checked(&repo.0, &first.tip, "hard", true, &current.tip, "another-branch").is_err());
+        assert_eq!(read_history(&repo.0).unwrap().tip, current.tip);
+        assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "keep these edits");
+    }
+
     #[test]
     fn reset_modes_preserve_or_discard_changes_as_requested() {
         for mode in ["soft", "mixed", "hard"] {

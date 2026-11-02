@@ -1,5 +1,5 @@
 import { t } from "~/lib/i18n";
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -17,7 +17,8 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
   const rows = createMemo(() => diffRows(parsed(), split(), collapse(), expanded()));
   const headers = new Map<number, HTMLDivElement>();
   let viewport!: HTMLDivElement;
-  createEffect(() => { void props.diff.patch; setExpanded(new Set<string>()); setCurrentHunk(0); if (viewport) viewport.scrollTop = 0; });
+  createEffect(on(createMemo(() => `${props.diff.commit}:${props.diff.file.path}:${props.scope ?? ""}`), () => { setExpanded(new Set<string>()); setCurrentHunk(0); if (viewport) viewport.scrollTop = 0; }));
+  createEffect(() => { const count = parsed().hunks.length; setCurrentHunk(current => Math.max(0, Math.min(current, count - 1))); });
   function chooseView(value: boolean) { setSplit(value); try { localStorage.setItem("git-ui.diff-view", value ? "split" : "unified"); } catch { /* Optional preference. */ } }
   function navigate(direction: number) {
     const next = Math.min(parsed().hunks.length - 1, Math.max(0, currentHunk() + direction));

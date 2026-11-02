@@ -36,6 +36,7 @@ export type Remote = { name: string; branches: string[] };
 export type SyncStatus = { upstream: string | null; remote_tip: string | null; ahead: number; behind: number };
 export type HistoryScope = "all" | "incoming" | "outgoing";
 export type History = {
+  last_fetch?: number | null;
   path: string;
   commits: Commit[];
   branches: string[];
@@ -135,7 +136,7 @@ export const git = {
   createBranch: (name: string) => request<History>("create_project_branch", { name }),
   createBranchAtCommit: (name: string, commit: string) => request<History>("create_project_branch_at_commit", { name, commit }),
   checkoutCommit: (commit: string) => request<History>("checkout_project_commit", { commit }),
-  resetToCommit: (commit: string, mode: ResetMode, discardConfirmed = false) => request<History>("reset_project_commit", { commit, mode, discardConfirmed }),
+  resetToCommit: (commit: string, mode: ResetMode, discardConfirmed: boolean, expectedHead: string, expectedBranch: string) => request<History>("reset_project_commit", { commit, mode, discardConfirmed, expectedHead, expectedBranch }),
   createTagAtCommit: (name: string, commit: string) => request<History>("create_project_tag_at_commit", { name, commit }),
   createTag: (name: string) => request<History>("create_project_tag", { name }),
   addRemote: (name: string, url: string) => request<History>("add_project_remote", { name, url }),
