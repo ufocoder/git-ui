@@ -8,7 +8,7 @@ import { t } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
 import { git, WORKTREE, type CommitFile, type FileDiff, type History, type WorktreeDiffScope } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
-import { NativeSelect } from "~/components/ui/native-select";
+import { SelectField } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
 import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
@@ -240,12 +240,11 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             </label>
             </div>
             <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
-              <label class="flex items-center justify-end gap-3 text-sm">
+              <div class="flex items-center justify-end gap-3 text-sm">
                 <span>{t("track18")}</span>
-                <NativeSelect class="max-w-48" value={pushRemote()} disabled={disabled()} onChange={event => setPushRemote(event.currentTarget.value)}>
-                  <For each={props.history?.remotes}>{entry => <option value={entry.name}>{entry.name}</option>}</For>
-                </NativeSelect>
-              </label>
+                <SelectField class="w-48 max-w-full" aria-label={t("track18")} value={pushRemote()} disabled={disabled()}
+                  options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
+              </div>
             </Show>
           </form>
       </div>

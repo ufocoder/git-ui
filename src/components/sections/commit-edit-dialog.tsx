@@ -1,11 +1,11 @@
-import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type Commit, type CommitOperation } from "~/lib/git";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
-import { NativeSelect } from "~/components/ui/native-select";
+import { SelectField } from "~/components/ui/select";
 
 export type CommitEditAction = { kind: "cherry_pick" | "revert" | "amend"; commit: Commit; head: string; branch: string };
 export default function CommitEditDialog(props: {
@@ -54,11 +54,8 @@ export default function CommitEditDialog(props: {
       <form onSubmit={submit} class="space-y-4">
         <Show when={action().kind === "amend"} fallback={
           <Show when={action().commit.parents.length > 1}>
-            <label class="block space-y-2 text-sm"><span class="font-medium">{t("op07")}</span>
-              <NativeSelect value={mainline()} disabled={pending()} onChange={event => setMainline(Number(event.currentTarget.value))}>
-                <For each={action().commit.parents}>{(hash, index) => <option value={index() + 1}>{index() + 1} · {hash.slice(0, 8)}</option>}</For>
-              </NativeSelect>
-            </label>
+            <SelectField label={t("op07")} value={String(mainline())} disabled={pending()} onChange={value => setMainline(Number(value))}
+              options={action().commit.parents.map((hash, index) => ({ value: String(index + 1), label: `${index + 1} · ${hash.slice(0, 8)}` }))} />
             <p class="text-xs text-muted-foreground">{t("op08")}</p>
           </Show>
         }>

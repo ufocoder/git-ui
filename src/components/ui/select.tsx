@@ -1,10 +1,35 @@
 import * as SelectPrimitive from "@kobalte/core/select";
-import { splitProps, type ComponentProps } from "solid-js";
+import { Show, createMemo, splitProps, type ComponentProps } from "solid-js";
 import { cn } from "~/lib/utils";
 
 export const Select = SelectPrimitive.Root;
 export const SelectValue = SelectPrimitive.Value;
 export const SelectItemLabel = SelectPrimitive.ItemLabel;
+
+export type SelectOption = { value: string; label: string };
+export function SelectField(props: {
+  options: SelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  label?: string;
+  "aria-label"?: string;
+  id?: string;
+  class?: string;
+  placeholder?: string;
+}) {
+  const value = createMemo(() => props.options.find(option => option.value === props.value));
+  return <Select<SelectOption> class={cn("min-w-0 space-y-1", props.class)} options={props.options} optionValue={option => `option-${encodeURIComponent(option.value)}`} optionTextValue="label"
+    value={value()} disabled={props.disabled} disallowEmptySelection onChange={option => { if (option && option.value !== props.value) props.onChange(option.value); }}
+    placeholder={props.placeholder}
+    itemComponent={item => <SelectItem item={item.item}><SelectItemLabel class="break-all">{item.item.rawValue.label}</SelectItemLabel></SelectItem>}>
+    <Show when={props.label}><SelectPrimitive.Label class="block text-sm font-medium">{props.label}</SelectPrimitive.Label></Show>
+    <SelectTrigger id={props.id} class="w-full font-normal" aria-label={props["aria-label"]}>
+      <span class="min-w-0 truncate"><SelectValue<SelectOption>>{state => state.selectedOption()?.label ?? props.placeholder ?? ""}</SelectValue></span>
+    </SelectTrigger>
+    <SelectContent />
+  </Select>;
+}
 
 export function SelectTrigger(props: ComponentProps<typeof SelectPrimitive.Trigger>) {
   const [local, rest] = splitProps(props, ["class", "children"]);

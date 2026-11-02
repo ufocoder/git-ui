@@ -1,10 +1,10 @@
-import { For, Show, createEffect, createSignal, createUniqueId, on } from "solid-js";
+import { Show, createEffect, createSignal, createUniqueId, on } from "solid-js";
 import { t } from "~/lib/i18n";
 import type { History } from "~/lib/git";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { TextField, TextFieldInput, TextFieldLabel } from "~/components/ui/text-field";
-import { NativeSelect } from "~/components/ui/native-select";
+import { SelectField } from "~/components/ui/select";
 
 export type TrackingMode = "publish" | "upstream";
 type Props = {
@@ -53,12 +53,11 @@ export default function BranchTrackingDialog(props: Props) {
       <form onSubmit={submit} class="space-y-4">
         <Show when={needsOrigin()} fallback={<div class="space-y-1">
           <label for={remoteId} class="text-sm font-medium">{t("track04")}</label>
-          <NativeSelect id={remoteId} value={remote()} disabled={pending() || props.busy} onChange={event => {
-            const name = event.currentTarget.value; setRemote(name);
-            if (props.mode === "upstream") setRemoteBranch(props.history?.remotes.find(entry => entry.name === name)?.branches[0] ?? "");
-          }}>
-            <For each={props.history?.remotes}>{entry => <option value={entry.name}>{entry.name}</option>}</For>
-          </NativeSelect>
+          <SelectField id={remoteId} aria-label={t("track04")} value={remote()} disabled={pending() || props.busy}
+            options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={name => {
+              setRemote(name);
+              if (props.mode === "upstream") setRemoteBranch(props.history?.remotes.find(entry => entry.name === name)?.branches[0] ?? "");
+            }} />
         </div>}>
           <TextField value={url()} onChange={setUrl} disabled={pending() || props.busy} required>
             <TextFieldLabel>{t("track21")}</TextFieldLabel>
@@ -69,9 +68,8 @@ export default function BranchTrackingDialog(props: Props) {
         <Show when={props.mode === "publish"} fallback={
           <div class="space-y-1">
             <label for={branchId} class="text-sm font-medium">{t("track06")}</label>
-            <NativeSelect id={branchId} value={remoteBranch()} disabled={pending() || props.busy || !branches().length} onChange={event => setRemoteBranch(event.currentTarget.value)}>
-              <For each={branches()}>{name => <option value={name}>{name}</option>}</For>
-            </NativeSelect>
+            <SelectField id={branchId} aria-label={t("track06")} value={remoteBranch()} disabled={pending() || props.busy || !branches().length}
+              options={branches().map(name => ({ value: name, label: name }))} onChange={setRemoteBranch} />
             <Show when={!branches().length}><p class="text-xs text-muted-foreground">{t("track11")}</p></Show>
           </div>
         }>

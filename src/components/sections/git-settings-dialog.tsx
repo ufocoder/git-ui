@@ -1,3 +1,4 @@
+import { SelectField } from "~/components/ui/select";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { git, type GitSettings } from "~/lib/git";
 import { language, t, type Language } from "~/lib/i18n";
@@ -48,11 +49,8 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
   return <Dialog open={props.open} onOpenChange={open => { if (!open && !pending() && !languagePending()) props.onClose(); }}>
     <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
       <DialogHeader><DialogTitle>{t("lang04")}</DialogTitle><DialogDescription>{t("lang05")}</DialogDescription></DialogHeader>
-      <label class="flex flex-col gap-1 text-sm font-medium">{t("lang01")}
-        <select class="h-9 rounded-md border bg-background px-3 text-sm font-normal" value={language()} disabled={languagePending()} onChange={event => void chooseLanguage(event.currentTarget.value as Language)}>
-          <option value="ru">{t("lang02")}</option><option value="en">{t("lang03")}</option>
-        </select>
-      </label>
+      <SelectField label={t("lang01")} value={language()} disabled={languagePending()} onChange={value => void chooseLanguage(value as Language)}
+        options={[{ value: "ru", label: t("lang02") }, { value: "en", label: t("lang03") }]} />
       <Show when={languageError()}><p role="alert" class="text-sm text-destructive">{t("lang06", { error: languageError() })}</p></Show>
       <Show when={props.hasProject}>
       <div class="space-y-1 border-t pt-4"><h2 class="text-sm font-semibold">{t("cfg01")}</h2><p class="text-xs text-muted-foreground">{t("cfg04")}</p></div>
@@ -61,9 +59,12 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
         <form onSubmit={save} class="space-y-4">
           <For each={fields()}>{field => <div class="space-y-1">
             <Show when={field.options} fallback={<TextField value={values()[field.key] ?? ""} onChange={value => change(field.key, value)} disabled={pending()}><TextFieldLabel>{field.label}</TextFieldLabel><TextFieldInput autocomplete="off" spellcheck={false} /></TextField>}>
-              <label class="flex flex-col gap-1 text-sm font-medium">{field.label}<select class="h-9 rounded-md border bg-background px-3 text-sm font-normal" value={values()[field.key] ?? ""} disabled={pending()} onChange={event => change(field.key, event.currentTarget.value)}>
-                <option value="">{t("cfg12")}</option><Show when={values()[field.key] && !field.options?.some(option => option[0] === values()[field.key])}><option value={values()[field.key]}>{values()[field.key]}</option></Show><For each={field.options}>{option => <option value={option[0]}>{option[1]}</option>}</For>
-              </select></label>
+              <SelectField label={field.label} value={values()[field.key] ?? ""} disabled={pending()} onChange={value => change(field.key, value)}
+                options={[
+                  { value: "", label: t("cfg12") },
+                  ...(values()[field.key] && !field.options?.some(option => option[0] === values()[field.key]) ? [{ value: values()[field.key], label: values()[field.key] }] : []),
+                  ...(field.options ?? []).map(([value, label]) => ({ value, label })),
+                ]} />
             </Show>
             <Show when={settings()?.effective[field.key]}>{value => <p class="break-all text-xs text-muted-foreground">{t("cfg19", { value: value() })}</p>}</Show>
           </div>}</For>
