@@ -46,7 +46,7 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
   ]);
   const keys = fields().map(field => field.key);
   return <Dialog open={props.open} onOpenChange={open => { if (!open && !pending() && !languagePending()) props.onClose(); }}>
-    <DialogContent animated={false} class="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+    <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
       <DialogHeader><DialogTitle>{t("lang04")}</DialogTitle><DialogDescription>{t("lang05")}</DialogDescription></DialogHeader>
       <label class="flex flex-col gap-1 text-sm font-medium">{t("lang01")}
         <select class="h-9 rounded-md border bg-background px-3 text-sm font-normal" value={language()} disabled={languagePending()} onChange={event => void chooseLanguage(event.currentTarget.value as Language)}>

@@ -22,17 +22,16 @@ const DialogPortal: Component<DialogPrimitive.DialogPortalProps> = (props) => {
 }
 
 type DialogOverlayProps<T extends ValidComponent = "div"> =
-  DialogPrimitive.DialogOverlayProps<T> & { class?: string | undefined; animated?: boolean }
+  DialogPrimitive.DialogOverlayProps<T> & { class?: string | undefined }
 
 const DialogOverlay = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DialogOverlayProps<T>>
 ) => {
-  const [local, rest] = splitProps(props as DialogOverlayProps, ["class", "animated"])
+  const [local, rest] = splitProps(props as DialogOverlayProps, ["class"])
   return (
     <DialogPrimitive.Overlay
       class={cn(
         "fixed inset-0 z-50 bg-black/20 dark:bg-black/50",
-        local.animated !== false && "data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0",
         local.class
       )}
       {...rest}
@@ -44,20 +43,18 @@ type DialogContentProps<T extends ValidComponent = "div"> =
   DialogPrimitive.DialogContentProps<T> & {
     class?: string | undefined
     children?: JSX.Element
-    animated?: boolean
   }
 
 const DialogContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DialogContentProps<T>>
 ) => {
-  const [local, rest] = splitProps(props as DialogContentProps, ["class", "children", "animated"])
+  const [local, rest] = splitProps(props as DialogContentProps, ["class", "children"])
   return (
     <DialogPortal>
-      <DialogOverlay animated={local.animated} />
+      <DialogOverlay />
       <DialogPrimitive.Content
         class={cn(
           "fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border bg-background p-6 shadow-lg sm:rounded-lg",
-          local.animated !== false && "duration-150 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0",
           local.class
         )}
         {...rest}
