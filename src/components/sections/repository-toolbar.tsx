@@ -29,7 +29,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   };
   return (
         <nav aria-label={t("nav01")} class="flex shrink-0 flex-wrap items-center justify-start gap-3 border-b px-4 py-2">
-          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show></div>}>
+          <Show when={props.mode === "history"} fallback={<Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="ghost" class="h-8 px-3" disabled={props.busy || !props.history?.remotes.length}
               onClick={() => void props.onSync("fetch")} title={t("sync02")}>{props.action === "fetch" ? t("sync03") : t("sync01")}</Button>

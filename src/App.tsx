@@ -1,7 +1,6 @@
 import KeyboardShortcutsDialog from "~/components/sections/keyboard-shortcuts-dialog";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { Button } from "~/components/ui/button";
-import OperationStatus from "~/components/sections/operation-status";
 import GitSettingsDialog from "~/components/sections/git-settings-dialog";
 import UpdateDialog from "~/components/sections/update-dialog";
 import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
@@ -346,7 +345,6 @@ function App() {
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
         <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
-        <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} />
         <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts"} fallback={
           <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">
             <p class="text-xs text-muted-foreground">{t("op21", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
