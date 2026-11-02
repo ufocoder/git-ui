@@ -6,6 +6,7 @@ import type { FileTreeNode } from "~/lib/file-tree";
 
 type FileTreeProps<T> = {
   nodes: FileTreeNode<T>[];
+  label?: string;
   nested?: boolean;
   selectedPath: string;
   disabled?: boolean;
@@ -17,7 +18,7 @@ type FileTreeProps<T> = {
 };
 
 export function FileTree<T>(props: FileTreeProps<T>) {
-  return <ul aria-label={t("tree01")} class="min-w-0">
+  return <ul aria-label={props.label ?? t("tree01")} class="min-w-0">
     <For each={props.nodes}>{(node, index) => <FileTreeItem {...props} node={node} last={index() === props.nodes.length - 1} />}</For>
   </ul>;
 }

@@ -482,5 +482,16 @@
   "fetch02": "Fetch: just now",
   "fetch03": "Fetch: {age}",
   "fetch04": "Last successful Fetch: {date}",
-  "fetch05": "Fetch to get the current state of remote branches."
+  "fetch05": "Fetch to get the current state of remote branches.",
+  "files01": "File display and sorting",
+  "files02": "File view",
+  "files03": "Tree",
+  "files04": "List",
+  "files05": "Sort files",
+  "files06": "By path",
+  "files07": "By name",
+  "files08": "By status",
+  "files09": "Sort ascending",
+  "files10": "Sort descending",
+  "files11": "Changed files list"
 }

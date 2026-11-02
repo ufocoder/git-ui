@@ -1,3 +1,5 @@
+import FileViewControls from "./file-view-controls";
+import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
@@ -20,6 +22,7 @@ type WorktreeCommitProps = {
   onBusyChange: (busy: boolean) => void;
 };
 export default function WorktreeCommit(props: WorktreeCommitProps) {
+  const [presentation, setPresentation] = createSignal(readFilePresentation());
   const draft = props.draft ?? createCommitDraft();
   const [sign, setSign] = draft.sign;
   const [amendTarget, setAmendTarget] = draft.amendTarget;
@@ -155,6 +158,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-auto">
       <section class="space-y-3 p-4" aria-label={t("commit04")}>
         <Show when={props.onCommitted}>
+          <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
           <p class="sr-only" role="status">{t("commit05", { count: stagedCount(), total: files().length })}</p>
         </Show>
         <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("commit07")}</p></Show>
@@ -169,7 +173,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </header>
             <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
-            <ChangedFilesTree files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)}
+            <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)}
               renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage07", { path }) : t("stage06", { path })} />}
               renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage07", { path: file.path }) : t("stage06", { path: file.path })} />} />
           </section>}</For>

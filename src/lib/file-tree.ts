@@ -5,7 +5,7 @@ export type FileTreeNode<T> =
 type Directory<T> = Extract<FileTreeNode<T>, { kind: "directory" }>;
 
 // Git paths always use '/', including on Windows. Keep every path component.
-export function buildFileTree<T extends { path: string }>(files: readonly T[]): FileTreeNode<T>[] {
+export function buildFileTree<T extends { path: string }>(files: readonly T[], options: { compareFiles?: (a: T, b: T) => number; descending?: boolean } = {}): FileTreeNode<T>[] {
   const roots: FileTreeNode<T>[] = [];
   const directories = new Map<string, Directory<T>>();
   for (const file of files) {
@@ -25,7 +25,12 @@ export function buildFileTree<T extends { path: string }>(files: readonly T[]): 
     children.push({ kind: "file", name: parts[parts.length - 1], path: file.path, value: file });
   }
   const sort = (nodes: FileTreeNode<T>[]) => {
-    nodes.sort((a, b) => a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1);
+    nodes.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+      const comparison = a.kind === "file" && b.kind === "file" && options.compareFiles
+        ? options.compareFiles(a.value, b.value) : a.name.localeCompare(b.name);
+      return options.descending ? -comparison : comparison;
+    });
     nodes.forEach(node => { if (node.kind === "directory") sort(node.children); });
   };
   sort(roots);
