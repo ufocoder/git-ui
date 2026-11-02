@@ -323,7 +323,7 @@ function App() {
           ready={gitCheck() === "ready"} requirement={<GitRequirement state={gitCheck()} platform={gitPlatform()} onRetry={() => void retryGitCheck()} />}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
-        <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} scope={historyScope()} onScopeChange={scope => { setHistoryScope(scope); setRepositoryMode("history"); }} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} />
         <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts"} fallback={
           <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">

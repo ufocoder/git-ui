@@ -242,8 +242,6 @@
   "sync01": "Fetch",
   "sync02": "Fetch information about all remote branches without changing files",
   "sync03": "Fetching…",
-  "sync05": "Outgoing",
-  "sync06": "All history",
   "sync07": "Up to date",
   "sync08": "No upstream configured for this branch",
   "sync09": "Invalid synchronization direction.",

@@ -1,13 +1,11 @@
 import { Show } from "solid-js";
 import { t } from "~/lib/i18n";
 import { Button } from "~/components/ui/button";
-import type { History, HistoryScope, RepositoryMode, SyncAction } from "~/lib/git";
+import type { History, RepositoryMode, SyncAction } from "~/lib/git";
 
 type RepositoryToolbarProps = {
   mode: RepositoryMode;
   onStashAll: () => void;
-  scope: HistoryScope;
-  onScopeChange: (scope: HistoryScope) => void;
   busy: boolean;
   history: History | undefined;
   action: SyncAction | null;
@@ -37,12 +35,6 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
           </Show>
           <Show when={props.history?.sync.upstream}>
             <div class="flex flex-wrap items-center gap-1" title={t("sync12", { branch: props.history?.sync.upstream ?? "" })}>
-              <Show when={props.scope !== "all"}><Button size="sm" variant="ghost" disabled={props.busy} onClick={() => props.onScopeChange("all")}>{t("sync06")}</Button></Show>
-              <Show when={(props.history?.sync.ahead ?? 0) > 0 || props.scope === "outgoing"}>
-                <Button size="sm" variant={props.scope === "outgoing" ? "secondary" : "ghost"} aria-pressed={props.scope === "outgoing"} disabled={props.busy} onClick={() => props.onScopeChange(props.scope === "outgoing" ? "all" : "outgoing")}>
-                  <span aria-hidden="true">↑</span>{t("sync05")}<Show when={props.history?.sync.ahead}>{count => <span class="font-mono tabular-nums">{count()}</span>}</Show>
-                </Button>
-              </Show>
               <Show when={!props.history?.sync.ahead && !props.history?.sync.behind}><span class="text-xs text-muted-foreground">{t("sync07")}</span></Show>
             </div>
           </Show>
