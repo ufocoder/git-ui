@@ -54,9 +54,13 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
           <Button size="sm" class="h-7 px-2 text-xs" variant={split() ? "secondary" : "ghost"} aria-pressed={split()} onClick={() => chooseView(true)}>{t("diff08")}</Button>
           <Button size="sm" class="h-7 px-2 text-xs" variant="ghost" aria-pressed={collapse()} onClick={() => { setCollapse(value => !value); setExpanded(new Set<string>()); }}>{collapse() ? t("diff14") : t("diff13")}</Button>
           <div class="ml-auto flex items-center gap-1">
+            <Show when={parsed().hunks.length > 1}>
             <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() === 0} aria-label={t("diff09")} title={t("diff09")} onClick={() => navigate(-1)}>↑</Button>
+            </Show>
             <span class="text-[11px] tabular-nums text-muted-foreground">{currentHunk() + 1}/{parsed().hunks.length}</span>
+            <Show when={parsed().hunks.length > 1}>
             <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() >= parsed().hunks.length - 1} aria-label={t("diff10")} title={t("diff10")} onClick={() => navigate(1)}>↓</Button>
+            </Show>
           </div>
         </div>
       </Show>
