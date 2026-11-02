@@ -34,7 +34,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={() => props.onSelect(file().value)} title={props.fileTitle?.(file().value) ?? file().path}>
           {props.renderIcon(file().value)}
-          <span class="min-w-0 truncate font-mono">{file().name}</span>
+          <span class="min-w-0 truncate">{file().name}</span>
         </Button>
         </div>
       }</Show>
@@ -45,7 +45,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         <CollapsibleTrigger as={Button} variant="ghost" class="group/folder h-6 min-h-6 w-full justify-start gap-2 px-2 py-0 text-left text-xs" title={directory().path}>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 shrink-0 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 5 7 7-7 7" /></svg>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4 shrink-0 text-muted-foreground"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" /></svg>
-          <span class="min-w-0 truncate font-mono">{directory().name}</span>
+          <span class="min-w-0 truncate">{directory().name}</span>
         </CollapsibleTrigger>
         </div>
         <CollapsibleContent class="ml-3 pl-[9px]">
