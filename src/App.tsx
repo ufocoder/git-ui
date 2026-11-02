@@ -19,6 +19,7 @@ import RepositorySidebar from "~/components/sections/repository-sidebar";
 import { Alert, AlertTitle, AlertDescription } from "~/components/ui/alert";
 
 import InitializeRepositoryDialog from "~/components/sections/initialize-repository-dialog";
+import ProjectSwitcherDialog from "~/components/sections/project-switcher-dialog";
 import GitRequirement, { type GitCheckState } from "~/components/sections/git-requirement";
 import ProjectChooser from "~/components/sections/project-chooser";
 import BranchTrackingDialog, { type TrackingMode } from "~/components/sections/branch-tracking-dialog";
@@ -31,6 +32,7 @@ function App() {
   const [isHistory, setIsHistory] = createSignal(new URLSearchParams(window.location.search).get("view") === "history");
   const [updatesOpen, setUpdatesOpen] = createSignal(new URLSearchParams(window.location.search).get("view") === "updates");
   const [installingUpdate, setInstallingUpdate] = createSignal(false);
+  const [projectSwitcherOpen, setProjectSwitcherOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   let unlistenUpdates: UnlistenFn | undefined;
@@ -168,23 +170,13 @@ function App() {
     const notice = operationNotice();
     if (notice) dismissOperation(notice.id);
   }
-  async function changeProject() {
+  function changeProject() {
     if (busy()) return;
-    setBusy(true);
-    try {
-      await git.showProjectChooser();
-      clearProjectFeedback();
-      batch(() => {
-        setIsHistory(false); setHistory(undefined); setRepositoryMode("history");
-        setHistoryScope("all"); setTerminalOpen(false); setSettingsOpen(false);
-        setTrackingMode(undefined); setBranchDialogOpen(false); setError("");
-      });
-    } catch { setTerminalOpen(true); }
-    finally { setBusy(false); }
+    setError(""); setProjectSwitcherOpen(true);
   }
 
   async function selectProject() {
-    if (busy() || gitCheck() !== "ready") return;
+    if (busy() || (gitCheck() !== "ready" && !isHistory())) return;
     setError("");
     setBusy(true);
     try {
@@ -200,12 +192,14 @@ function App() {
 
   async function openSelectedProject(path: string) {
     if (await git.canInitializeProject(path)) {
+      setProjectSwitcherOpen(false);
       setInitializeError(""); setInitializePath(path);
       return;
     }
     const result = await git.openProject(path);
     clearProjectFeedback();
     batch(() => {
+      setProjectSwitcherOpen(false); setSettingsOpen(false); setTrackingMode(undefined); setBranchDialogOpen(false);
       setHistory(result.history); setRepositoryMode("history"); setHistoryScope("all");
       setTerminalOpen(false); setIsHistory(true);
       if (!result.warning) setRecentProjects(result.recent_projects);
@@ -225,7 +219,7 @@ function App() {
   }
 
   async function openRecentProject(path: string) {
-    if (busy() || gitCheck() !== "ready") return;
+    if (busy() || (gitCheck() !== "ready" && !isHistory())) return;
     setBusy(true);
     setError("");
     try { await openSelectedProject(path); }
@@ -342,7 +336,7 @@ function App() {
 
   return (
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
-    <Show when={isHistory() && history()}>{project => { const initial = project(); return <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={history() ?? initial} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={() => void changeProject()} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
+    <Show when={isHistory() && history()}>{project => { const initial = project(); return <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={history() ?? initial} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={changeProject} projectMenuOpen={projectSwitcherOpen()} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
       onCreateTag={createTag} onAddRemote={addRemote} />; }}</Show>
     <main class={isHistory() ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
@@ -372,7 +366,9 @@ function App() {
           onSubmit={event => void createBranch(event)} />
         <Show when={busy()}><p role="status" class="sr-only">{t("app04")}</p></Show>
         <Show when={history()} fallback={<Show when={terminalOpen()}><section class="min-h-0 flex-1"><TerminalPanel busy={busy()} /></section></Show>}>{project => { const initial = project(); return <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
+              <Show keyed when={(history() ?? initial).path}>
               <RepositoryContent onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+              </Show>
             </section>;
         }}</Show>
       </Show>
@@ -385,6 +381,9 @@ function App() {
         <UpdateDialog onClose={() => setUpdatesOpen(false)} onInstallingChange={setInstallingUpdate} />
       </DialogContent></Show>
     </Dialog>
+    <ProjectSwitcherDialog open={projectSwitcherOpen()} currentPath={history()?.path ?? ""} recentProjects={recentProjects()}
+      pending={busy()} choosingProject={choosingProject()} error={error()} onOpenChange={setProjectSwitcherOpen}
+      onSelect={path => void openRecentProject(path)} onOpenFolder={() => void selectProject()} />
     <KeyboardShortcutsDialog open={shortcutsOpen()} onOpenChange={setShortcutsOpen} />
     <InitializeRepositoryDialog path={initializePath()} pending={busy()} error={initializeError()}
       onConfirm={() => void initializeProject()} onCancel={() => { setInitializePath(""); setInitializeError(""); }} />

@@ -493,5 +493,9 @@
   "files08": "By status",
   "files09": "Sort ascending",
   "files10": "Sort descending",
-  "files11": "Changed files list"
+  "files11": "Changed files list",
+  "switch01": "Choose a recent project or open another folder",
+  "switch02": "Current project",
+  "switch03": "Open folder…",
+  "switch04": "Switch project: {name}"
 }

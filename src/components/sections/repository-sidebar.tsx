@@ -13,16 +13,17 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   return <Sidebar collapsible="none" class="relative h-dvh shrink-0 border-r" aria-label={t("repo01")}>
     <SidebarHeader class="border-b p-4">
-      <div class="flex min-w-0 items-center gap-2">
+      <Button variant="ghost" class="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("switch04", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
         <img src={gitForkIcon} width="32" height="32" class="size-8 shrink-0" alt="" />
-        <div class="flex h-8 min-w-0 flex-col justify-center">
-          <p class="text-sm font-semibold leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
+        <div class="flex h-8 min-w-0 flex-1 flex-col justify-center">
+          <p class="truncate text-sm font-semibold leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
           <p class="truncate text-xs leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
         </div>
-      </div>
+        <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
+      </Button>
       <nav class="mt-4 space-y-1" aria-label={t("nav08")}>
         <For each={[{ mode: "history" as const, label: t("mode01"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode03"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conf01"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash01"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>
           <SidebarMenuButton disabled={props.disabled || ((item.mode === "conflicts" || item.mode === "stash") && item.count === 0)} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-blue-500/10 data-[active=true]:text-blue-600">
@@ -105,7 +106,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
 
       </Show>
     </SidebarContent>
-    <SidebarFooter class="border-t p-2"><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onSettings}>{t("lang04")}</Button><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onChangeProject}>{t("nav12")}</Button></SidebarFooter>
+    <SidebarFooter class="border-t p-2"><Button variant="ghost" class="w-full justify-start" disabled={props.disabled} onClick={props.onSettings}>{t("lang04")}</Button></SidebarFooter>
     <SidebarResizeHandle />
   </Sidebar>;
 }
