@@ -3,6 +3,8 @@ import { t } from "~/lib/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { clearTerminalError, reportTerminalError } from "./terminal";
 
+export type RestorePreview = { commit: string; subject: string; head: string; branch: string };
+
 export type GitSettings = { values: Record<string, string>; effective: Record<string, string> };
 export type GitSettingChange = { key: string; value: string | null };
 
@@ -36,6 +38,7 @@ export type Remote = { name: string; branches: string[] };
 export type SyncStatus = { upstream: string | null; remote_tip: string | null; ahead: number; behind: number };
 export type HistoryScope = "all" | "incoming" | "outgoing";
 export type History = {
+  worktree_files?: CommitFile[];
   last_fetch?: number | null;
   path: string;
   commits: Commit[];
@@ -63,6 +66,7 @@ export type TerminalLog = { id: number; command: string; output: string; status:
 export type SyncAction = "fetch" | "pull" | "push";
 
 const operationLabels = (): Record<string, string> => ({
+  restore_project_path: t("fileAct03"), preview_restore_path: t("fileAct03"), reveal_project_path: t("fileAct04"),
   get_git_settings: t("cfg01"), save_git_settings: t("cfg01"),
   stash_project: t("stash01"), get_stash_details: t("stash01"), get_stash_diff: t("stash01"),
   publish_project_branch: t("track01"), set_project_upstream: t("track02"),
@@ -78,7 +82,7 @@ const operationLabels = (): Record<string, string> => ({
   checkout_project_commit: t("cmd06"), reset_project_commit: t("cmd07"), set_project_file_staged: t("git06"),
   commit_project_changes: t("cmd08"), initialize_project: t("cmd09"), can_initialize_project: t("git07"),
 });
-const mutations = new Set(["save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+const mutations = new Set(["restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 function operationName(command: string, args?: Record<string, unknown>): string {
   if (command === "sync_project") return String(args?.action ?? "Git");
@@ -112,6 +116,10 @@ async function request<T>(command: string, args?: Record<string, unknown>): Prom
 
 // The Rust backend owns repository access; components use this typed API.
 export const git = {
+  fileActionsPlatform: () => invoke<string>("file_actions_platform"),
+  previewRestorePath: (file: string, commit: string) => request<RestorePreview>("preview_restore_path", { file, commit }),
+  restorePath: (file: string, preview: RestorePreview, confirmed: boolean) => request<History>("restore_project_path", { file, commit: preview.commit, head: preview.head, branch: preview.branch, confirmed }),
+  revealPath: (file: string) => request<void>("reveal_project_path", { file }),
   checkInstallation: () => invoke<{ available: boolean; platform: string }>("get_git_installation"),
   getSettings: (scope: string) => request<GitSettings>("get_git_settings", { scope }),
   saveSettings: (scope: string, changes: GitSettingChange[]) => request<GitSettings>("save_git_settings", { scope, changes }),

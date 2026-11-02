@@ -1,3 +1,4 @@
+import FileActionsProvider from "./file-actions-provider";
 import { LayoutScope, readPanelSizes, validPanelSizes } from "~/lib/layout-preferences";
 import { t } from "~/lib/i18n";
 import { Match, Show, Suspense, Switch, createSignal, lazy } from "solid-js";
@@ -7,7 +8,7 @@ import { createCommitDraft, createConflictDraft, createHistorySearch } from "~/l
 const StashWorkspace = lazy(() => import("./stash-workspace"));
 const ConflictResolution = lazy(() => import("./conflict-resolution"));
 const CommitTable = lazy(() => import("./commit-table"));
-const WorktreeCommit = lazy(() => import("./worktree-commit"));
+import WorktreeCommit from "./worktree-commit";
 import TerminalPanel from "./terminal-panel";
 
 type RepositoryContentProps = {
@@ -28,7 +29,10 @@ export default function RepositoryContent(props: RepositoryContentProps) {
   const historySearch = createHistorySearch();
   const [terminalSizes, setTerminalSizes] = createSignal(readPanelSizes(props.history.path, "workspace.terminal", [0.75, 0.25]));
   const sizes = () => props.terminalOpen ? terminalSizes() : [1, 0];
-  return <LayoutScope.Provider value={() => props.history.path}><div class="flex h-full min-h-0 flex-col">
+  return <FileActionsProvider history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onHistoryChange={props.onHistoryChange} onHistory={path => {
+    historySearch.filter[1]({ text: "", sha: "", author: "", file: path });
+    historySearch.open[1](true); props.onModeChange("history");
+  }}><LayoutScope.Provider value={() => props.history.path}><div class="flex h-full min-h-0 flex-col">
     <div class="min-h-0 flex-1">
     <Resizable layoutId="workspace.terminal" initialSizes={[0.75, 0.25]} orientation="vertical" sizes={sizes()} onSizesChange={next => {
     if (props.terminalOpen && validPanelSizes(next, 2)) setTerminalSizes(next);
@@ -57,5 +61,5 @@ export default function RepositoryContent(props: RepositoryContentProps) {
     </ResizablePanel>
   </Resizable>
     </div>
-  </div></LayoutScope.Provider>;
+  </div></LayoutScope.Provider></FileActionsProvider>;
 }

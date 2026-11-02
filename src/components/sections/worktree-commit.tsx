@@ -1,3 +1,4 @@
+import { readPanelSizes } from "~/lib/layout-preferences";
 import DirectoryDiffView from "./directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
 import { compareChangedFiles } from "~/lib/file-presentation";
@@ -26,6 +27,7 @@ type WorktreeCommitProps = {
 };
 export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [presentation, setPresentation] = createSignal(readFilePresentation());
+  const panelSizes = untrack(() => readPanelSizes(props.history?.path ?? "global", props.onCommitted ? "changes.files" : "history.worktree", [0.5, 0.5]));
   const draft = props.draft ?? createCommitDraft();
   const [sign, setSign] = draft.sign;
   const [amendTarget, setAmendTarget] = draft.amendTarget;
@@ -38,8 +40,8 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [committing, setCommitting] = createSignal(false);
   const [pushing, setPushing] = createSignal(false);
   const [message, setMessage] = draft.message;
-  const [files, setFiles] = createSignal<CommitFile[]>([]);
-  const [loading, setLoading] = createSignal(true);
+  const [files, setFiles] = createSignal<CommitFile[]>(props.history?.worktree_files ?? []);
+  const [loading, setLoading] = createSignal(props.history?.worktree_files === undefined);
   const [pending, setPending] = createSignal(false);
   const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
   const [selectedDirectory, setSelectedDirectory] = createSignal("");
@@ -85,16 +87,16 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   });
   let loadRequest = 0;
   createEffect(() => {
-    void props.history;
+    const snapshot = props.history?.worktree_files;
     const path = untrack(selectedPath);
     const group = untrack(selectedGroup);
     const directory = untrack(selectedDirectory);
     const request = ++loadRequest;
     const diffVersion = ++diffRequest;
-    setLoading(true);
+    setLoading(snapshot === undefined);
     void (async () => {
       try {
-        const result = await git.getCommitDetails(WORKTREE);
+        const result = snapshot ? { files: snapshot } : await git.getCommitDetails(WORKTREE);
         if (!mounted || request !== loadRequest) return;
         setFiles(result.files);
         if (directory) {
@@ -123,7 +125,10 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         updated = (await git.setFileStaged(file.path, staged)).files;
       }
       if (mounted && updated) { setSelectedDirectory(""); setFiles(updated); diffRequest++; setDiff(undefined); setSelectedPath(""); setDiffLoading(false); }
-      if (mounted && props.history?.operation && props.onCommitted) props.onCommitted(await git.getHistory());
+      if (mounted && props.history && props.onCommitted) {
+        if (props.history.operation) props.onCommitted(await git.getHistory());
+        else if (updated) props.onCommitted({ ...props.history, worktree_files: updated, has_changes: updated.length > 0, conflicts: updated.filter(file => file.status === "U") });
+      }
     } catch {
       try { const result = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(result.files); } catch { /* Preserve the last known staging state. */ }
     } finally { setPending(false); props.onBusyChange(false); }
@@ -175,14 +180,14 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     } catch { /* Preserve the message and report failures in the terminal. */ }
     finally { setCommitting(false); setPending(false); props.onBusyChange(false); }
   }
-  return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0">
-    <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-auto">
+  return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
+    <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable]">
       <section class="space-y-3 p-4" aria-label={t("commit04")}>
         <Show when={props.onCommitted}>
           <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
           <p class="sr-only" role="status">{t("commit05", { count: stagedCount(), total: files().length })}</p>
         </Show>
-        <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("commit07")}</p></Show>
+        <Show when={loading()}><p role="status" class="sr-only">{t("commit07")}</p></Show>
         <Show when={!props.onCommitted && !loading() && !files().length}><p class="text-sm text-muted-foreground">{t("commit08")}</p></Show>
         <Show when={props.onCommitted} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
           <For each={[
@@ -202,7 +207,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       </section>
     </ResizablePanel>
     <ResizableHandle withHandle aria-label={t("commit12")} />
-    <ResizablePanel minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
+    <ResizablePanel initialSize={panelSizes[1]} minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
       <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("cf12")}>
         <div class="min-h-0 flex-1">
           <Show when={selectedDirectory()} fallback={<>

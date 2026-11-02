@@ -169,6 +169,15 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
   return (
     <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.55, 0.45]} class="min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <Show when={filter().file}>
+        <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-3 py-1.5" role="status">
+          <p class="min-w-0 break-all text-xs text-muted-foreground">{t("find14", { path: filter().file })}</p>
+          <Button size="sm" variant="ghost" class="h-7 shrink-0 px-2 text-xs" disabled={props.disabled} onClick={() => {
+            setFilter({ text: "", sha: "", author: "", file: "" });
+            setSearchOpen(false); searchButton?.focus();
+          }}>{t("find15")}</Button>
+        </div>
+      </Show>
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("find07")}</span></Show>
       <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-[13px] font-normal leading-5" aria-label={t("app05")}
         containerProps={{

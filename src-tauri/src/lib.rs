@@ -9,6 +9,7 @@ mod process;
 mod stash;
 mod sync_status;
 mod fetch_status;
+mod file_actions;
 mod terminal_log;
 mod tracking;
 mod update_menu;
@@ -207,6 +208,7 @@ struct ProjectHistory {
     tip: String,
     has_more: bool,
     has_changes: bool,
+    worktree_files: Vec<CommitFile>,
 }
 #[derive(Default)]
 struct Projects(Mutex<HashMap<String, ProjectHistory>>);
@@ -366,6 +368,7 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         tip,
         has_more: page.has_more,
         has_changes: !working_files.is_empty(),
+        worktree_files: working_files,
         tags: git(
             &path,
             &["for-each-ref", "--format=%(refname:strip=2)", "refs/tags/"],
@@ -1338,6 +1341,10 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            file_actions::file_actions_platform,
+            file_actions::preview_restore_path,
+            file_actions::restore_project_path,
+            file_actions::reveal_project_path,
             git_installation::get_git_installation,
             git_settings::get_git_settings,
             git_settings::save_git_settings,
@@ -1394,9 +1401,9 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    struct TempRepo(std::path::PathBuf);
+    pub(super) struct TempRepo(pub(super) std::path::PathBuf);
     impl TempRepo {
-        fn new() -> Self {
+        pub(super) fn new() -> Self {
             let p = std::env::temp_dir().join(format!(
                 "git-ui-test-{}-{}",
                 std::process::id(),
@@ -1405,7 +1412,7 @@ mod tests {
             std::fs::create_dir_all(&p).unwrap();
             Self(p)
         }
-        fn init(&self) {
+        pub(super) fn init(&self) {
             git(&self.0, &["init"]).unwrap();
         }
     }
@@ -1463,7 +1470,7 @@ mod tests {
         assert_eq!(history.commits[0].hash.len(), 40);
         assert!(!history.commits[0].date.is_empty());
     }
-    fn commit_file(repo: &TempRepo, contents: &str, message: &str) {
+    pub(super) fn commit_file(repo: &TempRepo, contents: &str, message: &str) {
         std::fs::write(repo.0.join("file.txt"), contents).unwrap();
         git(&repo.0, &["add", "file.txt"]).unwrap();
         git(
@@ -3285,6 +3292,11 @@ mod tests {
                 .iter()
                 .any(|file| file.path == "new[1].txt" && file.status == "A")
         );
+        let snapshot = read_history(&repo.0).unwrap().worktree_files;
+        assert_eq!(snapshot.len(), files.len());
+        let partially_staged = snapshot.iter().find(|file| file.path == "file.txt").unwrap();
+        assert!(partially_staged.staged);
+        assert!(partially_staged.partially_staged);
         let patch = read_file_diff(&repo.0, WORKTREE, "file.txt").unwrap().patch;
         assert!(patch.contains("-base"));
         assert!(patch.contains("+working"));

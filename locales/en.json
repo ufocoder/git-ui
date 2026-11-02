@@ -500,5 +500,22 @@
   "switch04": "Switch project: {name}",
   "tree02": "Collapse or expand folder {path}",
   "dir01": "Changes in folder {path}",
-  "dir02": "Could not load changes for this file"
+  "dir02": "Could not load changes for this file",
+  "fileAct01": "Changes history",
+  "fileAct02": "Copy path to clipboard",
+  "fileAct03": "Reset to commit…",
+  "fileAct04": "Show in File Manager",
+  "fileAct05": "Show in Finder",
+  "fileAct06": "Show in Explorer",
+  "fileAct07": "Restore this path in the working tree and index. The branch and HEAD will not move.",
+  "fileAct08": "Commit SHA",
+  "fileAct09": "Local changes to this path may be overwritten or deleted, including files obstructing restoration. Other paths will stay unchanged.",
+  "fileAct10": "Replace local changes to the selected path",
+  "fileAct11": "Check commit",
+  "fileAct12": "Invalid repository path",
+  "fileAct13": "Confirm replacement of local changes",
+  "fileAct14": "Complete the current Git operation and resolve conflicts first",
+  "fileAct15": "Restore",
+  "find14": "Changes history: {path}",
+  "find15": "All history"
 }

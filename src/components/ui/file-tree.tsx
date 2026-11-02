@@ -1,3 +1,4 @@
+import type { FileRowRenderer } from "~/lib/file-actions-context";
 import { t } from "~/lib/i18n";
 import { For, Show, type JSX } from "solid-js";
 import { Button } from "./button";
@@ -6,6 +7,7 @@ import type { FileTreeNode } from "~/lib/file-tree";
 
 type FileTreeProps<T> = {
   nodes: FileTreeNode<T>[];
+  renderRow?: FileRowRenderer;
   label?: string;
   nested?: boolean;
   selectedPath: string;
@@ -29,6 +31,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
     <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute -left-[9px] top-0 w-px bg-border" style={{ height: props.last ? "12px" : "100%" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
+        <TreeRow path={file().path} directory={false} render={props.renderRow}>
         <div class="flex min-w-0 items-center gap-1">
         {props.renderControl?.(file().value)}
         <Button variant={props.selectedPath === file().path ? "secondary" : "ghost"}
@@ -39,9 +42,11 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
           <span class="min-w-0 truncate">{file().name}</span>
         </Button>
         </div>
+        </TreeRow>
       }</Show>
     }>{directory =>
       <Collapsible defaultOpen>
+        <TreeRow path={directory().path} directory render={props.renderRow}>
         <div class="flex min-w-0 items-center gap-1">
         {props.renderDirectoryControl?.(directory().path)}
         <Show when={props.onSelectDirectory} fallback={
@@ -61,10 +66,15 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
           </Button>
         </Show>
         </div>
+        </TreeRow>
         <CollapsibleContent class="ml-3 pl-[9px]">
           <FileTree {...props} nested nodes={directory().children} />
         </CollapsibleContent>
       </Collapsible>
     }</Show>
   </li>;
+}
+
+function TreeRow(props: { path: string; directory: boolean; render?: FileRowRenderer; children: JSX.Element }) {
+  return props.render ? props.render(props.path, props.directory, props.children) : props.children;
 }

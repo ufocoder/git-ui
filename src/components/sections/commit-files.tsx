@@ -58,7 +58,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           <h3 class="text-sm font-medium">{t("cf08", { count: files().length })}</h3>
           <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("cf09")}</p></Show>
           <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("cf10")}</p></Show>
-          <ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
+          <ChangedFilesTree commit={props.commit.hash} files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
             onSelectDirectory={path => { if (!props.disabled) { diffRequest++; setOpening(false); setDiff(undefined); setSelectedFile(""); setSelectedDirectory(path); } }} />
         </section>
       </ResizablePanel>
