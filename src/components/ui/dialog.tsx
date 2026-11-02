@@ -31,7 +31,7 @@ const DialogOverlay = <T extends ValidComponent = "div">(
   return (
     <DialogPrimitive.Overlay
       class={cn(
-        "fixed inset-0 z-50 bg-background/80 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0",
+        "fixed inset-0 z-50 bg-black/20 dark:bg-black/50 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0",
         props.class
       )}
       {...rest}
@@ -54,7 +54,7 @@ const DialogContent = <T extends ValidComponent = "div">(
       <DialogOverlay />
       <DialogPrimitive.Content
         class={cn(
-          "fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border bg-background p-6 shadow-lg duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 data-[closed]:slide-out-to-left-1/2 data-[closed]:slide-out-to-top-[48%] data-[expanded]:slide-in-from-left-1/2 data-[expanded]:slide-in-from-top-[48%] sm:rounded-lg",
+          "fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border bg-background p-6 shadow-lg duration-150 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 sm:rounded-lg",
           props.class
         )}
         {...rest}
@@ -108,7 +108,7 @@ const DialogTitle = <T extends ValidComponent = "h2">(
   const [, rest] = splitProps(props as DialogTitleProps, ["class"])
   return (
     <DialogPrimitive.Title
-      class={cn("text-lg font-semibold leading-none tracking-tight", props.class)}
+      class={cn("text-base font-medium leading-6", props.class)}
       {...rest}
     />
   )

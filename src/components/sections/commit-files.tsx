@@ -42,7 +42,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
     <Resizable layoutId={props.stash ? "stash.details" : "history.details"} orientation="horizontal" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0">
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-auto">
         <section class="space-y-4 p-4" aria-label={t("cf01")}>
-          <h2 class="text-sm font-semibold">{props.stash ? t("mode04") : props.commit.uncommitted ? t("cf02") : t("cf03")}</h2>
+          <h2 class="text-sm font-medium">{props.stash ? t("mode04") : props.commit.uncommitted ? t("cf02") : t("cf03")}</h2>
           <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
             <dt class="text-muted-foreground">{t("cf04")}</dt><dd class="break-all font-mono">{props.commit.uncommitted ? "*" : props.commit.hash}</dd>
             <dt class="text-muted-foreground">{props.stash ? t("mode05") : t("cf05")}</dt><dd class="break-words">{props.commit.author}</dd>
@@ -51,7 +51,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           <p class="cursor-text select-text whitespace-pre-wrap break-words text-sm">{message()}</p>
           <Show when={props.commit.parents.length > 1}><p class="text-xs text-muted-foreground">{t("cf07")}</p></Show>
           <Separator />
-          <h3 class="text-sm font-semibold">{t("cf08", { count: files().length })}</h3>
+          <h3 class="text-sm font-medium">{t("cf08", { count: files().length })}</h3>
           <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("cf09")}</p></Show>
           <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("cf10")}</p></Show>
           <ChangedFilesTree files={files()} selectedPath={selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)} />

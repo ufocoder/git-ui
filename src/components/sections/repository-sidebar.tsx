@@ -19,14 +19,14 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
       <Button variant="ghost" class="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("switch04", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
         <img src={gitForkIcon} width="32" height="32" class="size-8 shrink-0" alt="" />
         <div class="flex h-8 min-w-0 flex-1 flex-col justify-center">
-          <p class="truncate text-sm font-semibold leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
-          <p class="truncate text-xs leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
+          <p class="truncate text-sm font-medium leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
+          <p class="truncate text-xs font-normal leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
         </div>
         <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
       </Button>
       <nav class="mt-4 space-y-1" aria-label={t("nav08")}>
         <For each={[{ mode: "history" as const, label: t("mode01"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode03"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conf01"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash01"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>
-          <SidebarMenuButton disabled={props.disabled || ((item.mode === "conflicts" || item.mode === "stash") && item.count === 0)} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-blue-500/10 data-[active=true]:text-blue-600">
+          <SidebarMenuButton disabled={props.disabled || ((item.mode === "conflicts" || item.mode === "stash") && item.count === 0)} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground">
             <SectionIcon name={item.icon} /><span class="min-w-0 flex-1 truncate">{item.label}</span>
             <Show when={item.count > 0}><span class="rounded bg-muted px-1.5 text-xs tabular-nums">{item.mode === "commit" ? "•" : item.count}</span></Show>
           </SidebarMenuButton>
@@ -50,11 +50,11 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
               <SidebarMenuButton disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
-                class="group/branch h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-[#c8c8c8] data-[active=true]:text-[#3d3d3d] data-[active=true]:font-normal data-[active=true]:hover:bg-[#c8c8c8] data-[active=true]:hover:text-[#3d3d3d]">
+                class="group/branch h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
                 <span class="min-w-0 truncate">{branch}</span>
                 <Show when={props.history.branch_comparisons[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
-                  <span class="flex shrink-0 gap-1 font-mono text-[10px] font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-zinc-100"
+                  <span class="flex shrink-0 gap-1 text-[11px] font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-zinc-100"
                     title={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}
                     aria-label={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}>
                     <Show when={comparison().ahead > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-[#808080] group-data-[active=true]/branch:bg-[#808080] group-data-[active=true]/branch:text-white px-1 leading-4"><span aria-hidden="true">↑</span><span>{comparison().ahead}</span></span></Show>

@@ -42,7 +42,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
   }
   return <section class="flex h-full min-h-0 min-w-0 flex-col gap-2" aria-label={t("diff01")}>
     <header class="shrink-0 space-y-2">
-      <div class="flex flex-wrap items-start gap-2"><h3 class="min-w-0 break-all font-mono text-sm font-semibold">{props.diff.file.path}</h3>
+      <div class="flex flex-wrap items-start gap-2"><h3 class="min-w-0 break-all text-sm font-medium">{props.diff.file.path}</h3>
         <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage01") : t("stage02")}</Badge></Show>
         <Show when={props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff03", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
       </div>

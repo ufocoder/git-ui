@@ -12,12 +12,19 @@ module.exports = {
       }
     },
     extend: {
+      fontFamily: {
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif']
+      },
+      fontSize: {
+        sm: ['13px', { lineHeight: '20px' }]
+      },
       colors: {
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
           primary: "hsl(var(--sidebar-primary))",
           "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          selected: "hsl(var(--sidebar-selected))",
           accent: "hsl(var(--sidebar-accent))",
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",

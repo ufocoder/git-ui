@@ -29,13 +29,13 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   };
   return (
         <nav aria-label={t("nav01")} class="flex shrink-0 flex-wrap items-center justify-start gap-3 border-b px-4 py-2">
-          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-semibold">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show></div>}>
+          <Show when={props.mode === "history"} fallback={<div class="flex items-center gap-3"><Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show></div>}>
           <div class="flex flex-wrap items-center gap-2">
-            <Button variant="outline" disabled={props.busy || !props.history?.remotes.length}
+            <Button variant="ghost" class="h-8 px-3" disabled={props.busy || !props.history?.remotes.length}
               onClick={() => void props.onSync("fetch")} title={t("sync02")}>{props.action === "fetch" ? t("sync03") : t("sync01")}</Button>
-            <Button variant="outline" disabled={props.busy || !props.history?.current_branch || !props.history?.sync.upstream || !props.history?.remotes.length}
+            <Button variant="ghost" class="h-8 px-3" disabled={props.busy || !props.history?.current_branch || !props.history?.sync.upstream || !props.history?.remotes.length}
               onClick={() => void props.onSync("pull")} title={t("nav02")}>{props.action === "pull" ? t("nav03") : t("nav04")}</Button>
-            <Button variant="outline" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
+            <Button variant="ghost" class="h-8 px-3" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
               onClick={() => void props.onSync("push")} title={t("nav05")}>{props.action === "push" ? t("nav06") : t("nav07")}</Button>
 
           </div>
@@ -56,8 +56,8 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
             </div>
           </Show>
           </Show>
-          <Show when={props.mode === "commit"}><Button variant="outline" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("hist01") : !props.history?.tip ? t("stash13") : props.history.operation ? t("stash12") : !props.history.has_changes ? t("stash14") : t("stash25")}>{t("stash24")}</Button></Show>
-          <Button variant={props.terminalOpen ? "secondary" : "outline"} class="ml-auto" aria-pressed={props.terminalOpen} aria-controls="repository-terminal" onClick={props.onToggleTerminal}>
+          <Show when={props.mode === "commit"}><Button variant="ghost" class="h-8 px-3" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("hist01") : !props.history?.tip ? t("stash13") : props.history.operation ? t("stash12") : !props.history.has_changes ? t("stash14") : t("stash25")}>{t("stash24")}</Button></Show>
+          <Button variant={props.terminalOpen ? "secondary" : "ghost"} class="ml-auto h-8 px-3" aria-pressed={props.terminalOpen} aria-controls="repository-terminal" onClick={props.onToggleTerminal}>
             <span aria-hidden="true" class="font-mono">{t("nav10")}</span> {t("nav11")}</Button>
         </nav>
   );

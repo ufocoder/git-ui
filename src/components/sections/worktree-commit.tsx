@@ -169,7 +169,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
           ]}>{group => <section class="space-y-1" aria-label={group.label}>
             <header class="flex flex-wrap items-center justify-between gap-1 border-b pb-1">
-              <h2 class="text-xs font-semibold">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
+              <h2 class="text-xs font-medium">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </header>
             <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
