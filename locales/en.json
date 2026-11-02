@@ -462,5 +462,17 @@
   "key09": "Set the minimum or maximum sidebar width when its divider is focused",
   "key10": "Resize sections when their divider is focused",
   "key11": "Space",
-  "key12": "Set a section to its size limit when its divider is focused"
+  "key12": "Set a section to its size limit when its divider is focused",
+  "setup01": "Checking for Git…",
+  "setup02": "Git was not found on this system",
+  "setup03": "Could not check for Git",
+  "setup04": "Install Git and make sure it is available to the application before opening projects.",
+  "setup05": "Download Git for Windows using the link below and run the installer. Allow Git to be used from the command line and other applications (PATH).",
+  "setup06": "On macOS, install Git with the developer command line tools. Run in Terminal:",
+  "setup07": "On Ubuntu or Debian, run in a terminal:",
+  "setup08": "On Fedora, run:",
+  "setup09": "Download Git and view installation instructions",
+  "setup10": "Could not open the browser. Open this link manually:",
+  "setup11": "After installation, click “Check again”. If Git is still not found, fully quit and reopen the application.",
+  "setup12": "Check again"
 }

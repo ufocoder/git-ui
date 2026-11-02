@@ -1,9 +1,11 @@
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
-import { For, Show } from "solid-js";
+import { For, Show, type JSX } from "solid-js";
 import { Button } from "~/components/ui/button";
 
 type ProjectChooserProps = {
+  ready: boolean;
+  requirement: JSX.Element;
   busy: boolean;
   choosingProject: boolean;
   recentProjects: string[];
@@ -21,6 +23,7 @@ export default function ProjectChooser(props: ProjectChooserProps) {
           </span>
           <span class="text-muted-foreground">{t("home02")}</span>
         </h1>
+        <Show when={props.ready} fallback={props.requirement}>
         <p class="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
           {t("home03")}<br class="hidden sm:block" /> {t("home04")}
         </p>
@@ -31,8 +34,9 @@ export default function ProjectChooser(props: ProjectChooserProps) {
           </svg>
           {props.choosingProject ? t("init03") : t("home05")}
         </Button>
+        </Show>
       </section>
-      <Show when={props.recentProjects.length > 0}>
+      <Show when={props.ready && props.recentProjects.length > 0}>
       <section aria-labelledby="recent-projects-title" class="mx-auto w-full max-w-lg">
         <div class="mb-2 flex items-center gap-3 px-3">
           <h2 id="recent-projects-title" class="shrink-0 text-xs font-medium text-muted-foreground">{t("home07")}</h2>

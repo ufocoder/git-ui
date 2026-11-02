@@ -111,6 +111,7 @@ async function request<T>(command: string, args?: Record<string, unknown>): Prom
 
 // The Rust backend owns repository access; components use this typed API.
 export const git = {
+  checkInstallation: () => invoke<{ available: boolean; platform: string }>("get_git_installation"),
   getSettings: (scope: string) => request<GitSettings>("get_git_settings", { scope }),
   saveSettings: (scope: string, changes: GitSettingChange[]) => request<GitSettings>("save_git_settings", { scope, changes }),
   showProjectChooser: () => request<void>("show_project_chooser"),

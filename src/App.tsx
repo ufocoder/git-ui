@@ -19,6 +19,7 @@ import RepositorySidebar from "~/components/sections/repository-sidebar";
 import { Alert, AlertTitle, AlertDescription } from "~/components/ui/alert";
 
 import InitializeRepositoryDialog from "~/components/sections/initialize-repository-dialog";
+import GitRequirement, { type GitCheckState } from "~/components/sections/git-requirement";
 import ProjectChooser from "~/components/sections/project-chooser";
 import BranchTrackingDialog, { type TrackingMode } from "~/components/sections/branch-tracking-dialog";
 import CommitOperationBar from "~/components/sections/commit-operation-bar";
@@ -37,6 +38,8 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = createSignal(false);
   let disposed = false;
   onCleanup(() => { disposed = true; unlistenUpdates?.(); unlistenShortcuts?.(); });
+  const [gitCheck, setGitCheck] = createSignal<GitCheckState>(isTauri() ? "checking" : "ready");
+  const [gitPlatform, setGitPlatform] = createSignal("");
   const [choosingProject, setChoosingProject] = createSignal(false);
   const [historyScope, setHistoryScope] = createSignal<HistoryScope>("all");
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
@@ -105,12 +108,32 @@ function App() {
         unlistenShortcuts = unlistenHelp;
       }
       if (isHistory()) setHistory(await git.getHistory());
-      else if (isTauri()) setRecentProjects(await git.getRecentProjects());
+      else if (isTauri()) await checkGitInstallation();
     } catch (failure) {
       if (isHistory()) setError(String(failure));
       else setRecentProjects([]);
     } finally { setBusy(false); }
   });
+
+  async function checkGitInstallation() {
+    setGitCheck("checking");
+    try {
+      const result = await git.checkInstallation();
+      if (disposed) return;
+      setGitPlatform(result.platform);
+      setGitCheck(result.available ? "ready" : "missing");
+      if (result.available) {
+        try { setRecentProjects(await git.getRecentProjects()); }
+        catch { setRecentProjects([]); }
+      }
+    } catch { if (!disposed) setGitCheck("error"); }
+  }
+  async function retryGitCheck() {
+    if (busy()) return;
+    setBusy(true);
+    try { await checkGitInstallation(); }
+    finally { setBusy(false); }
+  }
 
   function clearProjectFeedback() {
     clearTerminalError();
@@ -133,7 +156,7 @@ function App() {
   }
 
   async function selectProject() {
-    if (busy()) return;
+    if (busy() || gitCheck() !== "ready") return;
     setError("");
     setBusy(true);
     try {
@@ -174,7 +197,7 @@ function App() {
   }
 
   async function openRecentProject(path: string) {
-    if (busy()) return;
+    if (busy() || gitCheck() !== "ready") return;
     setBusy(true);
     setError("");
     try { await openSelectedProject(path); }
@@ -297,6 +320,7 @@ function App() {
     <main class={isHistory() ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
       <Show when={isHistory()} fallback={
         <ProjectChooser choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
+          ready={gitCheck() === "ready"} requirement={<GitRequirement state={gitCheck()} platform={gitPlatform()} onRetry={() => void retryGitCheck()} />}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
         <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} scope={historyScope()} onScopeChange={scope => { setHistoryScope(scope); setRepositoryMode("history"); }} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />

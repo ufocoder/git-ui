@@ -3,6 +3,7 @@ mod commit_options;
 mod conflicts;
 mod history_search;
 mod git_settings;
+mod git_installation;
 mod locale;
 mod process;
 mod stash;
@@ -1315,6 +1316,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            git_installation::get_git_installation,
             git_settings::get_git_settings,
             git_settings::save_git_settings,
             locale::get_app_language,
