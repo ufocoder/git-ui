@@ -497,5 +497,8 @@
   "switch01": "Choose a recent project or open another folder",
   "switch02": "Current project",
   "switch03": "Open folder…",
-  "switch04": "Switch project: {name}"
+  "switch04": "Switch project: {name}",
+  "tree02": "Collapse or expand folder {path}",
+  "dir01": "Changes in folder {path}",
+  "dir02": "Could not load changes for this file"
 }

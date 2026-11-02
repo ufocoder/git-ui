@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildFileTree } from "../src/lib/file-tree.ts";
+import { buildFileTree, filesInDirectory } from "../src/lib/file-tree.ts";
 
 test("keeps every directory even when there is just one changed file", () => {
   const file = { path: "folder1/folder3/folder3/file.md", status: "M" };
@@ -36,4 +36,11 @@ test("does not interpret backslashes in Git filenames as directories", () => {
   assert.equal(nodes[0].kind, "file");
   assert.equal(nodes[0].name, "file\\name.md");
   assert.deepEqual(buildFileTree([]), []);
+});
+
+test("folder selection includes descendants without matching sibling path prefixes", () => {
+  const files = [{ path: "src/a.txt" }, { path: "src/lib/b.txt" }, { path: "src-copy/c.txt" }, { path: "src" }];
+  assert.deepEqual(filesInDirectory(files, "src"), [files[0], files[1]]);
+  assert.deepEqual(filesInDirectory(files, "src/lib"), [files[1]]);
+  assert.deepEqual(filesInDirectory(files, "missing"), []);
 });

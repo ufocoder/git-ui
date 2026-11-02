@@ -36,3 +36,7 @@ export function buildFileTree<T extends { path: string }>(files: readonly T[], o
   sort(roots);
   return roots;
 }
+
+export function filesInDirectory<T extends { path: string }>(files: readonly T[], directory: string): T[] {
+  return files.filter(file => file.path.startsWith(`${directory}/`));
+}

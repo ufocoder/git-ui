@@ -1,3 +1,5 @@
+import DirectoryDiffView from "./directory-diff-view";
+import { filesInDirectory } from "~/lib/file-tree";
 import { locale, t } from "~/lib/i18n";
 import { Show, createEffect, createSignal, onCleanup, on, createMemo } from "solid-js";
 import { git, type Commit, type CommitFile, type FileDiff } from "~/lib/git";
@@ -13,6 +15,8 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
   const [opening, setOpening] = createSignal(false);
+  const [selectedDirectory, setSelectedDirectory] = createSignal("");
+  const directoryFiles = createMemo(() => filesInDirectory(files(), selectedDirectory()));
   const [selectedFile, setSelectedFile] = createSignal("");
   const [diff, setDiff] = createSignal<FileDiff>();
   let diffRequest = 0;
@@ -21,7 +25,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
     const hash = props.commit.hash;
     const request = ++generation;
     diffRequest++; setDiff(undefined); setOpening(false);
-    setMessage(props.commit.subject); setFiles([]); setSelectedFile(""); setLoading(true); setError("");
+    setSelectedDirectory(""); setMessage(props.commit.subject); setFiles([]); setSelectedFile(""); setLoading(true); setError("");
     void (props.stash ? git.getStashDetails(hash) : git.getCommitDetails(hash))
       .then(result => { if (request === generation) { setFiles(result.files); setMessage(result.message); } })
       .catch(e => { if (request === generation) setError(String(e)); })
@@ -31,7 +35,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   async function openFile(file: CommitFile) {
     if (props.disabled) return;
     const request = ++diffRequest;
-    setOpening(true); setDiff(undefined); setSelectedFile(file.path);
+    setSelectedDirectory(""); setOpening(true); setDiff(undefined); setSelectedFile(file.path);
     try {
       const result = await (props.stash ? git.getStashDiff(props.commit.hash, file.path) : git.getFileDiff(props.commit.hash, file.path));
       if (request === diffRequest) setDiff(result);
@@ -54,15 +58,20 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           <h3 class="text-sm font-medium">{t("cf08", { count: files().length })}</h3>
           <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("cf09")}</p></Show>
           <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("cf10")}</p></Show>
-          <ChangedFilesTree files={files()} selectedPath={selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)} />
+          <ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
+            onSelectDirectory={path => { if (!props.disabled) { diffRequest++; setOpening(false); setDiff(undefined); setSelectedFile(""); setSelectedDirectory(path); } }} />
         </section>
       </ResizablePanel>
       <ResizableHandle withHandle aria-label={t("cf11")} />
       <ResizablePanel minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
         <div class="flex h-full min-h-0 flex-col p-4" aria-label={t("cf12")}>
+          <Show when={selectedDirectory()} fallback={<>
           <Show when={opening()}><p role="status" class="text-sm text-muted-foreground">{t("cf13")}</p></Show>
           <Show when={diff()}>{data => <FileDiffView diff={data()} />}</Show>
           <Show when={!selectedFile()}><p class="text-sm text-muted-foreground">{t("cf14")}</p></Show>
+          </>}>
+            <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={props.commit.hash} stash={props.stash} />
+          </Show>
         </div>
       </ResizablePanel>
     </Resizable>

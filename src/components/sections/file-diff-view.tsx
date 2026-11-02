@@ -8,7 +8,7 @@ import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
 import { WORKTREE, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
 
 function readView() { try { return localStorage.getItem("git-ui.diff-view") === "split"; } catch { return false; } }
-export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope }) {
+export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean }) {
   const [split, setSplit] = createSignal(readView());
   const [collapse, setCollapse] = createSignal(true);
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set());
@@ -24,6 +24,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     const next = Math.min(parsed().hunks.length - 1, Math.max(0, currentHunk() + direction));
     setCurrentHunk(next);
     const target = headers.get(next);
+    if (target && props.inline) { target.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
     if (target && viewport) viewport.scrollTo({ top: target.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop, behavior: "smooth" });
   }
   function lineClass(line: DiffLine | null) {
@@ -40,7 +41,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
       <code class="block whitespace-pre pr-3">{line?.text || " "}</code>
     </div>;
   }
-  return <section class="flex h-full min-h-0 min-w-0 flex-col gap-2" aria-label={t("diff01")}>
+  return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff01")}>
     <header class="shrink-0 space-y-2">
       <div class="flex flex-wrap items-start gap-2"><h3 class="min-w-0 break-all text-sm font-medium">{props.diff.file.path}</h3>
         <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage01") : t("stage02")}</Badge></Show>
@@ -62,7 +63,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     </header>
     <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff04")}</AlertDescription></Alert></Show>
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff05")}</AlertDescription></Alert></Show>
-    <Card ref={element => { viewport = element; }} class="min-h-0 flex-1 overflow-auto" aria-label={t("diff06")}>
+    <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto" : "min-h-0 flex-1 overflow-auto"} aria-label={t("diff06")}>
       <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-[11px] leading-4">{props.diff.patch}</pre>}>
         <Show when={split()} fallback={<div class="min-w-max py-2"><For each={rows()}>{row => renderRow(row)}</For></div>}>
           <div class="grid grid-cols-2 divide-x">

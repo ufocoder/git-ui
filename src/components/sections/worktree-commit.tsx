@@ -1,3 +1,6 @@
+import DirectoryDiffView from "./directory-diff-view";
+import { filesInDirectory } from "~/lib/file-tree";
+import { compareChangedFiles } from "~/lib/file-presentation";
 import FileViewControls from "./file-view-controls";
 import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
@@ -39,11 +42,16 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [loading, setLoading] = createSignal(true);
   const [pending, setPending] = createSignal(false);
   const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
+  const [selectedDirectory, setSelectedDirectory] = createSignal("");
   const [selectedPath, setSelectedPath] = createSignal("");
   const [diff, setDiff] = createSignal<FileDiff>();
   const [diffLoading, setDiffLoading] = createSignal(false);
   const stagedFiles = createMemo(() => files().filter(file => file.staged));
   const unstagedFiles = createMemo(() => files().filter(file => !file.staged || file.partially_staged));
+  const directoryFiles = createMemo(() => {
+    const group = props.onCommitted ? selectedGroup() === "staged" ? stagedFiles() : unstagedFiles() : files();
+    return filesInDirectory(group, selectedDirectory()).sort((a, b) => compareChangedFiles(a, b, presentation().sort) * (presentation().descending ? -1 : 1));
+  });
   const stagedCount = createMemo(() => files().filter(file => file.staged).length);
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
@@ -80,6 +88,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     void props.history;
     const path = untrack(selectedPath);
     const group = untrack(selectedGroup);
+    const directory = untrack(selectedDirectory);
     const request = ++loadRequest;
     const diffVersion = ++diffRequest;
     setLoading(true);
@@ -88,6 +97,11 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         const result = await git.getCommitDetails(WORKTREE);
         if (!mounted || request !== loadRequest) return;
         setFiles(result.files);
+        if (directory) {
+          const candidates = props.onCommitted ? result.files.filter(file => group === "staged" ? file.staged : !file.staged || file.partially_staged) : result.files;
+          if (!filesInDirectory(candidates, directory).length) setSelectedDirectory("");
+          return;
+        }
         const file = result.files.find(file => file.path === path && (!props.onCommitted || (group === "staged" ? file.staged : !file.staged || file.partially_staged)));
         if (!path || !file) { setSelectedPath(""); setDiff(undefined); setDiffLoading(false); return; }
         const next = await git.getFileDiff(WORKTREE, path, props.onCommitted ? group : undefined);
@@ -108,15 +122,22 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         if (staged ? file.staged && !file.partially_staged : !file.staged) continue;
         updated = (await git.setFileStaged(file.path, staged)).files;
       }
-      if (mounted && updated) { setFiles(updated); diffRequest++; setDiff(undefined); setSelectedPath(""); setDiffLoading(false); }
+      if (mounted && updated) { setSelectedDirectory(""); setFiles(updated); diffRequest++; setDiff(undefined); setSelectedPath(""); setDiffLoading(false); }
       if (mounted && props.history?.operation && props.onCommitted) props.onCommitted(await git.getHistory());
     } catch {
       try { const result = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(result.files); } catch { /* Preserve the last known staging state. */ }
     } finally { setPending(false); props.onBusyChange(false); }
   }
+  function openDirectory(path: string, scope?: WorktreeDiffScope) {
+    if (disabled()) return;
+    diffRequest++; setDiff(undefined); setDiffLoading(false); setSelectedPath("");
+    if (scope) setSelectedGroup(scope);
+    setSelectedDirectory(path);
+  }
   async function openFile(file: CommitFile, scope?: WorktreeDiffScope) {
     if (disabled()) return;
     const request = ++diffRequest;
+    setSelectedDirectory("");
     if (scope) setSelectedGroup(scope);
     setSelectedPath(file.path); setDiff(undefined); setDiffLoading(true);
     try { const result = await git.getFileDiff(WORKTREE, file.path, scope); if (request === diffRequest) setDiff(result); }
@@ -137,7 +158,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         : await git.commitChanges(message().trim(), options);
       if (!mounted) return;
       setAmendTarget(undefined); setAmendConfirmed(false); setNewCommitMessage("");
-      setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
+      setSelectedDirectory(""); setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
       props.onCommitted(history);
       try { const details = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(details.files); }
       catch (error) { reportTerminalError(t("commit01", { p1: String(error) }), t("commit02")); }
@@ -163,7 +184,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         </Show>
         <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("commit07")}</p></Show>
         <Show when={!props.onCommitted && !loading() && !files().length}><p class="text-sm text-muted-foreground">{t("commit08")}</p></Show>
-        <Show when={props.onCommitted} fallback={<ChangedFilesTree files={files()} selectedPath={selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} />}>
+        <Show when={props.onCommitted} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
           <For each={[
             { kind: "unstaged" as const, label: t("stage02"), files: unstagedFiles, action: t("stage03"), staged: false },
             { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
@@ -173,7 +194,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </header>
             <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
-            <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)}
+            <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
               renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage07", { path }) : t("stage06", { path })} />}
               renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage07", { path: file.path }) : t("stage06", { path: file.path })} />} />
           </section>}</For>
@@ -184,9 +205,13 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     <ResizablePanel minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
       <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("cf12")}>
         <div class="min-h-0 flex-1">
+          <Show when={selectedDirectory()} fallback={<>
           <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("cf13")}</p></Show>
           <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
           <Show when={!selectedPath()}><p class="text-sm text-muted-foreground">{t("commit17")}</p></Show>
+          </>}>
+            <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined} />
+          </Show>
         </div>
       </section>
     </ResizablePanel>
