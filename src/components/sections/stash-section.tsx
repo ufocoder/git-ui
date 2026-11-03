@@ -3,7 +3,6 @@ import { locale, t } from "~/lib/i18n";
 import type { History, StashAction, StashEntry } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
-import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SidebarGroupContent } from "~/components/ui/sidebar";
 import { SectionIcon } from "~/components/ui/repository-icons";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -38,10 +37,8 @@ export default function StashSection(props: { history: History; selected?: strin
   }
   return <>
     <Show when={props.onSelect && props.selected}><div class="flex flex-wrap gap-2 border-b p-3"><Button size="sm" disabled={props.disabled} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "apply", entry: saved }); }}>{t("stash08")}</Button><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "drop", entry: saved }); }}>{t("stash09")}</Button></div></Show>
-    <SidebarSection title={t("stash01")} icon={<SectionIcon name="stash" />} action={
-      <Button size="icon" variant="ghost" class="size-7 shrink-0" disabled={props.disabled || !props.history.tip || !props.history.has_changes}
-        onClick={() => open({ kind: "save" })} aria-label={t("stash02")} title={t("stash02")}>+</Button>
-    }>
+    <section class="p-2" aria-label={t("stash01")}>
+      <header class="flex h-8 items-center gap-2 px-2 text-xs font-medium text-muted-foreground"><SectionIcon name="stash" /><h2>{t("stash01")}</h2></header>
       <SidebarGroupContent>
         <Show when={props.history.stashes?.length} fallback={<p class="px-2 py-2 text-xs text-muted-foreground">{t("stash03")}</p>}>
           <ul class="space-y-1">
@@ -59,7 +56,7 @@ export default function StashSection(props: { history: History; selected?: strin
           </ul>
         </Show>
       </SidebarGroupContent>
-    </SidebarSection>
+    </section>
     <Dialog open={Boolean(action())} onOpenChange={value => { if (!value && !pending()) setAction(undefined); }}>
       <DialogContent>
         <DialogHeader>
