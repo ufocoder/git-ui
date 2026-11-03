@@ -250,7 +250,8 @@ function App() {
 
   function requestSync(action: SyncAction) {
     if (busy()) return;
-    if (action === "push" || (action === "pull" && !history()?.sync.upstream)) {
+    const project = history();
+    if ((action === "push" && (!project?.remotes.length || !project.sync.upstream)) || (action === "pull" && !project?.sync.upstream)) {
       setTrackingMode(action === "push" ? "publish" : "upstream");
     } else void syncProject(action);
   }
