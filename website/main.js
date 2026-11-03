@@ -15,7 +15,14 @@ try {
     const label = document.createElement('div');
     label.textContent = download.name;
     const detail = document.createElement('small');
-    detail.textContent = download.detail;
+    const size = Number.isSafeInteger(download.size) && download.size > 0
+      ? new Intl.NumberFormat(document.documentElement.lang || undefined, {
+          style: 'unit',
+          unit: 'megabyte',
+          maximumSignificantDigits: 3,
+        }).format(download.size / 1_000_000)
+      : null;
+    detail.textContent = size ? `${download.detail} · ${size}` : download.detail;
     label.append(detail);
     row.append(label);
     const action = document.createElement(download.url ? 'a' : 'span');
@@ -32,21 +39,35 @@ try {
   }
   if (data.version) {
     document.querySelector('#version').textContent = data.version;
-    document.querySelector('#release-note').textContent = `${data.version} · macOS · Apple Silicon & Intel`;
   } else {
-    document.querySelector('#release-note').textContent = 'The first release is on its way';
     document.querySelector('#download-footnote').textContent = 'Installers will appear here when a stable release is published';
-    primary.firstChild.textContent = 'View downloads ';
   }
-  // Browsers cannot reliably identify Apple Silicon vs Intel: offer both explicitly.
-  if (data.downloads.some(item => item.url)) {
-    primary.firstChild.textContent = 'Download for macOS ';
-  }
+  void recommendInstaller(data.downloads);
 } catch {
   list.replaceChildren();
   const message = document.createElement('p');
   message.className = 'muted';
   message.textContent = 'Check GitHub Releases for available installers';
   list.append(message);
-  document.querySelector('#release-note').textContent = 'Find the latest version on GitHub Releases';
+}
+
+
+async function recommendInstaller(downloads) {
+  const client = navigator.userAgentData;
+  if (client?.platform !== 'macOS' || !client.getHighEntropyValues) return;
+
+  // The ordinary macOS user agent can report Intel even on Apple Silicon.
+  const hints = await client.getHighEntropyValues(['architecture', 'bitness']).catch(() => null);
+  if (hints?.bitness !== '64') return;
+
+  const platform = hints.architecture === 'arm' ? 'mac-arm'
+    : hints.architecture === 'x86' ? 'mac-intel'
+    : null;
+  const installer = downloads.find(item => item.id === platform && item.url);
+  if (!installer) return;
+
+  primary.href = installer.url;
+  primary.firstChild.textContent = platform === 'mac-arm'
+    ? 'Download for Apple Silicon '
+    : 'Download for Intel Mac ';
 }

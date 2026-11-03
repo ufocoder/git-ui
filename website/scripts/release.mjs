@@ -14,7 +14,9 @@ export function releaseData(repository, release) {
     downloads: platforms.map(({ id, name, detail, match }) => {
       const asset = published ? release.assets?.find(item => match.test(item.name) && item.state === 'uploaded') : null;
       const url = asset?.browser_download_url;
-      return { id, name, detail, url: url?.startsWith(`${base}/releases/download/`) ? url : null };
+      const downloadUrl = url?.startsWith(`${base}/releases/download/`) ? url : null;
+      const size = downloadUrl && Number.isSafeInteger(asset.size) && asset.size > 0 ? asset.size : null;
+      return { id, name, detail, url: downloadUrl, size };
     }),
   };
 }
