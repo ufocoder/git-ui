@@ -39,6 +39,25 @@ pub enum Action {
 }
 
 pub fn read(path: &Path) -> Result<Option<Operation>, String> {
+    for folder in ["rebase-merge", "rebase-apply"] {
+        let location = git(path, &["rev-parse", "--git-path", folder])?;
+        let directory = path.join(location.trim());
+        if directory.is_dir() {
+            let commit = ["stopped-sha", "original-commit", "orig-head"]
+                .iter()
+                .find_map(|file| std::fs::read_to_string(directory.join(file)).ok())
+                .unwrap_or_default();
+            return Ok(Some(Operation {
+                kind: "rebase".into(),
+                commit: commit.trim().into(),
+                conflicts: read_worktree_files(path)?
+                    .iter()
+                    .filter(|file| file.status == "U")
+                    .count(),
+                staged: !git(path, &["diff", "--cached", "--name-only", "-z"])?.is_empty(),
+            }));
+        }
+    }
     for (file, kind) in [
         ("CHERRY_PICK_HEAD", "cherry-pick"),
         ("REVERT_HEAD", "revert"),
@@ -107,7 +126,11 @@ pub fn run_with_options(
     options: &crate::commit_options::Options,
 ) -> Result<ProjectHistory, String> {
     let current_branch = git(path, &["branch", "--show-current"])?.trim().to_string();
-    if current_branch.is_empty() {
+    let rebase_control = matches!(
+        &action,
+        Action::Continue | Action::Abort { .. } | Action::Skip { .. }
+    ) && read(path)?.is_some_and(|operation| operation.kind == "rebase");
+    if current_branch.is_empty() && !rebase_control {
         return Err(locale::text("err44").into());
     }
     let current_head = git(path, &["rev-parse", "--revs-only", "HEAD"])?

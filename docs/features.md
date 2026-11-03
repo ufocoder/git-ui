@@ -33,6 +33,18 @@ app-data directory.
   SHA, cherry-pick, revert, or reset a branch using soft, mixed, or hard reset.
 - Refresh without losing the selected commit, open file, or scroll position.
 
+## Branch actions
+
+Right-click a local branch to rename it, delete it, or rebase the current branch
+onto it. Rebase requires a clean working tree and asks for confirmation. If
+conflicts occur, resolve them in Conflicts mode, then continue, skip, or abort
+the operation.
+
+Deletion checks remotes and offers an optional remote deletion when the branch
+exists there, including upstream branches with a different name. Remote deletion
+is off by default and refuses a branch that changed after confirmation. Current,
+checked-out, and unmerged local branches are protected from deletion.
+
 ## Changes and commits
 
 The Changes mode separates staged and unstaged files. Select individual files or

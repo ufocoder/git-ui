@@ -1,3 +1,5 @@
+import BranchActionDialog, { type BranchAction } from "~/components/sections/branch-action-dialog";
+import type { BranchActionPreview, BranchRemoteTarget } from "~/lib/git";
 import ReferenceActionDialog, { type ReferenceAction } from "~/components/sections/reference-action-dialog";
 import KeyboardShortcutsDialog from "~/components/sections/keyboard-shortcuts-dialog";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
@@ -329,6 +331,22 @@ function App() {
     finally { setBusy(false); }
   }
 
+  const [branchAction, setBranchAction] = createSignal<BranchAction>();
+  async function executeBranchAction(action: BranchAction, preview: BranchActionPreview, remote: BranchRemoteTarget | null) {
+    if (busy()) throw new Error(t("hist01"));
+    setBusy(true);
+    try { setHistory(await git.executeBranchAction(action.kind, preview, remote)); }
+    catch (error) {
+      setTerminalOpen(true);
+      try {
+        const latest = await git.getHistory();
+        setHistory(latest);
+        if (action.kind === "rebase" && latest.operation?.kind === "rebase") return;
+      } catch { /* Keep the last loaded history. */ }
+      throw error;
+    } finally { setBusy(false); }
+  }
+
   const [referenceAction, setReferenceAction] = createSignal<ReferenceAction>();
   async function changeReference(action: ReferenceAction, name: string | null) {
     if (busy()) throw new Error(t("hist01"));
@@ -378,7 +396,8 @@ function App() {
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
     <Show when={isHistory() && history()}>{project => { const initial = project(); return <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={history() ?? initial} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={changeProject} projectMenuOpen={projectSwitcherOpen()} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
-      onReferenceAction={setReferenceAction} onPushBranch={() => requestSync("push")} onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />; }}</Show>
+      onRebaseBranch={name => setBranchAction({ name, kind: "rebase" })} onReferenceAction={action => action.kind === "branch" && action.deleting ? setBranchAction({ name: action.name, kind: "delete" }) : setReferenceAction(action)} onPushBranch={() => requestSync("push")} onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />; }}</Show>
+    <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />
     <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class={isHistory() ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
       <Show when={isHistory()} fallback={

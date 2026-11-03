@@ -15,6 +15,7 @@ mod terminal_log;
 mod tracking;
 mod tags;
 mod reference_actions;
+mod branch_actions;
 mod update_menu;
 mod updates;
 
@@ -1413,6 +1414,8 @@ pub fn run() {
             frontend_ready,
             sync_project,
             commit_ops::run_commit_operation,
+            branch_actions::preview_branch_action,
+            branch_actions::execute_branch_action,
             reference_actions::change_project_reference,
             tags::push_project_tags,
             tags::delete_project_tag,
@@ -1476,10 +1479,11 @@ mod tests {
         commit_file(&repo, "main", "Main only");
         let history = read_history(&repo.0).unwrap();
         assert_eq!(history.branch_tips["refs/heads/side"], side_tip);
+        let tips: Vec<String> = history.branch_tips.values().cloned().collect();
         let mut all = history.commits;
         let mut more = history.has_more;
         while more {
-            let page = read_branch_commit_page(&repo.0, &history.tip, all.len(), true).unwrap();
+            let page = read_branch_commit_page_at_tips(&repo.0, &history.tip, all.len(), true, Some(&tips)).unwrap();
             more = page.has_more; all.extend(page.commits);
         }
         assert!(all.iter().any(|commit| commit.hash == side_tip));

@@ -566,5 +566,16 @@
   "settings01": "Appearance",
   "settings02": "Git",
   "settings03": "Application appearance and Git configuration",
-  "settings04": "Open a repository to configure Git"
+  "settings04": "Open a repository to configure Git",
+  "branchAct01": "Rebase on branch",
+  "branchAct02": "Rebase the current branch {current} onto {target}?",
+  "branchAct03": "Checking branch and remotes…",
+  "branchAct04": "Also delete the remote branch",
+  "branchAct05": "This branch is absent on reachable remotes — only the local branch will be deleted",
+  "branchAct06": "Some remotes could not be checked — deletion on those remotes is unavailable",
+  "branchAct07": "Rebase rewrites commits on the current branch. Nothing will be pushed",
+  "branchAct08": "Choose another branch for rebase and leave detached HEAD",
+  "branchAct09": "Cannot delete a branch checked out in a worktree",
+  "branchAct10": "The branch contains commits not merged into HEAD. Merge it first",
+  "branchAct11": "Remote branch not found"
 }

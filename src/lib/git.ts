@@ -1,3 +1,5 @@
+export type BranchRemoteTarget = { remote: string; reference: string; tip: string | null; error: string | null };
+export type BranchActionPreview = { name: string; tip: string; head: string; branch: string; remotes: BranchRemoteTarget[] };
 import { startOperation, finishOperation } from "./operation-feedback";
 import { t } from "~/lib/i18n";
 import { invoke } from "@tauri-apps/api/core";
@@ -30,7 +32,7 @@ export type RepositoryMode = "history" | "commit" | "conflicts" | "stash";
 export type ConflictVersion = { exists: boolean; text: string | null; binary: boolean; large: boolean; mode: string | null; oid: string | null };
 export type ConflictFile = { file: CommitFile; base: ConflictVersion; ours: ConflictVersion; theirs: ConflictVersion; working_text: string | null; editable: boolean; supported: boolean; token: string };
 export type ConflictResolution = { kind: "manual"; content: string } | { kind: "ours" | "theirs" };
-export type OperationState = { kind: "cherry-pick" | "revert" | "merge"; commit: string; conflicts: number; staged: boolean };
+export type OperationState = { kind: "cherry-pick" | "revert" | "merge" | "rebase"; commit: string; conflicts: number; staged: boolean };
 export type BranchComparison = { base: string; ahead: number; behind: number };
 export type StashEntry = { id: string; reference: string; message: string; date: string };
 export type StashAction = { kind: "save"; message: string; include_untracked: boolean } | { kind: "apply"; id: string; restore_index: boolean } | { kind: "drop"; id: string; confirmed: boolean };
@@ -70,6 +72,7 @@ const operationLabels = (): Record<string, string> => ({
   restore_project_path: t("fileAct03"), preview_restore_path: t("fileAct03"), reveal_project_path: t("fileAct04"),
   get_git_settings: t("cfg01"), save_git_settings: t("cfg01"),
   stash_project: t("stash01"), get_stash_details: t("stash01"), get_stash_diff: t("stash01"),
+  preview_branch_action: t("branchAct03"), execute_branch_action: t("refAct09"),
   change_project_reference: t("refAct09"),
   push_project_tags: t("tagPush01"), delete_project_tag: t("tagDel01"), remote_project_tag_exists: t("tagDel06"),
   publish_project_branch: t("track01"), set_project_upstream: t("track02"),
@@ -85,9 +88,10 @@ const operationLabels = (): Record<string, string> => ({
   checkout_project_commit: t("cmd06"), reset_project_commit: t("cmd07"), set_project_file_staged: t("git06"),
   commit_project_changes: t("cmd08"), initialize_project: t("cmd09"), can_initialize_project: t("git07"),
 });
-const mutations = new Set(["change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+const mutations = new Set(["execute_branch_action","change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 function operationName(command: string, args?: Record<string, unknown>): string {
+  if (command === "execute_branch_action") return args?.action === "delete" ? t("refAct03") : t("branchAct01");
   if (command === "sync_project") return String(args?.action ?? "Git");
   if (command === "publish_project_branch") return t("track01");
   if (command === "commit_project_changes") return t("notice11");
@@ -150,6 +154,8 @@ export const git = {
   resetToCommit: (commit: string, mode: ResetMode, discardConfirmed: boolean, expectedHead: string, expectedBranch: string) => request<History>("reset_project_commit", { commit, mode, discardConfirmed, expectedHead, expectedBranch }),
   createTagAtCommit: (name: string, commit: string) => request<History>("create_project_tag_at_commit", { name, commit }),
   remoteTagExists: (remote: string, tag: string) => request<boolean>("remote_project_tag_exists", { remote, tag }),
+  previewBranchAction: (name: string, checkRemotes: boolean) => request<BranchActionPreview>("preview_branch_action", { name, checkRemotes }),
+  executeBranchAction: (action: "delete" | "rebase", preview: BranchActionPreview, remote: BranchRemoteTarget | null) => request<History>("execute_branch_action", { action, preview, remote, confirmed: true }),
   changeReference: (kind: "branch" | "tag", name: string, newName: string | null) => request<History>("change_project_reference", { kind, name, newName, confirmed: newName === null }),
   deleteTag: (tag: string, remote: string | null) => request<History>("delete_project_tag", { tag, remote, confirmed: true }),
   pushTags: (remote: string, tag: string | null) => request<History>("push_project_tags", { remote, tag }),
