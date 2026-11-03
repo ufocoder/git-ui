@@ -36,10 +36,11 @@ function App() {
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   let unlistenUpdates: UnlistenFn | undefined;
+  let unlistenSettings: UnlistenFn | undefined;
   let unlistenShortcuts: UnlistenFn | undefined;
   const [shortcutsOpen, setShortcutsOpen] = createSignal(false);
   let disposed = false;
-  onCleanup(() => { disposed = true; unlistenUpdates?.(); unlistenShortcuts?.(); });
+  onCleanup(() => { disposed = true; unlistenUpdates?.(); unlistenShortcuts?.(); unlistenSettings?.(); });
   const [gitCheck, setGitCheck] = createSignal<GitCheckState>(isTauri() ? "checking" : "ready");
   const [gitPlatform, setGitPlatform] = createSignal("");
   const [choosingProject, setChoosingProject] = createSignal(false);
@@ -136,6 +137,11 @@ function App() {
         const unlisten = await listen("check-updates", () => setUpdatesOpen(true));
         if (disposed) { unlisten(); return; }
         unlistenUpdates = unlisten;
+        const settingsListener = await listen("open-settings", () => {
+          if (!installingUpdate()) setSettingsOpen(true);
+        });
+        if (disposed) { settingsListener(); return; }
+        unlistenSettings = settingsListener;
         const unlistenHelp = await listen("keyboard-shortcuts", () => {
           if (!installingUpdate()) setShortcutsOpen(true);
         });
@@ -408,7 +414,7 @@ function App() {
       </Show>
       <Show when={!isHistory() && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
     </main>
-    <Show when={isHistory()}><GitSettingsDialog hasProject open={settingsOpen()} onClose={() => setSettingsOpen(false)} /></Show>
+    <GitSettingsDialog hasProject={isHistory() && Boolean(history())} open={settingsOpen()} onClose={() => setSettingsOpen(false)} />
     <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
       <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">
         <DialogHeader class="sr-only"><DialogTitle>{t("upd02")}</DialogTitle><DialogDescription>{t("upd17")}</DialogDescription></DialogHeader>

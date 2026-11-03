@@ -1,9 +1,10 @@
 use crate::locale;
 use tauri::{
-    AppHandle, Emitter, Manager,
     menu::{Menu, MenuItem},
+    AppHandle, Emitter, Manager,
 };
 
+pub const SETTINGS: &str = "open-settings";
 pub const CHECK_UPDATES: &str = "check-updates";
 pub const KEYBOARD_SHORTCUTS: &str = "keyboard-shortcuts";
 
@@ -16,6 +17,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let settings = MenuItem::with_id(app, SETTINGS, locale::text("lang04"), true, None::<&str>)?;
     #[cfg(target_os = "macos")]
     if let Some(submenu) = menu
         .items()?
@@ -23,19 +25,26 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
         .and_then(|item| item.as_submenu())
         .cloned()
     {
-        submenu.insert(&check, 1)?;
+        submenu.insert(&settings, 1)?;
+        submenu.insert(&check, 2)?;
     }
     #[cfg(not(target_os = "macos"))]
     if let Some(submenu) = menu
         .get(tauri::menu::HELP_SUBMENU_ID)
         .and_then(|item| item.as_submenu().cloned())
     {
+        submenu.append(&settings)?;
         submenu.append(&check)?;
     }
     let shortcuts = MenuItem::with_id(
-        app, KEYBOARD_SHORTCUTS, locale::text("key01"), true, None::<&str>,
+        app,
+        KEYBOARD_SHORTCUTS,
+        locale::text("key01"),
+        true,
+        None::<&str>,
     )?;
-    if let Some(help) = menu.get(tauri::menu::HELP_SUBMENU_ID)
+    if let Some(help) = menu
+        .get(tauri::menu::HELP_SUBMENU_ID)
         .and_then(|item| item.as_submenu().cloned())
     {
         help.append(&shortcuts)?;

@@ -1351,6 +1351,10 @@ pub fn run() {
                 if let Err(error) = update_menu::show(app) {
                     eprintln!("{error}");
                 }
+            } else if event.id().as_ref() == update_menu::SETTINGS {
+                if let Err(error) = update_menu::show_dialog(app, update_menu::SETTINGS) {
+                    eprintln!("{error}");
+                }
             } else if event.id().as_ref() == update_menu::KEYBOARD_SHORTCUTS {
                 if let Err(error) = update_menu::show_dialog(app, update_menu::KEYBOARD_SHORTCUTS) {
                     eprintln!("{error}");
