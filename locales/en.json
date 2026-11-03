@@ -125,7 +125,6 @@
   "commit08": "Working tree is clean",
   "commit12": "Resize files and commit form panels",
   "commit13": "Commit message",
-  "commit14": "Describe your changes",
   "commit15": "Create commit",
   "commit16": "Push after commit",
   "commit17": "Select a file on the left to view changes.",
@@ -535,5 +534,11 @@
   "tagDel05": "Confirm tag deletion",
   "tagDel06": "Checking the remote tag…",
   "tagDel07": "This tag is absent on the selected remote — only the local tag will be deleted",
-  "tagDel08": "Could not check the remote tag. Only local deletion is available"
+  "tagDel08": "Could not check the remote tag. Only local deletion is available",
+  "compose01": "Commit title",
+  "compose02": "Summarize the change",
+  "compose03": "Description (optional)",
+  "compose04": "Explain why the change was needed and any useful context",
+  "compose05": "Edit the last commit",
+  "compose06": "Amend replaces the latest commit with a new one. Review the message and confirm replacement."
 }

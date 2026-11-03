@@ -1,3 +1,6 @@
+import CommitMessageFields from "./commit-message-fields";
+import { splitCommitMessage } from "~/lib/commit-message";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { readPanelSizes } from "~/lib/layout-preferences";
 import DirectoryDiffView from "./directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
@@ -12,7 +15,6 @@ import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resi
 import { SelectField } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
-import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
 import { reportTerminalError } from "~/lib/terminal";
 import ChangedFilesTree from "./changed-files-tree";
 import FileDiffView from "./file-diff-view";
@@ -58,7 +60,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
   const amendValid = () => { const target = amendTarget(); return Boolean(target && canAmend() && target.head === props.history?.tip && target.branch === props.history?.current_branch); };
-  const canSubmit = () => !disabled() && Boolean(message().trim()) && (amendTarget() ? amendValid() && amendConfirmed() : stagedCount() > 0);
+  const canSubmit = () => !disabled() && Boolean(splitCommitMessage(message()).subject.trim()) && (amendTarget() ? amendValid() && amendConfirmed() : stagedCount() > 0);
   async function toggleAmend(enabled: boolean) {
     if (disabled()) return;
     const request = ++messageRequest;
@@ -222,21 +224,26 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     </ResizablePanel>
   </Resizable></div>
     <Show when={props.onCommitted && !props.history?.operation}>
-      <div class="shrink-0 border-t bg-muted/20 p-4">
+      <div class="max-h-[50%] shrink-0 overflow-y-auto border-t bg-muted/20 p-4">
           <form onSubmit={submit} class="shrink-0 space-y-3">
-            <TextField value={message()} onChange={setMessage} disabled={disabled()} required>
-              <TextFieldLabel>{t("commit13")}</TextFieldLabel>
-              <TextFieldTextArea placeholder={t("commit14")} class="max-h-28 min-h-16" rows={2} />
-            </TextField>
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
+            <div class="flex flex-wrap items-center gap-3 border-t pt-3">
               <label class="flex items-center gap-2 text-sm" title={t("commit21")}><Checkbox checked={sign()} onChange={setSign} disabled={disabled()} />{t("commit20")}</label>
-              <label class="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} />{t("commit22")}</label>
             </div>
-            <Show when={amendTarget()}>
-              <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
-              <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
-              <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
-            </Show>
+            <Collapsible defaultOpen={Boolean(amendTarget())} class="rounded-md border">
+              <CollapsibleTrigger as={Button} type="button" variant="ghost" class="h-control-toolbar w-full justify-between px-control-sm-x text-xs" disabled={disabled()}>
+                <span>{t("compose05")}</span><span class="text-muted-foreground">{amendTarget() ? t("commit22") : "+"}</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent class="space-y-2 border-t p-3">
+                <p class="text-xs text-muted-foreground">{t("compose06")}</p>
+                <label class="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} />{t("commit22")}</label>
+                <Show when={amendTarget()}>
+                  <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
+                  <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
+                  <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
+                </Show>
+              </CollapsibleContent>
+            </Collapsible>
             <div class="flex items-center justify-between gap-4">
               <Button type="submit" class="order-last ml-auto h-8 px-3" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
               <label class="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>

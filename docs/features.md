@@ -32,8 +32,10 @@ The Changes mode separates staged and unstaged files. Select individual files or
 whole folders, stage or unstage them, and review each version separately. Switch
 between a tree and a flat list, and sort by path, name, or status.
 
-Enter a commit message and create a commit, optionally pushing it afterward.
-Amend the latest commit, including changing only its message. Cryptographic
+Enter a required commit title and, optionally, expand the description field for
+additional context. Create the commit, optionally pushing it afterward.
+Expand the separate “Edit the last commit” section to amend the latest commit,
+including changing only its message. Returning to a new commit restores its draft. Cryptographic
 signing uses the GPG or SSH key configured in Git; configure the key and signing
 agent before enabling signing in the app.
 
