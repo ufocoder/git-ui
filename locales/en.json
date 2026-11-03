@@ -517,5 +517,6 @@
   "fileAct14": "Complete the current Git operation and resolve conflicts first",
   "fileAct15": "Restore",
   "find14": "Changes history: {path}",
-  "find15": "All history"
+  "find15": "All history",
+  "diff17": "Lines added: {added}, removed: {removed}"
 }
