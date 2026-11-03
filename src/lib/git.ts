@@ -39,6 +39,7 @@ export type SyncStatus = { upstream: string | null; remote_tip: string | null; a
 export type HistoryScope = "all" | "incoming" | "outgoing";
 export type History = {
   worktree_files?: CommitFile[];
+  branch_tips?: Record<string, string>;
   last_fetch?: number | null;
   path: string;
   commits: Commit[];
@@ -134,9 +135,9 @@ export const git = {
   openProject: (path: string) => request<OpenProjectResult>("open_project", { path }),
   getTerminalLog: () => request<TerminalLog | null>("get_project_terminal_log"),
   getHistory: () => request<History>("get_project_history"),
-  getCommitPage: (tip: string, offset: number) => request<CommitPage>("get_commit_page", { tip, offset }),
+  getCommitPage: (tip: string, offset: number, allBranches = true, tips?: string[]) => request<CommitPage>("get_commit_page", { tip, offset, allBranches, tips }),
   getSyncCommitPage: (localTip: string, remoteTip: string, direction: Exclude<HistoryScope, "all">, offset: number) => request<CommitPage>("get_sync_commit_page", { localTip, remoteTip, direction, offset }),
-  getFilteredCommitPage: (localTip: string, remoteTip: string | null, scope: HistoryScope, filter: HistoryFilter, offset: number) => request<CommitPage>("get_filtered_commit_page", { localTip, remoteTip, scope, filter, offset }),
+  getFilteredCommitPage: (localTip: string, remoteTip: string | null, scope: HistoryScope, filter: HistoryFilter, offset: number, allBranches = true, tips?: string[]) => request<CommitPage>("get_filtered_commit_page", { localTip, remoteTip, scope, filter, offset, allBranches, tips }),
   getCommitFiles: (commit: string) => request<CommitFile[]>("get_commit_files", { commit }),
   getCommitDetails: (commit: string) => request<CommitDetails>("get_commit_details", { commit }),
   getConflictFile: (file: string) => request<ConflictFile>("get_conflict_file", { file }),

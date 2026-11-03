@@ -43,11 +43,16 @@ function App() {
   const [gitCheck, setGitCheck] = createSignal<GitCheckState>(isTauri() ? "checking" : "ready");
   const [gitPlatform, setGitPlatform] = createSignal("");
   const [choosingProject, setChoosingProject] = createSignal(false);
+  const [historyBranch, setHistoryBranch] = createSignal("all");
   const [historyScope, setHistoryScope] = createSignal<HistoryScope>("all");
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
   const [terminalOpen, setTerminalOpen] = createSignal(false);
   const [error, setError] = createSignal("");
   const [history, setHistory] = createSignal<History>();
+  createEffect(() => {
+    const project = history(), selected = historyBranch();
+    if (project && selected !== "all" && selected !== "current" && !project.branch_tips?.[selected] && !project.branches.some(name => `refs/heads/${name}` === selected)) setHistoryBranch("all");
+  });
   const [initializePath, setInitializePath] = createSignal("");
   const [initializeError, setInitializeError] = createSignal("");
   const [recentProjects, setRecentProjects] = createSignal<string[]>([]);
@@ -200,7 +205,7 @@ function App() {
     clearProjectFeedback();
     batch(() => {
       setProjectSwitcherOpen(false); setSettingsOpen(false); setTrackingMode(undefined); setBranchDialogOpen(false);
-      setHistory(result.history); setRepositoryMode("history"); setHistoryScope("all");
+      setHistory(result.history); setHistoryBranch("all"); setRepositoryMode("history"); setHistoryScope("all");
       setTerminalOpen(false); setIsHistory(true);
       if (!result.warning) setRecentProjects(result.recent_projects);
     });
@@ -375,7 +380,7 @@ function App() {
           ready={gitCheck() === "ready"} requirement={<GitRequirement state={gitCheck()} platform={gitPlatform()} onRetry={() => void retryGitCheck()} />}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
-        <RepositoryToolbar onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <RepositoryToolbar historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts"} fallback={
           <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">
             <p class="text-xs text-muted-foreground">{t("op21", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
@@ -396,7 +401,7 @@ function App() {
         <Show when={busy()}><p role="status" class="sr-only">{t("app04")}</p></Show>
         <Show when={history()} fallback={<Show when={terminalOpen()}><section class="min-h-0 flex-1"><TerminalPanel busy={busy()} /></section></Show>}>{project => { const initial = project(); return <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
               <Show keyed when={(history() ?? initial).path}>
-              <RepositoryContent onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+              <RepositoryContent historyBranch={historyBranch()} onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
               </Show>
             </section>;
         }}</Show>

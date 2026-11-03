@@ -16,6 +16,7 @@ type RepositoryContentProps = {
   mode: RepositoryMode;
   onModeChange: (mode: RepositoryMode) => void;
   scope: HistoryScope;
+  historyBranch: string;
   history: History;
   disabled: boolean;
   terminalOpen: boolean;
@@ -41,7 +42,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
       <Suspense fallback={<p role="status" class="p-4 text-sm text-muted-foreground">{t("ui01")}</p>}>
         <Switch>
           <Match when={props.mode === "history"}>
-            <CommitTable search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
+            <CommitTable branch={props.historyBranch} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
           </Match>
           <Match when={props.mode === "commit"}>
             <WorktreeCommit draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />

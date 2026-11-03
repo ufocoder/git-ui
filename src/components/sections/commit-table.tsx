@@ -19,7 +19,7 @@ import { git, buildCommitGraph, createWorktreeCommit, type Commit, type HistoryS
 
 const ROW_HEIGHT = 34;
 
-export default function CommitTable(props: { search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
+export default function CommitTable(props: { branch: string; search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
   let header!: HTMLTableSectionElement;
   let searchButton!: HTMLButtonElement;
@@ -47,15 +47,19 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
   const [copyStatus, setCopyStatus] = createSignal("");
   const [scrollTop, setScrollTop] = createSignal(0);
   const [height, setHeight] = createSignal(500);
+  const allBranches = () => props.branch === "all";
+  const viewingHead = () => allBranches() || props.branch === "current" || props.branch === `refs/heads/${props.history.current_branch}`;
+  const selectedTip = () => allBranches() || props.branch === "current" ? props.history.tip : props.history.branch_tips?.[props.branch] ?? (viewingHead() ? props.history.tip : "");
   const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
-  const displayedCommits = createMemo(() => props.scope === "all" && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
+  const displayedCommits = createMemo(() => props.scope === "all" && viewingHead() && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
   let previousContext = "";
   createEffect(() => {
     const history = props.history;
     const scope = props.scope;
+    const tip = selectedTip(), includeBranches = allBranches(), showWorktree = viewingHead();
     const search = appliedFilter();
     const hasFilter = filtered();
-    const context = JSON.stringify([history.path, history.current_branch, scope, search]);
+    const context = JSON.stringify([history.path, history.current_branch, props.branch, scope, search]);
     const preserve = previousContext === context;
     previousContext = context;
     const previous = untrack(selectedCommit);
@@ -72,13 +76,13 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
       setSelectedCommit(undefined);
     }
     const pageAt = (offset: number) => hasFilter
-      ? git.getFilteredCommitPage(history.tip, history.sync.remote_tip, scope, search, offset)
-      : scope === "all" ? git.getCommitPage(history.tip, offset)
+      ? git.getFilteredCommitPage(tip, history.sync.remote_tip, scope, search, offset, includeBranches, history.branch_tips ? Object.values(history.branch_tips) : undefined)
+      : scope === "all" ? git.getCommitPage(tip, offset, includeBranches, history.branch_tips ? Object.values(history.branch_tips) : undefined)
       : history.sync.remote_tip ? git.getSyncCommitPage(history.tip, history.sync.remote_tip, scope, offset)
       : Promise.resolve({ commits: [], has_more: false });
     void (async () => {
       try {
-        let page = scope === "all" && !hasFilter
+        let page = scope === "all" && includeBranches && !hasFilter
           ? { commits: history.commits, has_more: history.has_more }
           : await pageAt(0);
         let updated = [...page.commits];
@@ -89,7 +93,7 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
           updated.push(...page.commits);
         }
         if (request !== generation) return;
-        const rows = scope === "all" && !hasFilter && history.has_changes ? [createWorktreeCommit(history.tip), ...updated] : updated;
+        const rows = scope === "all" && showWorktree && !hasFilter && history.has_changes ? [createWorktreeCommit(history.tip), ...updated] : updated;
         batch(() => {
           setCommits(updated); setHasMore(page.has_more);
           setSelectedCommit(preserve ? preservedSelection(previous, rows) : rows[0]);
@@ -116,14 +120,14 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
   async function loadMore() {
     if (debouncing() || loading() || !hasMore() || props.disabled) return;
     const request = generation;
-    const tip = props.history.tip;
+    const tip = selectedTip();
     setLoading(true);
     setError("");
     try {
       const scope = props.scope;
       const remoteTip = props.history.sync.remote_tip;
-      const page = filtered() ? await git.getFilteredCommitPage(tip, remoteTip, scope, appliedFilter(), commits().length)
-        : scope === "all" ? await git.getCommitPage(tip, commits().length)
+      const page = filtered() ? await git.getFilteredCommitPage(tip, remoteTip, scope, appliedFilter(), commits().length, allBranches(), props.history.branch_tips ? Object.values(props.history.branch_tips) : undefined)
+        : scope === "all" ? await git.getCommitPage(tip, commits().length, allBranches(), props.history.branch_tips ? Object.values(props.history.branch_tips) : undefined)
         : remoteTip ? await git.getSyncCommitPage(tip, remoteTip, scope, commits().length) : { commits: [], has_more: false };
       if (request !== generation) return;
       setCommits(previous => [...previous, ...page.commits]);

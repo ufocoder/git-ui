@@ -22,6 +22,7 @@ fn valid_tip(tip: &str) -> bool {
     [40, 64].contains(&tip.len()) && tip.bytes().all(|ch| ch.is_ascii_hexdigit())
 }
 
+#[cfg(test)]
 pub fn page(
     path: &Path,
     local_tip: &str,
@@ -30,6 +31,17 @@ pub fn page(
     filter: &HistoryFilter,
     offset: usize,
 ) -> Result<CommitPage, String> {
+    page_with_branches(path, local_tip, remote_tip, scope, filter, offset, true)
+}
+
+#[cfg(test)]
+pub fn page_with_branches(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool) -> Result<CommitPage, String> {
+    page_at_tips(path, local_tip, remote_tip, scope, filter, offset, all_branches, None)
+}
+
+pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
+    if tips.is_some_and(|tips| tips.iter().any(|tip| !valid_tip(tip))) { return Err(locale::text("err12").into()); }
+    let branch_args: Vec<String> = tips.map(|tips| tips.to_vec()).unwrap_or_else(|| vec!["--branches".into(), "--remotes".into()]);
     if !["all", "incoming", "outgoing"].contains(&scope) {
         return Err(locale::text("sync09").into());
     }
@@ -84,8 +96,8 @@ pub fn page(
         "--regexp-ignore-case".into(),
         "--fixed-strings".into(),
     ];
-    if scope == "all" {
-        args.extend(["--remotes".into()]);
+    if scope == "all" && all_branches {
+        args.extend(branch_args.clone());
     }
     if !author.is_empty() {
         args.push(format!("--author={author}"));
@@ -110,8 +122,8 @@ pub fn page(
         if !sha.is_empty() && !text.is_empty() {
             candidates.push(format!("--grep={text}"));
         }
-        if scope == "all" {
-            candidates.extend(["--remotes".into()]);
+        if scope == "all" && all_branches {
+            candidates.extend(branch_args.clone());
         }
         candidates.extend([revision.clone(), "--".into()]);
         if !file.is_empty() {
@@ -132,8 +144,8 @@ pub fn page(
             revision,
             "--".into(),
         ];
-        if scope == "all" {
-            message_args.splice(2..2, ["--remotes".into()]);
+        if scope == "all" && all_branches {
+            message_args.splice(2..2, branch_args.clone());
         }
         if !file.is_empty() {
             message_args.push(format!(":(literal){file}"));
@@ -156,7 +168,7 @@ pub fn page(
             return Ok(empty_page());
         }
         args.retain(|arg| {
-            !["--topo-order", "--remotes"].contains(&arg.as_str())
+            !["--topo-order", "--branches", "--remotes"].contains(&arg.as_str()) && !branch_args.contains(arg)
                 && !arg.starts_with("--skip=")
         });
         args.push("--no-walk=unsorted".into());
@@ -184,16 +196,20 @@ pub async fn get_filtered_commit_page(
     scope: String,
     filter: HistoryFilter,
     offset: usize,
+    all_branches: Option<bool>,
+    tips: Option<Vec<String>>,
 ) -> Result<CommitPage, String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
-        page(
+        page_at_tips(
             Path::new(&path),
             &local_tip,
             remote_tip.as_deref(),
             &scope,
             &filter,
             offset,
+            all_branches.unwrap_or(true),
+            tips.as_deref(),
         )
     })
     .await

@@ -200,6 +200,7 @@ struct ProjectHistory {
     commits: Vec<Commit>,
     branches: Vec<String>,
     branch_comparisons: HashMap<String, BranchComparison>,
+    branch_tips: HashMap<String, String>,
     tags: Vec<String>,
     stashes: Vec<stash::StashEntry>,
     remotes: Vec<Remote>,
@@ -352,7 +353,10 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
     git(&path, &["rev-parse", "--git-dir"])?;
     let refs = git(&path, &["rev-parse", "--revs-only", "HEAD"])?;
     let tip = refs.trim().to_owned();
-    let page = read_commit_page(&path, &tip, 0)?;
+    let branch_tips: HashMap<String, String> = git(&path, &["for-each-ref", "--format=%(refname)%00%(objectname)", "refs/heads/", "refs/remotes/"])?
+        .lines().filter_map(|line| line.split_once('\0').map(|(name, tip)| (name.to_owned(), tip.to_owned()))).collect();
+    let tips: Vec<String> = branch_tips.values().cloned().collect();
+    let page = read_branch_commit_page_at_tips(&path, &tip, 0, true, Some(&tips))?;
     let working_files = read_worktree_files(&path)?;
     let current_branch = git(&path, &["branch", "--show-current"])?.trim().to_owned();
     Ok(ProjectHistory {
@@ -368,6 +372,7 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         path: path.to_string_lossy().into_owned(),
         commits: page.commits,
         branch_comparisons: read_branch_comparisons(&path, &tip)?,
+        branch_tips,
         tip,
         has_more: page.has_more,
         has_changes: !working_files.is_empty(),
@@ -398,7 +403,17 @@ struct CommitPage {
     has_more: bool,
 }
 
+#[cfg(test)]
 fn read_commit_page(path: &Path, tip: &str, offset: usize) -> Result<CommitPage, String> {
+    read_branch_commit_page(path, tip, offset, true)
+}
+
+#[cfg(test)]
+fn read_branch_commit_page(path: &Path, tip: &str, offset: usize, all_branches: bool) -> Result<CommitPage, String> {
+    read_branch_commit_page_at_tips(path, tip, offset, all_branches, None)
+}
+
+fn read_branch_commit_page_at_tips(path: &Path, tip: &str, offset: usize, all_branches: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
     if tip.is_empty() {
         return Ok(CommitPage {
             commits: vec![],
@@ -408,14 +423,14 @@ fn read_commit_page(path: &Path, tip: &str, offset: usize) -> Result<CommitPage,
     if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit()) {
         return Err(locale::text("err12").into());
     }
-    read_commit_range_with_refs(path, tip, offset, true)
+    read_commit_range_with_refs(path, tip, offset, all_branches, tips)
 }
 
 fn read_commit_range(path: &Path, revision: &str, offset: usize) -> Result<CommitPage, String> {
-    read_commit_range_with_refs(path, revision, offset, false)
+    read_commit_range_with_refs(path, revision, offset, false, None)
 }
 
-fn read_commit_range_with_refs(path: &Path, revision: &str, offset: usize, include_refs: bool) -> Result<CommitPage, String> {
+fn read_commit_range_with_refs(path: &Path, revision: &str, offset: usize, include_refs: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
     let count = format!("--max-count={}", PAGE_SIZE + 1);
     let skip = format!("--skip={offset}");
     let mut args = vec![
@@ -423,7 +438,10 @@ fn read_commit_range_with_refs(path: &Path, revision: &str, offset: usize, inclu
         "--no-show-signature", "--format=%H%x00%an%x00%aI%x00%s%x00%P", "-z",
     ];
     if include_refs {
-        args.extend(["--remotes"]);
+        if let Some(tips) = tips {
+            if tips.iter().any(|tip| ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit())) { return Err(locale::text("err12").into()); }
+            args.extend(tips.iter().map(String::as_str));
+        } else { args.extend(["--branches", "--remotes"]); }
     }
     args.extend([revision, "--"]);
     let log = git(path, &args)?;
@@ -455,9 +473,11 @@ async fn get_commit_page(
     projects: State<'_, Projects>,
     tip: String,
     offset: usize,
+    all_branches: Option<bool>,
+    tips: Option<Vec<String>>,
 ) -> Result<CommitPage, String> {
     let path = project_path(&window, &projects)?;
-    tauri::async_runtime::spawn_blocking(move || read_commit_page(Path::new(&path), &tip, offset))
+    tauri::async_runtime::spawn_blocking(move || read_branch_commit_page_at_tips(Path::new(&path), &tip, offset, all_branches.unwrap_or(true), tips.as_deref()))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -1442,6 +1462,42 @@ mod tests {
     }
 
     #[test]
+    fn branch_history_switches_scope_without_checking_out_or_losing_pagination() {
+        let repo = TempRepo::new(); repo.init(); commit_file(&repo, "base", "base");
+        let main = git(&repo.0, &["branch", "--show-current"]).unwrap();
+        git(&repo.0, &["checkout", "-b", "side"]).unwrap();
+        for i in 0..PAGE_SIZE + 2 { commit_file(&repo, &format!("side {i}"), &format!("Side {i}")); }
+        let side_tip = git(&repo.0, &["rev-parse", "HEAD"]).unwrap().trim().to_owned();
+        git(&repo.0, &["checkout", main.trim()]).unwrap();
+        commit_file(&repo, "main", "Main only");
+        let history = read_history(&repo.0).unwrap();
+        assert_eq!(history.branch_tips["refs/heads/side"], side_tip);
+        let mut all = history.commits;
+        let mut more = history.has_more;
+        while more {
+            let page = read_branch_commit_page(&repo.0, &history.tip, all.len(), true).unwrap();
+            more = page.has_more; all.extend(page.commits);
+        }
+        assert!(all.iter().any(|commit| commit.hash == side_tip));
+        assert!(all.iter().any(|commit| commit.subject == "Main only"));
+        assert_eq!(all.len(), PAGE_SIZE + 4);
+        assert_eq!(all.iter().map(|commit| &commit.hash).collect::<std::collections::HashSet<_>>().len(), all.len());
+        let current = read_branch_commit_page(&repo.0, &history.tip, 0, false).unwrap();
+        assert_eq!(current.commits.len(), 2);
+        let selected = read_branch_commit_page(&repo.0, &side_tip, 0, false).unwrap();
+        assert!(selected.has_more);
+        assert!(!selected.commits.iter().any(|commit| commit.subject == "Main only"));
+        let filter = history_search::HistoryFilter { text: "Side".into(), ..Default::default() };
+        assert!(history_search::page_with_branches(&repo.0, &history.tip, None, "all", &filter, 0, false).unwrap().commits.is_empty());
+        assert_eq!(history_search::page_with_branches(&repo.0, &history.tip, None, "all", &filter, 0, true).unwrap().commits.len(), PAGE_SIZE);
+        let sha_filter = history_search::HistoryFilter { sha: side_tip[..8].into(), ..Default::default() };
+        let matches = history_search::page_with_branches(&repo.0, &history.tip, None, "all", &sha_filter, 0, true).unwrap();
+        assert_eq!(matches.commits.len(), 1);
+        assert_eq!(matches.commits[0].hash, side_tip);
+        assert_eq!(git(&repo.0, &["branch", "--show-current"]).unwrap(), main);
+    }
+
+    #[test]
     fn rejects_folder_without_git() {
         let repo = TempRepo::new();
         assert!(read_history(&repo.0).unwrap_err().contains(".git"));
@@ -1479,7 +1535,8 @@ mod tests {
         assert!(history.has_more);
         assert_eq!(history.commits[0].parents[0], history.commits[1].hash);
         commit_file(&repo, "new", "Commit after first page");
-        let second = read_commit_page(&repo.0, &history.tip, PAGE_SIZE).unwrap();
+        let tips: Vec<String> = history.branch_tips.values().cloned().collect();
+        let second = read_branch_commit_page_at_tips(&repo.0, &history.tip, PAGE_SIZE, true, Some(&tips)).unwrap();
         assert_eq!(second.commits.len(), 15);
         assert!(!second.has_more);
         assert_eq!(second.commits[0].subject, "Коммит 14");
@@ -1519,7 +1576,7 @@ mod tests {
         commit_file(&repo, "feature", "Feature commit");
         let history = switch_branch(&repo.0, &original).unwrap();
         assert_eq!(history.current_branch, original);
-        assert_eq!(history.commits[0].subject, "Base commit");
+        assert_eq!(history.commits.iter().find(|commit| commit.hash == history.tip).unwrap().subject, "Base commit");
         assert!(history.branches.contains(&"feature/test".into()));
         assert_eq!(
             std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),

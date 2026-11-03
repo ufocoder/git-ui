@@ -20,6 +20,10 @@ app-data directory.
 - Browse a virtualized, progressively loaded table with a graph, description,
   commit hash, author, and date.
 - See local branch, remote branch, and tag labels on commits.
+- Choose All branches to combine local and remote branch history, or select one
+  local or remote branch to inspect its history without checking it out. Search and
+  pagination follow that choice; uncommitted changes appear only when viewing
+  the checked-out branch or all branches.
 - Open search to filter by message, SHA, author, or file and directory path.
 - Select a commit to inspect its message, file tree, and changes on the same page.
 - Use the context menu to check out a commit, create a branch or tag, copy its

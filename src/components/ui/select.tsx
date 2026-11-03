@@ -17,6 +17,7 @@ export function SelectField(props: {
   id?: string;
   class?: string;
   placeholder?: string;
+  triggerClass?: string;
 }) {
   const value = createMemo(() => props.options.find(option => option.value === props.value));
   return <Select<SelectOption> class={cn("min-w-0 space-y-1", props.class)} options={props.options} optionValue={option => `option-${encodeURIComponent(option.value)}`} optionTextValue="label"
@@ -24,7 +25,7 @@ export function SelectField(props: {
     placeholder={props.placeholder}
     itemComponent={item => <SelectItem item={item.item}><SelectItemLabel class="break-all">{item.item.rawValue.label}</SelectItemLabel></SelectItem>}>
     <Show when={props.label}><SelectPrimitive.Label class="block text-sm font-medium">{props.label}</SelectPrimitive.Label></Show>
-    <SelectTrigger id={props.id} class="w-full font-normal" aria-label={props["aria-label"]}>
+    <SelectTrigger id={props.id} class={cn("w-full font-normal", props.triggerClass)} aria-label={props["aria-label"]}>
       <span class="min-w-0 truncate"><SelectValue<SelectOption>>{state => state.selectedOption()?.label ?? props.placeholder ?? ""}</SelectValue></span>
     </SelectTrigger>
     <SelectContent />

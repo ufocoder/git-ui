@@ -1,3 +1,4 @@
+import { SelectField } from "~/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { Show, createSignal, onCleanup } from "solid-js";
 import { language, locale, t } from "~/lib/i18n";
@@ -6,6 +7,8 @@ import type { History, RepositoryMode, SyncAction } from "~/lib/git";
 
 type RepositoryToolbarProps = {
   mode: RepositoryMode;
+  historyBranch: string;
+  onHistoryBranchChange: (value: string) => void;
   onStashAll: () => void;
   busy: boolean;
   history: History | undefined;
@@ -52,6 +55,8 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               </DropdownMenu>
             </div>
           </div>
+          <SelectField class="w-48 max-w-full" triggerClass="h-control-toolbar" aria-label={t("historyView03")} value={props.historyBranch} onChange={props.onHistoryBranchChange} disabled={props.busy}
+            options={[{ value: "all", label: t("historyView01") }, ...(props.history?.branches ?? []).map(branch => ({ value: `refs/heads/${branch}`, label: branch })), ...(props.history?.remotes ?? []).flatMap(remote => remote.branches.map(branch => ({ value: `refs/remotes/${remote.name}/${branch}`, label: `${remote.name}/${branch}` }))), ...(!props.history?.current_branch ? [{ value: "current", label: "HEAD" }] : [])]} />
           </Show>
           <Show when={props.mode === "commit"}><Button variant="outline" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("hist01") : !props.history?.tip ? t("stash13") : props.history.operation ? t("stash12") : !props.history.has_changes ? t("stash14") : t("stash25")}>{t("stash24")}</Button></Show>
           <Button variant={props.terminalOpen ? "secondary" : "ghost"} class="ml-auto h-control-toolbar px-control-sm-x" aria-pressed={props.terminalOpen} aria-controls="repository-terminal" onClick={props.onToggleTerminal}>
