@@ -1,3 +1,5 @@
+import type { ReferenceAction } from "./reference-action-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import TagsSection from "./tags-section";
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
@@ -15,7 +17,7 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   const [branchSearch, setBranchSearch] = createSignal("");
   const searchable = () => props.history.branches.length > 10;
   const branches = createMemo(() => {
@@ -66,11 +68,11 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
             <Show when={!branches().length}><p class="px-2 py-2 text-xs text-muted-foreground" role="status">{t("branchFind03")}</p></Show>
           </Show>
           <SidebarMenu>
-            <For each={branches()}>{branch => <SidebarMenuItem>
+            <For each={branches()}>{branch => <SidebarMenuItem class="flex min-w-0 items-center gap-1">
               <SidebarMenuButton disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
-                class="group/branch min-w-0 h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
+                class="group/branch min-w-0 flex-1 h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
                 <span class="min-w-0 flex-1 truncate">{branch}</span>
                 <Show when={props.history.branch_comparisons[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
@@ -83,13 +85,23 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
                   </Show>
                 }</Show>
               </SidebarMenuButton>
+              <DropdownMenu placement="bottom-end" gutter={4}>
+                <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-6 shrink-0" disabled={props.disabled} aria-label={t("refAct01", { name: branch })}>⋯</DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem disabled={props.disabled || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("refAct10")}</DropdownMenuItem>
+                  <DropdownMenuItem title={branch !== props.history.current_branch ? t("refAct11") : undefined} disabled={props.disabled || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("nav07")}</DropdownMenuItem>
+                  <DropdownMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("refAct02")}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem class="text-destructive data-[highlighted]:text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("refAct03")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>}</For>
           </SidebarMenu>
           <Show when={!props.history.branches.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo06")}</p></Show>
         </SidebarGroupContent>
       </SidebarSection>
       <SidebarSeparator />
-      <TagsSection history={props.history} disabled={props.disabled} onCreate={props.onCreateTag} onPush={props.onPushTags} onDelete={props.onDeleteTag} />
+      <TagsSection history={props.history} disabled={props.disabled} onCreate={props.onCreateTag} onPush={props.onPushTags} onDelete={props.onDeleteTag} onRename={name => props.onReferenceAction({ kind: "tag", name })} />
       <SidebarSeparator />
       <SidebarSection title={t("repo09")} icon={<SectionIcon name="remotes" />} action={<AddSidebarItem kind="remote" disabled={props.disabled} onCreate={props.onAddRemote} />}>
         <SidebarGroupContent>

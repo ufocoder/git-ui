@@ -1,3 +1,4 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { For, Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
@@ -13,6 +14,7 @@ import AddSidebarItem from "./add-sidebar-item";
 export default function TagsSection(props: {
   history: History;
   disabled: boolean;
+  onRename: (name: string) => void;
   onCreate: (name: string) => Promise<void>;
   onDelete: (tag: string, remote: string | null) => Promise<void>;
   onPush: (remote: string, tag: string | null) => Promise<void>;
@@ -56,17 +58,25 @@ export default function TagsSection(props: {
   const disabled = () => props.disabled || pending();
   return <>
     <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={<div class="flex shrink-0 items-center">
-      <Button variant="ghost" size="icon" class="size-7" disabled={disabled() || !props.history.tags.length} onClick={() => open(null)} aria-label={t("tagPush02")} title={t("tagPush02")}>↑</Button>
+      <DropdownMenu placement="bottom-end" gutter={4}>
+        <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7" disabled={disabled() || !props.history.tags.length} aria-label={t("refAct01", { name: t("repo07") })}>⋯</DropdownMenuTrigger>
+        <DropdownMenuContent><DropdownMenuItem disabled={disabled() || !props.history.tags.length} onSelect={() => open(null)}>{t("tagPush02")}</DropdownMenuItem></DropdownMenuContent>
+      </DropdownMenu>
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     </div>}>
       <SidebarGroupContent><SidebarMenu>
         <For each={props.history.tags}>{tag => <SidebarMenuItem>
           <div class="group/tag flex h-8 min-w-0 items-center gap-1 px-2 py-1 text-sm leading-5">
             <span class="min-w-0 flex-1 truncate" title={tag}>{tag}</span>
-            <Button variant="ghost" size="icon" class="size-6 shrink-0 opacity-0 group-hover/tag:opacity-100 group-focus-within/tag:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100" disabled={disabled()} onClick={() => open(tag)} aria-label={t("tagPush03", { tag })} title={t("tagPush03", { tag })}>↑</Button>
-            <Button variant="ghost" size="icon" class="size-6 shrink-0 text-muted-foreground opacity-0 hover:text-destructive group-hover/tag:opacity-100 group-focus-within/tag:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100" disabled={disabled()} onClick={() => open(tag, true)} aria-label={t("tagDel02", { tag })} title={t("tagDel02", { tag })}>
-              <svg aria-hidden="true" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg>
-            </Button>
+            <DropdownMenu placement="bottom-end" gutter={4}>
+              <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-6 shrink-0" disabled={disabled()} aria-label={t("refAct01", { name: tag })}>⋯</DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tagPush03", { tag })}</DropdownMenuItem>
+                <DropdownMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("refAct02")}</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem class="text-destructive data-[highlighted]:text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </SidebarMenuItem>}</For>
       </SidebarMenu><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show></SidebarGroupContent>

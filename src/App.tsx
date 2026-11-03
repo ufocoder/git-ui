@@ -1,3 +1,4 @@
+import ReferenceActionDialog, { type ReferenceAction } from "~/components/sections/reference-action-dialog";
 import KeyboardShortcutsDialog from "~/components/sections/keyboard-shortcuts-dialog";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { Button } from "~/components/ui/button";
@@ -317,6 +318,15 @@ function App() {
     finally { setBusy(false); }
   }
 
+  const [referenceAction, setReferenceAction] = createSignal<ReferenceAction>();
+  async function changeReference(action: ReferenceAction, name: string | null) {
+    if (busy()) throw new Error(t("hist01"));
+    setBusy(true);
+    try { setHistory(await git.changeReference(action.kind, action.name, name)); }
+    catch (error) { setTerminalOpen(true); throw error; }
+    finally { setBusy(false); }
+  }
+
   async function deleteTag(tag: string, remote: string | null) {
     if (busy()) throw new Error(t("hist01"));
     setBusy(true);
@@ -357,7 +367,8 @@ function App() {
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
     <Show when={isHistory() && history()}>{project => { const initial = project(); return <RepositorySidebar onSettings={() => setSettingsOpen(true)} history={history() ?? initial} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={changeProject} projectMenuOpen={projectSwitcherOpen()} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
-      onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />; }}</Show>
+      onReferenceAction={setReferenceAction} onPushBranch={() => requestSync("push")} onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />; }}</Show>
+    <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class={isHistory() ? "flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden" : "flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6"}>
       <Show when={isHistory()} fallback={
         <ProjectChooser choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}

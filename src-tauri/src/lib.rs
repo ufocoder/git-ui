@@ -13,6 +13,7 @@ mod file_actions;
 mod terminal_log;
 mod tracking;
 mod tags;
+mod reference_actions;
 mod update_menu;
 mod updates;
 
@@ -1385,6 +1386,7 @@ pub fn run() {
             frontend_ready,
             sync_project,
             commit_ops::run_commit_operation,
+            reference_actions::change_project_reference,
             tags::push_project_tags,
             tags::delete_project_tag,
             tags::remote_project_tag_exists,

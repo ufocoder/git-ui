@@ -540,5 +540,16 @@
   "compose03": "Description (optional)",
   "compose04": "Explain why the change was needed and any useful context",
   "compose05": "Edit the last commit",
-  "compose06": "Amend replaces the latest commit with a new one. Review the message and confirm replacement."
+  "compose06": "Amend replaces the latest commit with a new one. Review the message and confirm replacement.",
+  "refAct01": "Actions for {name}",
+  "refAct02": "Rename",
+  "refAct03": "Delete branch",
+  "refAct04": "New name",
+  "refAct05": "Rename {name} locally. Its remote name will stay unchanged.",
+  "refAct06": "Delete local branch {name}? Branches with unmerged commits will not be deleted.",
+  "refAct07": "Invalid branch or tag name",
+  "refAct08": "Confirm branch deletion",
+  "refAct09": "Update branch or tag",
+  "refAct10": "Switch to branch",
+  "refAct11": "Switch to this branch before pushing"
 }
