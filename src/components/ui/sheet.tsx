@@ -46,7 +46,7 @@ const SheetOverlay = <T extends ValidComponent = "div">(
   return (
     <SheetPrimitive.Overlay
       class={cn(
-        "fixed inset-0 z-50 bg-black/80",
+        "fixed inset-0 z-50 bg-sheet-overlay",
         local.class
       )}
       {...others}

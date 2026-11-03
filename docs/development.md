@@ -158,6 +158,11 @@ native dependencies for your operating system. CI runs frontend checks on Linux
 and backend tests plus a native build on macOS. The separate release workflow
 builds installers only for macOS, for both Apple Silicon and Intel.
 
+## Styling
+
+Customize the application in `src/theme.css`. See [Application theme](theming.md)
+for color, typography, control, diff, and graph tokens.
+
 ## Implementation guidelines
 
 UI components should call `src/lib/git.ts` rather than invoke Git directly.

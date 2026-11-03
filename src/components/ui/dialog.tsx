@@ -31,7 +31,7 @@ const DialogOverlay = <T extends ValidComponent = "div">(
   return (
     <DialogPrimitive.Overlay
       class={cn(
-        "fixed inset-0 z-50 bg-black/20 dark:bg-black/50",
+        "fixed inset-0 z-50 bg-overlay",
         local.class
       )}
       {...rest}

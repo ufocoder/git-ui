@@ -44,10 +44,10 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     return line?.kind === "add" ? "bg-success text-success-foreground" : line?.kind === "remove" ? "bg-error text-error-foreground" : line?.kind === "meta" ? "text-muted-foreground italic" : "";
   }
   function renderRow(row: DiffRow, side?: "left" | "right") {
-    if (row.kind === "header") return <div ref={element => { if (side !== "right") headers.set(row.hunk, element); }} class="h-6 min-w-max bg-info px-3 py-1 font-mono text-[11px] leading-4 text-info-foreground">{row.text}</div>;
-    if (row.kind === "fold") return <button class="block h-6 w-full min-w-max bg-muted/50 px-3 text-left text-[11px] text-muted-foreground hover:bg-muted" onClick={() => setExpanded(previous => new Set([...previous, row.id]))}>{t("diff12", { count: row.count })}</button>;
+    if (row.kind === "header") return <div ref={element => { if (side !== "right") headers.set(row.hunk, element); }} class="h-diff-header min-w-max bg-info px-3 py-1 font-mono text-diff leading-diff text-info-foreground">{row.text}</div>;
+    if (row.kind === "fold") return <button class="block h-diff-header w-full min-w-max bg-muted/50 px-3 text-left text-2xs text-muted-foreground hover:bg-muted" onClick={() => setExpanded(previous => new Set([...previous, row.id]))}>{t("diff12", { count: row.count })}</button>;
     const line = side === "left" ? row.left : side === "right" ? row.right : row.left ?? row.right;
-    return <div class={`flex h-4 min-w-max font-mono text-[11px] leading-4 ${lineClass(line)}`}>
+    return <div class={`flex h-diff-row min-w-max font-mono text-diff leading-diff ${lineClass(line)}`}>
       <Show when={side !== "right"}><span class="w-10 shrink-0 border-r px-1 text-right tabular-nums text-muted-foreground" aria-hidden="true">{row.left?.oldLine ?? ""}</span></Show>
       <Show when={side !== "left"}><span class="w-10 shrink-0 border-r px-1 text-right tabular-nums text-muted-foreground" aria-hidden="true">{row.right?.newLine ?? ""}</span></Show>
       <span class="w-4 shrink-0 text-center" aria-hidden="true">{line?.kind === "add" ? "+" : line?.kind === "remove" ? "−" : " "}</span>
@@ -82,7 +82,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
             <Show when={parsed().hunks.length > 1}>
             <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() === 0} aria-label={t("diff09")} title={t("diff09")} onClick={() => navigate(-1)}>↑</Button>
             </Show>
-            <span class="text-[11px] tabular-nums text-muted-foreground">{currentHunk() + 1}/{parsed().hunks.length}</span>
+            <span class="text-2xs tabular-nums text-muted-foreground">{currentHunk() + 1}/{parsed().hunks.length}</span>
             <Show when={parsed().hunks.length > 1}>
             <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() >= parsed().hunks.length - 1} aria-label={t("diff10")} title={t("diff10")} onClick={() => navigate(1)}>↓</Button>
             </Show>
@@ -93,7 +93,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff04")}</AlertDescription></Alert></Show>
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff05")}</AlertDescription></Alert></Show>
     <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto" : "min-h-0 flex-1 overflow-auto"} aria-label={t("diff06")}>
-      <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-[11px] leading-4">{props.diff.patch}</pre>}>
+      <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-diff leading-diff">{props.diff.patch}</pre>}>
         <Show when={split()} fallback={<div class="min-w-max py-2"><For each={rows()}>{row => renderRow(row)}</For></div>}>
           <div class="grid grid-cols-2 divide-x">
             <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff15")}><For each={rows()}>{row => renderRow(row, "left")}</For></div>

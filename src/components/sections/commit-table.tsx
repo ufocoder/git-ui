@@ -179,7 +179,7 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
         </div>
       </Show>
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("find07")}</span></Show>
-      <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-[13px] font-normal leading-5" aria-label={t("app05")}
+      <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app05")}
         containerProps={{
           ref: element => { viewport = element; },
           onScroll: () => setScrollTop(viewport.scrollTop),
@@ -224,16 +224,16 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
               <TableCell class="px-0">
                 <svg class={row.commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: row.commit.parents.length })}>
                   <For each={row.graph.edges}>{edge =>
-                    <path d={`M ${12 + edge.from * 16} ${edge.top ? 0 : 17} L ${12 + edge.to * 16} ${edge.bottom ? 34 : 17}`} fill="none" stroke={`hsl(${(edge.from * 67 + 220) % 360} 55% 55%)`} stroke-width="1.5" />
+                    <path d={`M ${12 + edge.from * 16} ${edge.top ? 0 : 17} L ${12 + edge.to * 16} ${edge.bottom ? 34 : 17}`} fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.from} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
                   }</For>
-                  <circle cx={12 + row.graph.column * 16} cy="17" r="3.5" fill="hsl(var(--primary))" stroke="hsl(var(--background))" stroke-width="1" />
+                  <circle cx={12 + row.graph.column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill="hsl(var(--primary))" stroke="hsl(var(--background))" />
                 </svg>
               </TableCell>
               <TableCell><CommitDescription subject={row.commit.subject} references={row.commit.refs} bold={row.commit.uncommitted} /></TableCell>
               <TableCell>
                 <Show when={!row.commit.uncommitted} fallback={<span aria-label={t("cf02")}>*</span>}>
                 <Tooltip openDelay={350}>
-                  <TooltipTrigger class="rounded-sm font-sans text-[13px] font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("hist12", { p1: row.commit.hash })}>
+                  <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("hist12", { p1: row.commit.hash })}>
                     {row.commit.hash.slice(0, 8)}
                   </TooltipTrigger>
                   <TooltipContent class="max-w-[90vw] break-all font-mono text-xs">{row.commit.hash}</TooltipContent>

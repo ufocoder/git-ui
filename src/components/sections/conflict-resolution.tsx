@@ -149,6 +149,6 @@ export default function ConflictResolution(props: Props) {
 function ConflictSide(props: { title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
   return <div class="flex min-h-0 min-w-0 flex-col gap-2">
     <div class="flex shrink-0 flex-wrap items-center justify-between gap-2"><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></div>
-    <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-[11px] leading-4">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : props.version.text ?? t("conf17")}</pre>
+    <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : props.version.text ?? t("conf17")}</pre>
   </div>;
 }

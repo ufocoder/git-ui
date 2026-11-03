@@ -74,11 +74,11 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
                 <span class="min-w-0 flex-1 truncate">{branch}</span>
                 <Show when={props.history.branch_comparisons[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
-                  <span class="flex shrink-0 gap-1 text-[11px] font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-zinc-100"
+                  <span class="flex shrink-0 gap-1 text-2xs font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-branch-counter-foreground"
                     title={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}
                     aria-label={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}>
-                    <Show when={comparison().ahead > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-[#808080] group-data-[active=true]/branch:bg-[#808080] group-data-[active=true]/branch:text-white px-1 leading-4"><span aria-hidden="true">↑</span><span>{comparison().ahead}</span></span></Show>
-                    <Show when={comparison().behind > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-[#808080] group-data-[active=true]/branch:bg-[#808080] group-data-[active=true]/branch:text-white px-1 leading-4"><span aria-hidden="true">↓</span><span>{comparison().behind}</span></span></Show>
+                    <Show when={comparison().ahead > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-branch-counter group-data-[active=true]/branch:bg-branch-counter group-data-[active=true]/branch:text-branch-counter-foreground px-1 leading-4"><span aria-hidden="true">↑</span><span>{comparison().ahead}</span></span></Show>
+                    <Show when={comparison().behind > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-branch-counter group-data-[active=true]/branch:bg-branch-counter group-data-[active=true]/branch:text-branch-counter-foreground px-1 leading-4"><span aria-hidden="true">↓</span><span>{comparison().behind}</span></span></Show>
                   </span>
                   </Show>
                 }</Show>
