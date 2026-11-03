@@ -44,7 +44,7 @@ export default function TerminalPanel(props: TerminalPanelProps) {
       <h2 class="font-semibold">{t("nav11")}</h2>
       <span role="status" class="text-muted-foreground">{displayedLog()?.status === "running" ? t("log02") : displayedLog() ? (displayedLog()?.status === "error" && displayedLog()?.exit_code === null ? t("log03") : t("log04", { p1: displayedLog()?.exit_code ?? "—" })) : ""}</span>
     </header>
-    <div ref={element => { output = element; }} class="min-h-0 flex-1 overflow-auto px-4 py-3 font-mono text-xs leading-5" tabindex="0" aria-label={t("log05")}>
+    <div ref={element => { output = element; }} class="min-h-0 flex-1 cursor-text select-text overflow-auto px-4 py-3 font-mono text-xs leading-5 [&_*]:select-text" tabindex="0" aria-label={t("log05")}>
       <Show when={error()}><p class="text-destructive">{error()}</p></Show>
       <Show when={displayedLog()} fallback={<p class="text-muted-foreground">{t("log06")}</p>}>{entry => <>
         <pre class="whitespace-pre-wrap break-all font-semibold">$ {entry().command}</pre>
