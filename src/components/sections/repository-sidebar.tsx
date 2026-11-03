@@ -1,4 +1,4 @@
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
 import type { ReferenceAction } from "./reference-action-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import TagsSection from "./tags-section";
@@ -27,6 +27,18 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
   });
   createEffect(on(() => props.history.path, () => setBranchSearch("")));
   createEffect(() => { if (!searchable()) setBranchSearch(""); });
+  function branchActions(branch: string, contextMenu: boolean) {
+    const Item = contextMenu ? ContextMenuItem : DropdownMenuItem;
+    const Separator = contextMenu ? ContextMenuSeparator : DropdownMenuSeparator;
+    return <>
+      <Item disabled={props.disabled || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("refAct10")}</Item>
+      <Item title={branch !== props.history.current_branch ? t("refAct11") : undefined} disabled={props.disabled || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("nav07")}</Item>
+      <Item disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("refAct02")}</Item>
+      <Item disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branchAct01")}</Item>
+      <Separator />
+      <Item class="text-destructive data-[highlighted]:text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("refAct03")}</Item>
+    </>;
+  }
   return <Sidebar collapsible="none" class="relative h-dvh shrink-0 border-r" aria-label={t("repo01")}>
     <SidebarHeader class="border-b p-4">
       <Button variant="ghost" class="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("switch04", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
@@ -89,18 +101,11 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
               <DropdownMenu placement="bottom-end" gutter={4}>
                 <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-6 shrink-0" disabled={props.disabled} aria-label={t("refAct01", { name: branch })}>⋯</DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem disabled={props.disabled || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("refAct10")}</DropdownMenuItem>
-                  <DropdownMenuItem title={branch !== props.history.current_branch ? t("refAct11") : undefined} disabled={props.disabled || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("nav07")}</DropdownMenuItem>
-                  <DropdownMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("refAct02")}</DropdownMenuItem>
-                  <DropdownMenuItem disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branchAct01")}</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem class="text-destructive data-[highlighted]:text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("refAct03")}</DropdownMenuItem>
+                  {branchActions(branch, false)}
                 </DropdownMenuContent>
               </DropdownMenu>
               </ContextMenuTrigger><ContextMenuContent>
-                <ContextMenuItem class="text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("refAct03")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branchAct01")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("refAct02")}</ContextMenuItem>
+                {branchActions(branch, true)}
               </ContextMenuContent></ContextMenu>
             </SidebarMenuItem>}</For>
           </SidebarMenu>
