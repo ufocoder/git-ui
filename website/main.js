@@ -39,6 +39,9 @@ try {
   }
   if (data.version) {
     document.querySelector('#version').textContent = data.version;
+    const heroVersion = document.querySelector('#hero-version');
+    heroVersion.textContent = data.version;
+    heroVersion.hidden = false;
   } else {
     document.querySelector('#download-footnote').textContent = 'Installers will appear here when a stable release is published';
   }
