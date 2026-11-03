@@ -35,7 +35,7 @@ try {
     document.querySelector('#release-note').textContent = `${data.version} · macOS · Apple Silicon & Intel`;
   } else {
     document.querySelector('#release-note').textContent = 'The first release is on its way';
-    document.querySelector('#download-footnote').textContent = 'Installers will appear here when a stable release is published.';
+    document.querySelector('#download-footnote').textContent = 'Installers will appear here when a stable release is published';
     primary.firstChild.textContent = 'View downloads ';
   }
   // Browsers cannot reliably identify Apple Silicon vs Intel: offer both explicitly.
@@ -46,7 +46,7 @@ try {
   list.replaceChildren();
   const message = document.createElement('p');
   message.className = 'muted';
-  message.textContent = 'Check GitHub Releases for available installers.';
+  message.textContent = 'Check GitHub Releases for available installers';
   list.append(message);
   document.querySelector('#release-note').textContent = 'Find the latest version on GitHub Releases';
 }
