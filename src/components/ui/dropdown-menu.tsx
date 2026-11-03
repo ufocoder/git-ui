@@ -13,3 +13,11 @@ export function DropdownMenuItem(props: ComponentProps<typeof Menu.Item>) {
   return <Menu.Item class={cn("flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-disabled", local.class)} {...rest} />;
 }
 export function DropdownMenuSeparator() { return <Menu.Separator class="-mx-1 my-1 h-px bg-border" />; }
+
+export function DropdownMenuCheckboxItem(props: ComponentProps<typeof Menu.CheckboxItem>) {
+  const [local, rest] = splitProps(props, ["class", "children"]);
+  return <Menu.CheckboxItem closeOnSelect={false} class={cn("relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-7 pr-2 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-disabled", local.class)} {...rest}>
+    <Menu.ItemIndicator class="absolute left-2" aria-hidden="true">✓</Menu.ItemIndicator>
+    <Menu.ItemLabel>{local.children}</Menu.ItemLabel>
+  </Menu.CheckboxItem>;
+}

@@ -535,11 +535,6 @@
   "tagDel06": "Checking the remote tag…",
   "tagDel07": "This tag is absent on the selected remote — only the local tag will be deleted",
   "tagDel08": "Could not check the remote tag. Only local deletion is available",
-  "compose01": "Commit title",
-  "compose02": "Summarize the change",
-  "compose03": "Description (optional)",
-  "compose04": "Explain why the change was needed and any useful context",
-  "compose05": "Edit the last commit",
   "compose06": "Amend replaces the latest commit with a new one. Review the message and confirm replacement.",
   "refAct01": "Actions for {name}",
   "refAct02": "Rename",
@@ -553,5 +548,7 @@
   "refAct10": "Switch to branch",
   "refAct11": "Switch to this branch before pushing",
   "toolbar01": "↑ Publish branch",
-  "toolbar02": "Push settings"
+  "toolbar02": "Push settings",
+  "compose07": "Options",
+  "commit14": "Commit message"
 }

@@ -32,10 +32,11 @@ The Changes mode separates staged and unstaged files. Select individual files or
 whole folders, stage or unstage them, and review each version separately. Switch
 between a tree and a flat list, and sort by path, name, or status.
 
-Enter a required commit title and, optionally, expand the description field for
-additional context. Create the commit, optionally pushing it afterward.
-Expand the separate “Edit the last commit” section to amend the latest commit,
-including changing only its message. Returning to a new commit restores its draft. Cryptographic
+Write the commit message in one multiline field. Use the first line as a summary
+and add details below it if needed. Create the commit, optionally pushing it afterward.
+Use the compact Options menu for cryptographic signing or amending the latest
+commit, including changing only its message. Amend confirmation appears only
+when amend is enabled. Returning to a new commit restores its draft. Cryptographic
 signing uses the GPG or SSH key configured in Git; configure the key and signing
 agent before enabling signing in the app.
 
@@ -60,13 +61,19 @@ The file and folder context menu can:
 
 The commit-tree sidebar contains local branches, tags, and remotes. Switch or
 create branches, add tags and remotes, and inspect branch divergence.
-Push an individual tag from its row in the sidebar, or all local tags from the
-Tags heading. Choose a remote before sending; existing remote tags are never
-force-replaced. Delete a local tag using its trash button and confirmation
+Open the `⋯` menu beside a tag to push, rename, or delete it. The menu at the
+Tags heading can push all local tags. Choose a remote before sending; existing remote tags are never
+force-replaced. Delete a local tag using its menu action and confirmation
 dialog. Optionally delete it from a selected remote too; remote deletion refuses
 a tag whose object differs from the local tag.
 
-Fetch, pull, and push are available from the toolbar. The first push can configure
+Branch `⋯` menus offer checkout, Push for the current branch, local renaming,
+and confirmed local deletion. Git refuses deleting the current branch or an
+unmerged branch. Renaming a branch or tag does not rename its remote reference.
+
+Fetch, pull, and push are available from the toolbar. The Push button displays
+its upstream destination, or “Publish branch” when tracking is not configured.
+Use its dropdown to change upstream; the Fetch tooltip shows the last fetch time. The first push can configure
 `origin` and upstream tracking; create the remote repository on your hosting
 service beforehand. Authentication uses your existing SSH or Git credential setup.
 

@@ -1,6 +1,5 @@
 import CommitMessageFields from "./commit-message-fields";
-import { splitCommitMessage } from "~/lib/commit-message";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { readPanelSizes } from "~/lib/layout-preferences";
 import DirectoryDiffView from "./directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
@@ -60,7 +59,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
   const amendValid = () => { const target = amendTarget(); return Boolean(target && canAmend() && target.head === props.history?.tip && target.branch === props.history?.current_branch); };
-  const canSubmit = () => !disabled() && Boolean(splitCommitMessage(message()).subject.trim()) && (amendTarget() ? amendValid() && amendConfirmed() : stagedCount() > 0);
+  const canSubmit = () => !disabled() && Boolean(message().trim()) && (amendTarget() ? amendValid() && amendConfirmed() : stagedCount() > 0);
   async function toggleAmend(enabled: boolean) {
     if (disabled()) return;
     const request = ++messageRequest;
@@ -227,29 +226,28 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       <div class="max-h-[50%] shrink-0 overflow-y-auto border-t bg-muted/20 p-4">
           <form onSubmit={submit} class="shrink-0 space-y-3">
             <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
-            <div class="flex flex-wrap items-center gap-3 border-t pt-3">
-              <label class="flex items-center gap-2 text-sm" title={t("commit21")}><Checkbox checked={sign()} onChange={setSign} disabled={disabled()} />{t("commit20")}</label>
-            </div>
-            <Collapsible defaultOpen={Boolean(amendTarget())} class="rounded-md border">
-              <CollapsibleTrigger as={Button} type="button" variant="ghost" class="h-control-toolbar w-full justify-between px-control-sm-x text-xs" disabled={disabled()}>
-                <span>{t("compose05")}</span><span class="text-muted-foreground">{amendTarget() ? t("commit22") : "+"}</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent class="space-y-2 border-t p-3">
-                <p class="text-xs text-muted-foreground">{t("compose06")}</p>
-                <label class="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} />{t("commit22")}</label>
-                <Show when={amendTarget()}>
-                  <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
-                  <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
-                  <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
-                </Show>
-              </CollapsibleContent>
-            </Collapsible>
-            <div class="flex items-center justify-between gap-4">
-              <Button type="submit" class="order-last ml-auto h-8 px-3" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
-              <label class="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
+            <Show when={amendTarget()}>
+              <div class="space-y-2 border-l-2 border-warning-foreground pl-3">
+                <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
+                <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
+                <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
+              </div>
+            </Show>
+            <div class="flex flex-wrap items-center justify-end gap-3">
+              <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
               <span>{t("commit16")}</span>
             </label>
+              <DropdownMenu placement="top-start" gutter={4}>
+                <DropdownMenuTrigger as={Button} type="button" variant="ghost" size="sm" class="h-control-toolbar gap-2 px-2 text-muted-foreground" disabled={disabled()}>
+                  {t("compose07")}<span aria-hidden="true">{sign() || amendTarget() ? "✓" : "⋯"}</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem checked={sign()} onChange={setSign} disabled={disabled()} title={t("commit21")}>{t("commit20")}</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose06")}>{t("commit22")}</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
             </div>
             <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
               <div class="flex items-center justify-end gap-3 text-sm">
