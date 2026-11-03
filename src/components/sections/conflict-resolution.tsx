@@ -1,10 +1,10 @@
+import ConflictCode from "./conflict-code";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { createConflictDraft, type ConflictDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
 import { git, type ConflictVersion, type History } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Resizable, ResizableHandle, ResizablePanel } from "~/components/ui/resizable";
-import { TextField, TextFieldLabel, TextFieldTextArea } from "~/components/ui/text-field";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import ChangedFilesTree from "./changed-files-tree";
 
@@ -111,8 +111,8 @@ export default function ConflictResolution(props: Props) {
               <Resizable layoutId="conflicts.result" orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
                 <ResizablePanel minSize={0.15} class="min-h-0 overflow-hidden pb-3">
                   <div class="grid h-full min-h-0 grid-cols-2 gap-3">
-                    <ConflictSide title={t("conf02")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conf05")} />
-                    <ConflictSide title={t("conf03")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conf06")} />
+                    <ConflictSide identity={`${current().file.path}:ours`} base={current().base.exists ? current().base.text : ""} title={t("conf02")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conf05")} />
+                    <ConflictSide identity={`${current().file.path}:theirs`} base={current().base.exists ? current().base.text : ""} title={t("conf03")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conf06")} />
                   </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle aria-label={t("conf04")} />
@@ -122,10 +122,7 @@ export default function ConflictResolution(props: Props) {
                       {!current().supported ? t("conf17") : deleting() ? t("conf13") : choice() === "ours" ? t("conf27") : choice() === "theirs" ? t("conf28") : t("conf18")}
                     </div>
                   }>
-                    <TextField class="min-h-0 flex-1" value={draft()} onChange={value => { setChoice("manual"); setDraft(value); }} disabled={disabled()}>
-                      <TextFieldLabel>{t("conf04")}</TextFieldLabel>
-                      <TextFieldTextArea class="min-h-0 flex-1 resize-none whitespace-pre font-mono text-xs leading-4" wrap="off" spellcheck={false} />
-                    </TextField>
+                    <ConflictCode identity={`${current().file.path}:result`} text={draft()} base={current().base.exists ? current().base.text : ""} label={t("conf04")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
                   </Show>
                   <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
                     <p class="text-xs text-muted-foreground">{t("conf32")}</p>
@@ -146,9 +143,13 @@ export default function ConflictResolution(props: Props) {
   </div>;
 }
 
-function ConflictSide(props: { title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
+function ConflictSide(props: { identity: string; base: string | null; title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
   return <div class="flex min-h-0 min-w-0 flex-col gap-2">
     <div class="flex shrink-0 flex-wrap items-center justify-between gap-2"><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></div>
-    <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : props.version.text ?? t("conf17")}</pre>
+    <Show when={props.version.exists && !props.version.large && !props.version.binary && props.version.mode !== "120000" && props.version.text !== null} fallback={
+      <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : t("conf17")}</pre>
+    }>
+      <ConflictCode identity={props.identity} text={props.version.text ?? ""} base={props.base} label={props.title} tone={props.identity.endsWith(":ours") ? "ours" : "theirs"} />
+    </Show>
   </div>;
 }

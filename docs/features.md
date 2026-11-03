@@ -84,7 +84,9 @@ apply, or delete stash entries; deletion requires confirmation. Empty Stash and
 Conflicts modes are disabled.
 
 The dedicated conflict mode shows current and incoming versions and an editable
-result. Saving the result stages the file. Continue or abort the active Git
+result. Changed lines are highlighted relative to the common ancestor. Each pane
+has previous/next change navigation; click its counter to jump to the current
+block. Unresolved conflict regions are highlighted in the result. Saving the result stages the file. Continue or abort the active Git
 operation from the interface. Binary files, symbolic links, and files larger than
 2 MB support choosing a version; resolve submodule conflicts with external tools.
 
