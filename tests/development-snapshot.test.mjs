@@ -14,12 +14,13 @@ test('source snapshot survives branch-like replacements without copying secrets 
   const root = await mkdtemp(path.join(tmpdir(), 'git-ui-snapshot-test-'));
   let snapshot;
   try {
-    for (const folder of ['src', 'src-tauri/target', 'locales', 'node_modules', '.updater', '.git']) await mkdir(path.join(root, folder), { recursive: true });
+    for (const folder of ['src', 'src-tauri/target', 'locales', 'node_modules', '.updater', '.git', 'public']) await mkdir(path.join(root, folder), { recursive: true });
     await writeFile(path.join(root, 'src/app.tsx'), 'original interface');
     await writeFile(path.join(root, 'src-tauri/lib.rs'), 'original backend');
     await writeFile(path.join(root, 'src-tauri/target/output'), 'compiled');
     await writeFile(path.join(root, '.updater/key'), 'secret');
     await writeFile(path.join(root, 'package.json'), '{}');
+    await writeFile(path.join(root, 'public/theme-init.js'), 'theme bootstrap');
     await writeFile(path.join(root, 'private-settings.json'), 'secret');
     snapshot = await createDevelopmentSnapshot(root);
     await writeFile(path.join(root, 'src/app.tsx'), 'different branch');
@@ -28,6 +29,7 @@ test('source snapshot survives branch-like replacements without copying secrets 
     assert.equal(await readFile(path.join(snapshot, 'src-tauri/lib.rs'), 'utf8'), 'original backend');
     for (const excluded of ['.git', '.updater', 'private-settings.json', 'src-tauri/target']) await assert.rejects(lstat(path.join(snapshot, excluded)), { code: 'ENOENT' });
     assert.equal((await lstat(path.join(snapshot, 'node_modules'))).isSymbolicLink(), true);
+    assert.equal(await readFile(path.join(snapshot, 'public/theme-init.js'), 'utf8'), 'theme bootstrap');
   } finally {
     if (snapshot) await rm(snapshot, { recursive: true, force: true });
     await rm(root, { recursive: true, force: true });

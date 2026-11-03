@@ -12,7 +12,10 @@ name to switch projects in the same window.
 Settings support Russian (the default) and English, as well as local and global
 Git configuration: author name, email, default branch, pull behavior, fetch pruning,
 automatic upstream setup, and line endings. Empty configuration fields inherit
-Git defaults. Recent projects are stored in `recent-projects.json` in the Tauri
+Git defaults. Choose the default light/dark theme or a Night Owl Light, Rosé Pine
+Moon, Noctis Hibernus, or macOS Modern Light palette in Settings. The color theme
+applies immediately and persists between launches. Settings are split into
+Appearance (theme and language) and Git (local/global configuration). Recent projects are stored in `recent-projects.json` in the Tauri
 app-data directory.
 
 ## Commit tree

@@ -408,7 +408,7 @@
   "lang02": "Русский",
   "lang03": "English",
   "lang04": "Settings",
-  "lang05": "Language applies immediately and is saved for all projects",
+  "lang05": "Theme and language apply immediately and are saved for all projects",
   "lang06": "Could not save language: {error}",
   "lang07": "Invalid interface language",
   "commit20": "Sign with GPG/SSH",
@@ -559,5 +559,12 @@
   "commit14": "Commit message",
   "dev01": "Switching branches or checking out commits in the running Git UI development checkout would restart Vite and Cargo. Restart with npm run tauri -- dev (without --live), or use the built application (.app). Other repositories are unaffected.",
   "historyView01": "All branches",
-  "historyView03": "Branches shown in commit history"
+  "historyView03": "Branches shown in commit history",
+  "theme01": "Color theme",
+  "theme02": "Default light",
+  "theme03": "Default dark",
+  "settings01": "Appearance",
+  "settings02": "Git",
+  "settings03": "Application appearance and Git configuration",
+  "settings04": "Open a repository to configure Git"
 }

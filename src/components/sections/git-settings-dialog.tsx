@@ -1,3 +1,5 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
+import { themes, theme, saveTheme } from "~/lib/theme-preferences";
 import { SelectField } from "~/components/ui/select";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { git, type GitSettings } from "~/lib/git";
@@ -48,12 +50,24 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
   const keys = fields().map(field => field.key);
   return <Dialog open={props.open} onOpenChange={open => { if (!open && !pending() && !languagePending()) props.onClose(); }}>
     <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-      <DialogHeader><DialogTitle>{t("lang04")}</DialogTitle><DialogDescription>{t("lang05")}</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>{t("lang04")}</DialogTitle><DialogDescription>{t("settings03")}</DialogDescription></DialogHeader>
+      <Tabs defaultValue="appearance" class="min-w-0">
+        <TabsList class="mb-4 px-0" aria-label={t("lang04")}>
+          <TabsTrigger value="appearance">{t("settings01")}</TabsTrigger>
+          <TabsTrigger value="git">{t("settings02")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="appearance" class="space-y-4 outline-none">
+      <SelectField label={t("theme01")} value={theme()} onChange={saveTheme}
+        options={themes.map(item => ({ value: item.id, label: item.id === "default" ? t("theme02") : item.id === "dark" ? t("theme03") : item.name }))} />
       <SelectField label={t("lang01")} value={language()} disabled={languagePending()} onChange={value => void chooseLanguage(value as Language)}
         options={[{ value: "ru", label: t("lang02") }, { value: "en", label: t("lang03") }]} />
       <Show when={languageError()}><p role="alert" class="text-sm text-destructive">{t("lang06", { error: languageError() })}</p></Show>
-      <Show when={props.hasProject}>
-      <div class="space-y-1 border-t pt-4"><h2 class="text-sm font-semibold">{t("cfg01")}</h2><p class="text-xs text-muted-foreground">{t("cfg04")}</p></div>
+      <p class="text-xs text-muted-foreground">{t("lang05")}</p>
+      <DialogFooter><Button type="button" variant="outline" disabled={languagePending()} onClick={props.onClose}>{t("upd11")}</Button></DialogFooter>
+        </TabsContent>
+        <TabsContent value="git" class="space-y-4 outline-none">
+      <Show when={props.hasProject} fallback={<div class="space-y-4"><p class="text-sm text-muted-foreground">{t("settings04")}</p><DialogFooter><Button type="button" variant="outline" onClick={props.onClose}>{t("upd11")}</Button></DialogFooter></div>}>
+      <p class="text-xs text-muted-foreground">{t("cfg04")}</p>
       <div class="flex gap-2"><For each={[["local", t("cfg02")], ["global", t("cfg03")]]}>{item => <Button size="sm" variant={scope() === item[0] ? "secondary" : "outline"} aria-pressed={scope() === item[0]} disabled={pending()} onClick={() => setScope(item[0])}>{item[1]}</Button>}</For></div>
       <Show when={settings()} fallback={<p class="text-sm text-muted-foreground" role="status">{pending() ? t("cfg18") : error()}</p>}>
         <form onSubmit={save} class="space-y-4">
@@ -74,6 +88,8 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
         </form>
       </Show>
       </Show>
+        </TabsContent>
+      </Tabs>
     </DialogContent>
   </Dialog>;
 }

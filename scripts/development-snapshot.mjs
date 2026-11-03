@@ -9,7 +9,7 @@ export function usesDevelopmentSnapshot(args) {
 export async function createDevelopmentSnapshot(root, temporaryRoot = tmpdir()) {
   const snapshot = await mkdtemp(path.join(temporaryRoot, 'git-ui-runtime-'));
   try {
-    const sourceDirectories = new Set(['src', 'src-tauri', 'locales', 'scripts']);
+    const sourceDirectories = new Set(['src', 'src-tauri', 'locales', 'scripts', 'public']);
     const configurationFiles = new Set(['package.json', 'package-lock.json', 'settings.json', 'index.html', 'tsconfig.json', 'tsconfig.node.json', 'postcss.config.js', 'postcss.config.cjs', 'tailwind.config.cjs', 'vite.config.ts', 'ui.config.json']);
     for (const entry of await readdir(root, { withFileTypes: true })) {
       if (entry.isDirectory() && sourceDirectories.has(entry.name)) {

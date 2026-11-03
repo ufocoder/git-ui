@@ -28,10 +28,11 @@ branch counters, and semantic success/error/warning/info colors. Diff background
 use those semantic colors. Dialog and sheet overlays use HSL channels with an
 alpha value, for example `--dialog-overlay: 0 0% 0% / 0.2`.
 
-Dark overrides belong under `.dark, [data-kb-theme="dark"]`. Theme selection keeps
-the existing behavior; this refactor does not add a new theme settings control.
-The stylesheet loads in the document head, so the initial background uses the
-same theme values as the mounted application.
+Dark overrides belong under `.dark, [data-kb-theme="dark"]`. Choose a preset in **Settings → Appearance → Color theme**. The choice applies immediately
+and persists in WebView local storage across restarts.
+A synchronous `public/theme-init.js` script applies the stored theme before the
+stylesheet loads, so a dark preset does not flash a light background on startup.
+The source snapshot used for development also includes this public asset.
 
 ## Typography and density
 
@@ -95,3 +96,26 @@ npx tsc --noEmit
 node --experimental-strip-types --test tests/theme-utilities.test.mjs
 npm run build
 ```
+
+## Included presets and palette sources
+
+All preset values remain in `src/theme.css`, under `:root[data-theme="…"]`.
+The bootstrap registry is in `public/theme-init.js`; `src/lib/theme-preferences.ts`
+connects it to reactive UI settings. The original light and dark presets remain
+available. Custom themes adapt these palettes to Git UI's semantic roles:
+
+- **Night Owl Light**, by Sarah Drasner:
+  [original palette](https://github.com/sdras/night-owl-vscode-theme/blob/main/themes/Night%20Owl-Light-color-theme.json).
+- **Rosé Pine Moon**, by Rosé Pine:
+  [original palette](https://github.com/rose-pine/vscode/blob/main/themes/rose-pine-moon-color-theme.json).
+  The no-italics adaptation keeps interface text upright.
+- **Noctis Hibernus**, by Liviu Schera:
+  [original palette](https://github.com/liviuschera/noctis/blob/master/themes/hibernus.json).
+- **macOS Modern Light — Ventura Xcode**, by David B. Waters:
+  [original palette](https://github.com/davidbwaters/macos-modern-vscode-theme/blob/master/themes/color/big-sur-light/xcode-big-sur.json).
+
+These are palette adaptations, not complete VS Code theme imports. Button,
+muted-text, diff, and error colors are adjusted where needed for readable contrast.
+Fonts, pane geometry, and interaction behavior stay consistent between presets.
+Theme initialization, persistence, fallback behavior, and text contrast are covered
+by `tests/theme-preferences.test.mjs`.
