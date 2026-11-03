@@ -1,3 +1,5 @@
+import { Progress } from "~/components/ui/progress";
+import { downloadPercent } from "~/lib/update-progress";
 import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import gitForkIcon from "~/assets/logo.svg";
@@ -16,10 +18,7 @@ export default function UpdateDialog(props: { onClose: () => void; onInstallingC
   const [progress, setProgress] = createSignal<UpdateProgress>();
   const [error, setError] = createSignal("");
   const busy = () => checking() || installing();
-  const percent = createMemo(() => {
-    const status = progress();
-    return status?.total ? Math.min(100, Math.round(status.downloaded / status.total * 100)) : undefined;
-  });
+  const percent = createMemo(() => downloadPercent(progress()));
   let active = true;
   onCleanup(() => { active = false; });
   async function check() {
@@ -69,7 +68,7 @@ export default function UpdateDialog(props: { onClose: () => void; onInstallingC
       </>}</Show>
       <Show when={installing()}>
         <p class="text-sm" role="status">{progress()?.phase === "restarting" ? t("upd14") : progress()?.phase === "installing" ? t("upd13") : t("upd12")}</p>
-        <progress class="h-2 w-full accent-primary" max="100" value={percent()} aria-label={t("upd12")} />
+        <Progress value={percent()} label={t("upd12")} />
         <Show when={progress()?.phase === "downloading"}><p class="text-xs text-muted-foreground">{percent() !== undefined ? `${percent()}%` : t("upd30", { size: ((progress()?.downloaded ?? 0) / 1048576).toFixed(1) })}</p></Show>
       </Show>
       <Show when={error()}><Alert variant="destructive"><AlertTitle>{t("upd31")}</AlertTitle><AlertDescription class="break-words">{error()}</AlertDescription></Alert></Show>
