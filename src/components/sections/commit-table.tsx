@@ -257,7 +257,9 @@ export default function CommitTable(props: { search?: HistorySearch; scope: Hist
             </ContextMenu>
           }</For>
           <Show when={end() < displayedCommits().length}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${(displayedCommits().length - end()) * ROW_HEIGHT}px` }} /></TableRow></Show>
-          <Show when={!loading() && !debouncing() && !error() && !displayedCommits().length}><TableRow><TableCell colspan="5" class="h-24 text-center text-muted-foreground">{filtered() ? t("find06") : props.scope === "incoming" ? t("sync10") : props.scope === "outgoing" ? t("sync11") : t("hist15")}</TableCell></TableRow></Show>
+          <Show when={!loading() && !debouncing() && !error() && !displayedCommits().length}><TableRow><TableCell colspan="5" class="h-24 text-center text-muted-foreground"><div class="flex flex-col items-center gap-2 py-4"><p>{filtered() ? t("find06") : props.scope === "incoming" ? t("sync10") : props.scope === "outgoing" ? t("sync11") : t("hist15")}</p>
+            <Show when={filtered()}><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => setFilter({ text: "", sha: "", author: "", file: "" })}>{t("find05")}</Button></Show>
+          </div></TableCell></TableRow></Show>
         </TableBody>
       </Table>
       <span role="status" class="sr-only">{copyStatus()}</span>

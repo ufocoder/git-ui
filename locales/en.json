@@ -122,7 +122,7 @@
   "commit04": "Commit files",
   "commit05": "Staged: {count} of {total}",
   "commit07": "Loading files…",
-  "commit08": "No uncommitted changes.",
+  "commit08": "Working tree is clean",
   "commit12": "Resize files and commit form panels",
   "commit13": "Commit message",
   "commit14": "Describe your changes",

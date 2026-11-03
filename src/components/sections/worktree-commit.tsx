@@ -188,8 +188,8 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
           <p class="sr-only" role="status">{t("commit05", { count: stagedCount(), total: files().length })}</p>
         </Show>
         <Show when={loading()}><p role="status" class="sr-only">{t("commit07")}</p></Show>
-        <Show when={!props.onCommitted && !loading() && !files().length}><p class="text-sm text-muted-foreground">{t("commit08")}</p></Show>
-        <Show when={props.onCommitted} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
+        <Show when={!loading() && !files().length}><div class="rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit08")}</div></Show>
+        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
           <For each={[
             { kind: "unstaged" as const, label: t("stage02"), files: unstagedFiles, action: t("stage03"), staged: false },
             { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
@@ -213,7 +213,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
           <Show when={selectedDirectory()} fallback={<>
           <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("cf13")}</p></Show>
           <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
-          <Show when={!selectedPath()}><p class="text-sm text-muted-foreground">{t("commit17")}</p></Show>
+          <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="text-sm text-muted-foreground">{t("commit17")}</p></Show>
           </>}>
             <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined} />
           </Show>
