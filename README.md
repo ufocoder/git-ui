@@ -7,3 +7,4 @@ conflicts, and create signed commits in one window.
 - [User guide and features](docs/features.md)
 - [Development and setup](docs/development.md)
 - [Releases and updates](docs/releases.md)
+- [Landing page setup](docs/website.md)
