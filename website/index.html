@@ -18,65 +18,25 @@
   <main>
     <section class="hero wrap">
       <div class="hero-top">
-      <div class="hero-heading">
-      <p class="eyebrow"><span></span> YOUR REPOSITORY. A CLEARER VIEW</p>
-      <h1>A little less terminal<br>A lot more <span>clarity</span></h1>
+        <h1>A little less terminal, a lot more <span>clarity</span></h1>
+        <p class="intro">A Git client for macOS. Explore your branches, review changes, and make your next commit with a clear view of the details</p>
+        <div class="hero-actions"><a class="button primary" id="primary-download" href="#downloads">View downloads <span aria-hidden="true">↓</span></a></div>
       </div>
-      <div class="hero-summary">
-      <p class="intro">A Git client for macOS. Explore your branches, review changes,<br class="desktop-break"> and make your next commit with a clear view of the details</p>
-      <div class="hero-actions"><a class="button primary" id="primary-download" href="#downloads">Download for macOS <span aria-hidden="true">↓</span></a><a class="text-link" href="#features">Take a closer look <span aria-hidden="true">↘</span></a></div>
-      <p class="openness"><span aria-hidden="true">✓</span> Always free <span class="openness-divider" aria-hidden="true">·</span> <a data-repository href="https://github.com/ufocoder/git-ui">Open source ↗</a></p>
-      <p class="release-note" id="release-note" role="status">macOS · Apple Silicon &amp; Intel</p>
-      </div>
-      </div>
-      <div class="app-preview" role="img" aria-label="Illustration of GIT UI: branches in a sidebar, a commit graph above a file tree and code diff">
-        <div class="window-top"><div class="window-dots"><i></i><i></i><i></i></div><span>git-ui</span><span>LOCAL WORKSPACE</span></div>
-        <div class="preview-body">
-          <aside class="preview-sidebar"><div class="preview-project"><img src="./assets/logo.svg" alt="" width="28" height="28"><div><strong>git-ui</strong><small>~/projects/git-ui</small></div></div><div class="mode active">⌘ &nbsp; Commit tree</div><div class="mode">◫ &nbsp; Changes <span class="dot"></span></div><div class="mode muted">◇ &nbsp; Conflicts</div><div class="mode">▱ &nbsp; Stash</div><p class="side-label">⑂ &nbsp; BRANCHES <span>+</span></p><div class="branch selected">○ &nbsp; main <small>↑ 2</small></div><div class="branch">○ &nbsp; feature/clarity</div><p class="side-label">♧ &nbsp; TAGS <span>+</span></p><div class="branch">v0.1.0</div><p class="side-label">◎ &nbsp; REMOTES <span>+</span></p><div class="branch">⌄ &nbsp; origin</div><div class="remote-branch">main</div><div class="preview-settings">⚙ &nbsp; Settings</div></aside>
-          <div class="preview-content"><div class="preview-toolbar"><span>Fetch</span><span>Pull</span><span>Push</span><span class="muted">origin/main</span><span class="terminal">⌁ &nbsp; Terminal</span></div>
-          <div class="commit-grid column-head"><span>Graph</span><span>Description</span><span>Commit</span><span>Author</span></div>
-          <div class="commit-grid chosen"><span class="graph">●</span><span>Give every change a little more space <b>main</b></span><code>a7c38f1</code><span>You</span></div>
-          <div class="commit-grid"><span class="graph">●</span><span>Keep the important things in focus</span><code>6b91e04</code><span>You</span></div>
-          <div class="commit-grid"><span class="graph">●</span><span>Make room for the next idea <b class="tag">v0.1.0</b></span><code>2d4f80b</code><span>You</span></div>
-          <div class="commit-grid"><span class="graph last">●</span><span>A fresh start</span><code>e9a3c12</code><span>You</span></div>
-          <div class="preview-detail"><div class="preview-files"><strong>Give every change a little more space</strong><p class="muted">a7c38f1 · You</p><div>⌄ &nbsp; src</div><div class="file-folder">⌄ &nbsp; components</div><div class="preview-file"> <span>✎</span> &nbsp; workspace.tsx</div><div class="preview-file plain"><span>+</span> &nbsp; toolbar.tsx</div></div><div class="preview-diff"><div class="diff-heading">workspace.tsx <span>+3 −1</span></div><div class="code-context">@@ −12,4 +12,6 @@</div><pre>  function Workspace() {</pre><pre class="removed">−   return &lt;div&gt;</pre><pre class="added">+   return &lt;main class="workspace"&gt;</pre><pre class="added">+     &lt;Toolbar /&gt;</pre><pre class="added">+     &lt;CommitTree /&gt;</pre><pre>      &lt;Changes /&gt;</pre><pre>    &lt;/main&gt;</pre><pre>  }</pre></div></div></div>
-        </div>
-      </div>
-      <p class="preview-caption">One window. The whole picture. <span>Interface illustration</span></p>
+      <img class="app-preview" src="./assets/image.png" width="3104" height="1974" alt="GIT UI application screenshot">
+      <p class="preview-caption">One window. The whole picture · Screenshot of the GIT UI app</p>
     </section>
     <section class="features wrap" id="features" aria-labelledby="features-title">
-      <div class="section-intro">
-        <p class="eyebrow">LESS FRICTION, MORE FLOW</p>
-        <h2 id="features-title">Your daily Git workflow,<br>with room to think</h2>
-        <p class="section-description">Follow your repository’s history, review the details, and prepare your next commit — all in one window</p>
-      </div>
-      <div class="feature-grid">
-        <article>
-          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="19" r="2.5"/><path d="M6 8v8M18 9a9 9 0 0 1-9 9"/></svg></span>
-          <h3>Understand every branch</h3>
-          <p>See how your work fits together. Explore all branches in one graph, or focus on a single branch without checking it out</p>
-          <ul><li>Local and remote branch history</li><li>Search by message, author, SHA, or path</li><li>Branch and tag actions where you need them</li></ul>
-        </article>
-        <article>
-          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H5v18h14V8ZM14 3v5h5M8 12h8M8 16h5"/></svg></span>
-          <h3>Commit with confidence</h3>
-          <p>Review your changes before they become history. Keep staged and unstaged work separate, then write your message and commit</p>
-          <ul><li>Unified and side-by-side diffs</li><li>Stage individual files or whole folders</li><li>GPG/SSH signing, Amend, and optional Push</li></ul>
-        </article>
-        <article>
-          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4v3c0 5 14 5 14 10v3M19 4v3c0 5-14 5-14 10v3M2 17l3 3 3-3M16 17l3 3 3-3"/></svg></span>
-          <h3>Untangle conflicts</h3>
-          <p>Compare both versions and edit the result in a dedicated workspace. See what changed and move straight to the next block</p>
-          <ul><li>Changed lines highlighted against the base</li><li>Previous and next change navigation</li><li>Save the result directly to staging</li></ul>
-        </article>
-      </div>
-      <div class="feature-extras">
-        <article><h3>Pick up where you left off</h3><p>Switch between recent projects in the same window. Keep unfinished work in a stash and inspect it before applying</p></article>
-        <article><h3>Make it feel like yours</h3><p>Choose a light or dark palette, including Night Owl Light and Rosé Pine Moon. Resize panels to fit the way you work</p></article>
-        <article><h3>Keep the details close</h3><p>Open a file’s history, restore a path from a commit, or reveal it in Finder. Operation output is always available in the Terminal panel</p></article>
-      </div>
+      <h2 id="features-title">Features</h2>
+      <ul class="feature-grid">
+        <li><h3>Commit history</h3><p>Browse the commit graph across local and remote branches. Search by message, author, SHA, or file path</p></li>
+        <li><h3>Review and commit</h3><p>Inspect unified or side-by-side diffs, stage files or folders, and create, amend, or sign commits</p></li>
+        <li><h3>Branches and tags</h3><p>Create, rename, and delete branches and tags. Rebase onto another branch and push tags to a remote</p></li>
+        <li><h3>Resolve conflicts</h3><p>Compare both sides with the common base, jump between changed blocks, and edit and stage the result</p></li>
+        <li><h3>Stash changes</h3><p>Set aside unfinished work, inspect saved changes, and apply a stash when you are ready</p></li>
+        <li><h3>Remote sync</h3><p>Fetch updates, pull changes, and push commits. Review Git output in the Terminal panel</p></li>
+      </ul>
     </section>
-    <section class="downloads wrap" id="downloads"><div><p class="eyebrow">YOUR NEXT COMMIT STARTS HERE</p><h2>Make yourself<br>at home</h2><p class="download-description">A macOS client for the Git you already use.<br>Install Git first, then bring your repository</p><p class="download-description">Always free to use. Open source, so you can explore the code and contribute</p><p><a class="text-link" href="https://git-scm.com/install/">Get Git <span aria-hidden="true">↗</span></a></p></div><div class="download-panel"><div class="download-heading"><h3>Download GIT UI</h3><span id="version">Desktop app</span></div><div id="download-list"><p class="muted">Checking available downloads…</p></div><p class="download-footnote" id="download-footnote">Installers are hosted on GitHub Releases</p><a class="text-link" id="all-releases" href="https://github.com/ufocoder/git-ui/releases">All releases <span aria-hidden="true">↗</span></a><noscript><p>JavaScript is disabled. <a href="https://github.com/ufocoder/git-ui/releases">Download from GitHub Releases</a></p></noscript></div></section>
+    <section class="downloads wrap" id="downloads"><div><h2>Get started with GIT UI</h2><p class="download-description">Choose the installer for your Mac, then open a local repository. Git must be installed first</p><p class="download-description">It will always be free and open source</p></div><div class="download-panel"><div class="download-heading"><h3>Download GIT UI</h3><span id="version">Desktop app</span></div><div id="download-list"><p class="muted">Checking available downloads…</p></div><p class="download-footnote" id="download-footnote">Installers are hosted on GitHub Releases</p><a class="text-link" id="all-releases" href="https://github.com/ufocoder/git-ui/releases">All releases <span aria-hidden="true">↗</span></a><noscript><p>JavaScript is disabled. <a href="https://github.com/ufocoder/git-ui/releases">Download from GitHub Releases</a></p></noscript></div></section>
   </main>
   <footer class="wrap"><a class="brand" href="#"><img src="./assets/logo.svg" width="24" height="24" alt="">GIT UI</a><span>Always free · Open source</span><a data-repository href="https://github.com/ufocoder/git-ui">Made in the open ↗</a></footer>
 </body>
