@@ -238,7 +238,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
             </Show>
             <div class="flex items-center justify-between gap-4">
-              <Button type="submit" class="order-last ml-auto" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
+              <Button type="submit" class="order-last ml-auto h-8 px-3" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
               <label class="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
               <span>{t("commit16")}</span>
