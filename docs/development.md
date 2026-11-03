@@ -71,10 +71,31 @@ Then start the desktop app:
 npm run tauri -- dev
 ```
 
-This starts Vite, compiles the Rust backend, and opens the app. The first launch
+This starts Vite and the Rust backend from an isolated source snapshot, then opens the app. The first launch
 can take longer while Cargo downloads and compiles dependencies. Local builds
 use the host architecture by default; release builds support Apple Silicon and
 Intel Macs.
+
+## Safe development runtime
+
+`npm run tauri -- dev` starts the app from a temporary source snapshot. This lets
+you open this project's real working folder and switch its branches without
+replacing the files used by Vite or the Rust process. Dependencies and the Cargo
+build cache are shared; source files, configuration, and bundled locale data are
+copied. Temporary files are removed when the command exits.
+
+Restart the command to load source changes. For UI/backend editing with normal
+hot reload, explicitly use:
+
+```sh
+npm run tauri -- dev --live
+```
+
+Live mode protects its own source checkout from branch switching, commit Checkout,
+and stash save/apply. Use snapshot mode, a built app, or a different checkout for
+those operations. Other Tauri commands, including release builds, use the original
+working folder as before. Stop the previous dev process before restarting so port
+1420 is available.
 
 ## Windows
 

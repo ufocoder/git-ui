@@ -233,7 +233,7 @@ function App() {
     setError("");
     try { setHistory(await git.switchBranch(branch)); }
     catch (e) {
-      setError(String(e));
+      setError(String(e)); setTerminalOpen(true);
       try { setHistory(await git.getHistory()); } catch { /* Keep the last loaded history. */ }
     } finally { setBusy(false); }
   }

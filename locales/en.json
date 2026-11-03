@@ -550,5 +550,6 @@
   "toolbar01": "↑ Publish branch",
   "toolbar02": "Push settings",
   "compose07": "Options",
-  "commit14": "Commit message"
+  "commit14": "Commit message",
+  "dev01": "Switching branches or checking out commits in the running Git UI development checkout would restart Vite and Cargo. Restart with npm run tauri -- dev (without --live), or use the built application (.app). Other repositories are unaffected."
 }

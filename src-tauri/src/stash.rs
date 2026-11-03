@@ -72,19 +72,9 @@ pub(crate) fn ensure_no_operation(path: &Path) -> Result<(), String> {
 }
 
 fn ensure_source_is_not_running(path: &Path) -> Result<(), String> {
-    // Saving or applying a stash in this checkout changes files watched by Vite/Cargo.
-    // Release builds have embedded assets and can safely operate on this repo.
-    #[cfg(debug_assertions)]
-    {
-        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent();
-        if let (Some(source), Ok(repository)) = (source, path.canonicalize()) {
-            if source.canonicalize().ok().as_ref() == Some(&repository) {
-                return Err(locale::text("stash26").into());
-            }
-        }
+    if crate::development_guard::is_running_source(path) {
+        return Err(locale::text("stash26").into());
     }
-    #[cfg(not(debug_assertions))]
-    let _ = path;
     Ok(())
 }
 

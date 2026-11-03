@@ -1,3 +1,4 @@
+mod development_guard;
 mod commit_ops;
 mod commit_options;
 mod conflicts;
@@ -932,6 +933,7 @@ async fn get_project_history(
 }
 
 fn switch_branch(path: &Path, branch: &str) -> Result<ProjectHistory, String> {
+    development_guard::ensure_safe(path)?;
     let history = read_history(path)?;
     if !history.branches.iter().any(|name| name == branch) {
         return Err(locale::text("err25").into());
@@ -1037,6 +1039,7 @@ fn create_tag_at_commit(path: &Path, name: &str, commit: &str) -> Result<Project
 }
 
 fn checkout_commit(path: &Path, commit: &str) -> Result<ProjectHistory, String> {
+    development_guard::ensure_safe(path)?;
     commit_diff_args(path, commit)?;
     git(path, &["switch", "--detach", commit])?;
     read_history(path)
@@ -1427,6 +1430,17 @@ mod tests {
             let _ = std::fs::remove_dir_all(&self.0);
         }
     }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn switching_running_sources_is_rejected_before_git_can_modify_files() {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let before = git(source, &["rev-parse", "HEAD"]).unwrap();
+        // Even invalid targets must be rejected before any checkout is attempted.
+        assert_eq!(switch_branch(source, "invalid-target").unwrap_err(), locale::text("dev01"));
+        assert_eq!(checkout_commit(source, "HEAD").unwrap_err(), locale::text("dev01"));
+        assert_eq!(before, git(source, &["rev-parse", "HEAD"]).unwrap());
+    }
+
     #[test]
     fn rejects_folder_without_git() {
         let repo = TempRepo::new();
