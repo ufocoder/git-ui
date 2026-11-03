@@ -518,5 +518,8 @@
   "fileAct15": "Restore",
   "find14": "Changes history: {path}",
   "find15": "All history",
-  "diff17": "Lines added: {added}, removed: {removed}"
+  "diff17": "Lines added: {added}, removed: {removed}",
+  "branchFind01": "Search branches",
+  "branchFind02": "Clear branch search",
+  "branchFind03": "No matching branches"
 }

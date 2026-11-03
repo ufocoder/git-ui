@@ -1,6 +1,6 @@
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
-import { For, Show } from "solid-js";
+import { For, Show, createSignal, createMemo, createEffect, on } from "solid-js";
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
   SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
@@ -8,12 +8,21 @@ import {
 } from "~/components/ui/sidebar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/components/ui/collapsible";
 import { Button } from "~/components/ui/button";
+import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import AddSidebarItem from "~/components/sections/add-sidebar-item";
 import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
 export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+  const [branchSearch, setBranchSearch] = createSignal("");
+  const searchable = () => props.history.branches.length > 10;
+  const branches = createMemo(() => {
+    const query = searchable() ? branchSearch().trim().toLowerCase() : "";
+    return props.history.branches.filter(branch => branch.toLowerCase().includes(query));
+  });
+  createEffect(on(() => props.history.path, () => setBranchSearch("")));
+  createEffect(() => { if (!searchable()) setBranchSearch(""); });
   return <Sidebar collapsible="none" class="relative h-dvh shrink-0 border-r" aria-label={t("repo01")}>
     <SidebarHeader class="border-b p-4">
       <Button variant="ghost" class="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("switch04", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
@@ -45,13 +54,23 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
           <Show when={props.history.current_branch && !props.history.branches.includes(props.history.current_branch)}>
             <p class="break-all px-2 py-2 text-xs text-muted-foreground">{props.history.current_branch}</p>
           </Show>
+          <Show when={searchable()}>
+            <div class="relative mb-2 px-2">
+              <TextField value={branchSearch()} onChange={setBranchSearch} disabled={props.disabled}>
+                <TextFieldInput class="h-8 pr-8 text-xs" placeholder={t("branchFind01")} aria-label={t("branchFind01")}
+                  onKeyDown={event => { if (event.key === "Escape" && branchSearch()) { event.preventDefault(); event.stopPropagation(); setBranchSearch(""); } }} />
+              </TextField>
+              <Show when={branchSearch()}><Button variant="ghost" size="icon" class="absolute right-3 top-1 size-6" disabled={props.disabled} aria-label={t("branchFind02")} onClick={() => setBranchSearch("")}>×</Button></Show>
+            </div>
+            <Show when={!branches().length}><p class="px-2 py-2 text-xs text-muted-foreground" role="status">{t("branchFind03")}</p></Show>
+          </Show>
           <SidebarMenu>
-            <For each={props.history.branches}>{branch => <SidebarMenuItem>
+            <For each={branches()}>{branch => <SidebarMenuItem>
               <SidebarMenuButton disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
-                class="group/branch h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
-                <span class="min-w-0 truncate">{branch}</span>
+                class="group/branch min-w-0 h-8 min-h-8 justify-between gap-2 px-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
+                <span class="min-w-0 flex-1 truncate">{branch}</span>
                 <Show when={props.history.branch_comparisons[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
                   <span class="flex shrink-0 gap-1 text-[11px] font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-zinc-100"
