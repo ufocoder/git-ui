@@ -1,3 +1,4 @@
+import TagsSection from "./tags-section";
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
 import { For, Show, createSignal, createMemo, createEffect, on } from "solid-js";
@@ -14,7 +15,7 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   const [branchSearch, setBranchSearch] = createSignal("");
   const searchable = () => props.history.branches.length > 10;
   const branches = createMemo(() => {
@@ -88,16 +89,7 @@ export default function RepositorySidebar(props: { history: History; mode: Repos
         </SidebarGroupContent>
       </SidebarSection>
       <SidebarSeparator />
-      <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={<AddSidebarItem kind="tag" disabled={props.disabled || !props.history.tip} onCreate={name => props.onCreateTag(name)} />}>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <For each={props.history.tags}>{tag => <SidebarMenuItem>
-              <div class="flex h-8 items-center px-2 py-1 text-sm leading-5" title={tag}><span class="truncate">{tag}</span></div>
-            </SidebarMenuItem>}</For>
-          </SidebarMenu>
-          <Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show>
-        </SidebarGroupContent>
-      </SidebarSection>
+      <TagsSection history={props.history} disabled={props.disabled} onCreate={props.onCreateTag} onPush={props.onPushTags} onDelete={props.onDeleteTag} />
       <SidebarSeparator />
       <SidebarSection title={t("repo09")} icon={<SectionIcon name="remotes" />} action={<AddSidebarItem kind="remote" disabled={props.disabled} onCreate={props.onAddRemote} />}>
         <SidebarGroupContent>

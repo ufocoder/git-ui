@@ -12,6 +12,7 @@ mod fetch_status;
 mod file_actions;
 mod terminal_log;
 mod tracking;
+mod tags;
 mod update_menu;
 mod updates;
 
@@ -1384,6 +1385,9 @@ pub fn run() {
             frontend_ready,
             sync_project,
             commit_ops::run_commit_operation,
+            tags::push_project_tags,
+            tags::delete_project_tag,
+            tags::remote_project_tag_exists,
             tracking::publish_project_branch,
             tracking::set_project_upstream,
         ])

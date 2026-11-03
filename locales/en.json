@@ -521,5 +521,19 @@
   "diff17": "Lines added: {added}, removed: {removed}",
   "branchFind01": "Search branches",
   "branchFind02": "Clear branch search",
-  "branchFind03": "No matching branches"
+  "branchFind03": "No matching branches",
+  "tagPush01": "Push tags",
+  "tagPush02": "Push all tags",
+  "tagPush03": "Push tag {tag}",
+  "tagPush04": "Push all local tags ({count}) to the selected remote. Existing remote tags will not be overwritten.",
+  "tagPush05": "Add a remote in the Remotes section before pushing tags.",
+  "tagPush06": "Select an existing local tag",
+  "tagDel01": "Delete tag",
+  "tagDel02": "Delete tag {tag}",
+  "tagDel03": "Delete local tag {tag}? Commits and branches will remain.",
+  "tagDel04": "Also delete the tag on the remote",
+  "tagDel05": "Confirm tag deletion",
+  "tagDel06": "Checking the remote tag…",
+  "tagDel07": "This tag is absent on the selected remote — only the local tag will be deleted",
+  "tagDel08": "Could not check the remote tag. Only local deletion is available"
 }

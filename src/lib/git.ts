@@ -69,6 +69,7 @@ const operationLabels = (): Record<string, string> => ({
   restore_project_path: t("fileAct03"), preview_restore_path: t("fileAct03"), reveal_project_path: t("fileAct04"),
   get_git_settings: t("cfg01"), save_git_settings: t("cfg01"),
   stash_project: t("stash01"), get_stash_details: t("stash01"), get_stash_diff: t("stash01"),
+  push_project_tags: t("tagPush01"), delete_project_tag: t("tagDel01"), remote_project_tag_exists: t("tagDel06"),
   publish_project_branch: t("track01"), set_project_upstream: t("track02"),
   run_commit_operation: t("op27"),
   get_conflict_file: t("conf01"), resolve_conflict_file: t("conf07"),
@@ -82,7 +83,7 @@ const operationLabels = (): Record<string, string> => ({
   checkout_project_commit: t("cmd06"), reset_project_commit: t("cmd07"), set_project_file_staged: t("git06"),
   commit_project_changes: t("cmd08"), initialize_project: t("cmd09"), can_initialize_project: t("git07"),
 });
-const mutations = new Set(["restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+const mutations = new Set(["delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 function operationName(command: string, args?: Record<string, unknown>): string {
   if (command === "sync_project") return String(args?.action ?? "Git");
@@ -146,6 +147,9 @@ export const git = {
   checkoutCommit: (commit: string) => request<History>("checkout_project_commit", { commit }),
   resetToCommit: (commit: string, mode: ResetMode, discardConfirmed: boolean, expectedHead: string, expectedBranch: string) => request<History>("reset_project_commit", { commit, mode, discardConfirmed, expectedHead, expectedBranch }),
   createTagAtCommit: (name: string, commit: string) => request<History>("create_project_tag_at_commit", { name, commit }),
+  remoteTagExists: (remote: string, tag: string) => request<boolean>("remote_project_tag_exists", { remote, tag }),
+  deleteTag: (tag: string, remote: string | null) => request<History>("delete_project_tag", { tag, remote, confirmed: true }),
+  pushTags: (remote: string, tag: string | null) => request<History>("push_project_tags", { remote, tag }),
   createTag: (name: string) => request<History>("create_project_tag", { name }),
   addRemote: (name: string, url: string) => request<History>("add_project_remote", { name, url }),
   setFileStaged: (filePath: string, staged: boolean) => request<CommitDetails>("set_project_file_staged", { filePath, staged }),

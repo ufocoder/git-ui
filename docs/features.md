@@ -58,6 +58,12 @@ The file and folder context menu can:
 
 The commit-tree sidebar contains local branches, tags, and remotes. Switch or
 create branches, add tags and remotes, and inspect branch divergence.
+Push an individual tag from its row in the sidebar, or all local tags from the
+Tags heading. Choose a remote before sending; existing remote tags are never
+force-replaced. Delete a local tag using its trash button and confirmation
+dialog. Optionally delete it from a selected remote too; remote deletion refuses
+a tag whose object differs from the local tag.
+
 Fetch, pull, and push are available from the toolbar. The first push can configure
 `origin` and upstream tracking; create the remote repository on your hosting
 service beforehand. Authentication uses your existing SSH or Git credential setup.
