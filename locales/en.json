@@ -551,5 +551,7 @@
   "refAct08": "Confirm branch deletion",
   "refAct09": "Update branch or tag",
   "refAct10": "Switch to branch",
-  "refAct11": "Switch to this branch before pushing"
+  "refAct11": "Switch to this branch before pushing",
+  "toolbar01": "↑ Publish branch",
+  "toolbar02": "Push settings"
 }
