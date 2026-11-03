@@ -68,7 +68,7 @@ export default function TagsSection(props: {
       <SidebarGroupContent><SidebarMenu>
         <For each={props.history.tags}>{tag => <SidebarMenuItem>
           <ContextMenu>
-            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md px-2 py-1 text-sm leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md px-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span class="truncate" title={tag}>{tag}</span>
             </ContextMenuTrigger>
             <ContextMenuContent>
