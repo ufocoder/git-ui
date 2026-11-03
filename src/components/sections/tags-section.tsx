@@ -1,4 +1,5 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { For, Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
@@ -66,18 +67,17 @@ export default function TagsSection(props: {
     </div>}>
       <SidebarGroupContent><SidebarMenu>
         <For each={props.history.tags}>{tag => <SidebarMenuItem>
-          <div class="group/tag flex h-8 min-w-0 items-center gap-1 px-2 py-1 text-sm leading-5">
-            <span class="min-w-0 flex-1 truncate" title={tag}>{tag}</span>
-            <DropdownMenu placement="bottom-end" gutter={4}>
-              <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-6 shrink-0" disabled={disabled()} aria-label={t("refAct01", { name: tag })}>⋯</DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tagPush03", { tag })}</DropdownMenuItem>
-                <DropdownMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("refAct02")}</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem class="text-destructive data-[highlighted]:text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <ContextMenu>
+            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md px-2 py-1 text-sm leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+              <span class="truncate" title={tag}>{tag}</span>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tagPush03", { tag })}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("refAct02")}</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem class="text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         </SidebarMenuItem>}</For>
       </SidebarMenu><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show></SidebarGroupContent>
     </SidebarSection>
