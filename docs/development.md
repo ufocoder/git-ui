@@ -156,7 +156,7 @@ cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 Use `npm run lint:fix` to apply automatic Oxlint fixes. Rust checks require the
 native dependencies for your operating system. CI runs frontend checks on Linux
 and backend tests plus a native build on macOS. The separate release workflow
-builds installers for macOS, Windows, and Linux.
+builds installers only for macOS, for both Apple Silicon and Intel.
 
 ## Implementation guidelines
 

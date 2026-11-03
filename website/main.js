@@ -1,7 +1,6 @@
 const list = document.querySelector('#download-list');
 const primary = document.querySelector('#primary-download');
 const allReleases = document.querySelector('#all-releases');
-const platform = navigator.userAgentData?.platform || navigator.platform || '';
 
 try {
   const response = await fetch('./release.json');
@@ -33,18 +32,14 @@ try {
   }
   if (data.version) {
     document.querySelector('#version').textContent = data.version;
-    document.querySelector('#release-note').textContent = `${data.version} · macOS, Windows & Linux`;
+    document.querySelector('#release-note').textContent = `${data.version} · macOS · Apple Silicon & Intel`;
   } else {
     document.querySelector('#release-note').textContent = 'The first release is on its way';
     document.querySelector('#download-footnote').textContent = 'Installers will appear here when a stable release is published.';
     primary.firstChild.textContent = 'View downloads ';
   }
   // Browsers cannot reliably identify Apple Silicon vs Intel: offer both explicitly.
-  const selected = /Win/i.test(platform) ? data.downloads.find(item => item.id === 'windows') : /Linux/i.test(platform) ? data.downloads.find(item => item.id === 'linux') : null;
-  if (selected?.url) {
-    primary.href = selected.url;
-    primary.firstChild.textContent = `Download for ${selected.name} `;
-  } else if (/Mac/i.test(platform) && data.downloads.some(item => item.id.startsWith('mac-') && item.url)) {
+  if (data.downloads.some(item => item.url)) {
     primary.firstChild.textContent = 'Download for macOS ';
   }
 } catch {

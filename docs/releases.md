@@ -31,8 +31,6 @@ The workflow validates versions, runs checks, creates a draft, and builds:
 | Platform | Architecture | Installers |
 | --- | --- | --- |
 | macOS | Apple Silicon and Intel | `.dmg`, app bundle |
-| Windows | x64 | NSIS `.exe`, `.msi` |
-| Linux | x64 | `.AppImage`, `.deb` |
 
 After all builds succeed, it validates updater metadata and publishes the release.
 A failed build leaves the release as a draft; rerunning can reuse it. Versions
@@ -40,7 +38,7 @@ with suffixes such as `0.2.0-beta.1` are published as prereleases.
 
 The workflow uses the automatic `GITHUB_TOKEN` with `contents: write` for publishing;
 a personal access token is not required. macOS builds use ad-hoc signing. Apple
-Developer signing, notarization, and Windows certificate signing are not configured.
+Developer signing, notarization, are not configured.
 Updater signing is separate from operating-system code signing.
 
 To check release validation locally:
