@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { TextField, TextFieldInput, TextFieldLabel } from "~/components/ui/text-field";
 
 export default function GitSettingsDialog(props: { hasProject: boolean; open: boolean; onClose: () => void }) {
+  const [draftTheme, setDraftTheme] = createSignal(theme());
+  createEffect(() => {
+    if (props.open) setDraftTheme(theme());
+  });
   const [languagePending, setLanguagePending] = createSignal(false);
   const [languageError, setLanguageError] = createSignal("");
   async function chooseLanguage(value: Language) {
@@ -58,9 +62,12 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
           <TabsTrigger value="git">{t("settings02")}</TabsTrigger>
         </TabsList>
         <TabsContent value="appearance" class="space-y-4 outline-none">
-      <SelectField label={t("theme01")} value={theme()} onChange={saveTheme}
-        options={themes.map(item => ({ value: item.id, label: item.id === "default" ? t("theme02") : item.id === "dark" ? t("theme03") : item.name }))} />
-      <ThemePreview />
+          <div class="flex items-end gap-2">
+            <SelectField class="flex-1" label={t("theme01")} value={draftTheme()} onChange={setDraftTheme}
+              options={themes.map(item => ({ value: item.id, label: item.id === "default" ? t("theme02") : item.id === "dark" ? t("theme03") : item.name }))} />
+            <Button type="button" size="sm" disabled={draftTheme() === theme()} onClick={() => saveTheme(draftTheme())}>{t("theme06")}</Button>
+          </div>
+          <ThemePreview theme={draftTheme()} dark={themes.some(item => item.id === draftTheme() && item.dark)} />
       <SelectField label={t("lang01")} value={language()} disabled={languagePending()} onChange={value => void chooseLanguage(value as Language)}
         options={[{ value: "ru", label: t("lang02") }, { value: "en", label: t("lang03") }]} />
       <Show when={languageError()}><p role="alert" class="text-sm text-destructive">{t("lang06", { error: languageError() })}</p></Show>

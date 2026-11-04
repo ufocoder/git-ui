@@ -28,7 +28,7 @@ branch counters, and semantic success/error/warning/info colors. Diff background
 use those semantic colors. Dialog and sheet overlays use HSL channels with an
 alpha value, for example `--dialog-overlay: 0 0% 0% / 0.2`.
 
-Dark overrides belong under `.dark, [data-kb-theme="dark"]`. Choose a preset in **Settings → Appearance → Color theme**. The choice applies immediately
+Dark overrides belong under `.dark, [data-kb-theme="dark"]`. Choose a preset in **Settings → Appearance → Color theme**. The choice takes effect when you click **Apply**
 and persists in WebView local storage across restarts.
 A synchronous `public/theme-init.js` script applies the stored theme before the
 stylesheet loads, so a dark preset does not flash a light background on startup.
