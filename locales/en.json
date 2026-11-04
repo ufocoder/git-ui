@@ -563,6 +563,8 @@
   "theme01": "Color theme",
   "theme02": "Default light",
   "theme03": "Default dark",
+  "theme04": "Theme preview",
+  "theme05": "Update spacing",
   "settings01": "Appearance",
   "settings02": "Git",
   "settings03": "Application appearance and Git configuration",

@@ -1,3 +1,4 @@
+import ThemePreview from "./theme-preview";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { themes, theme, saveTheme } from "~/lib/theme-preferences";
 import { SelectField } from "~/components/ui/select";
@@ -59,6 +60,7 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
         <TabsContent value="appearance" class="space-y-4 outline-none">
       <SelectField label={t("theme01")} value={theme()} onChange={saveTheme}
         options={themes.map(item => ({ value: item.id, label: item.id === "default" ? t("theme02") : item.id === "dark" ? t("theme03") : item.name }))} />
+      <ThemePreview />
       <SelectField label={t("lang01")} value={language()} disabled={languagePending()} onChange={value => void chooseLanguage(value as Language)}
         options={[{ value: "ru", label: t("lang02") }, { value: "en", label: t("lang03") }]} />
       <Show when={languageError()}><p role="alert" class="text-sm text-destructive">{t("lang06", { error: languageError() })}</p></Show>
