@@ -29,15 +29,72 @@
     <section class="features wrap" id="features" aria-labelledby="features-title">
       <h2 id="features-title">Features</h2>
       <ul class="feature-grid">
-        <li><h3>Commit history</h3><p>Browse the commit graph across local and remote branches. Search by message, author, SHA, or file path</p></li>
-        <li><h3>Review and commit</h3><p>Inspect unified or side-by-side diffs, stage files or folders, and create, amend, or sign commits</p></li>
-        <li><h3>Branches and tags</h3><p>Create, rename, and delete branches and tags. Rebase onto another branch and push tags to a remote</p></li>
-        <li><h3>Resolve conflicts</h3><p>Compare both sides with the common base, jump between changed blocks, and edit and stage the result</p></li>
-        <li><h3>Stash changes</h3><p>Set aside unfinished work, inspect saved changes, and apply a stash when you are ready</p></li>
-        <li><h3>Remote sync</h3><p>Fetch updates, pull changes, and push commits. Review Git output in the Terminal panel</p></li>
+        <li>
+          <h3>Commit history</h3>
+          <p>Browse and search commits across local and remote branches</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Commit tree</span><span>All branches ⌄</span></div>
+            <div class="mini-row mini-selected"><span class="mini-node"></span><span>Refine sidebar spacing</span><code>7af10c2</code></div>
+            <div class="mini-row"><span class="mini-node"></span><span>Add branch actions</span><code>c3b8e21</code></div>
+            <div class="mini-row"><span class="mini-node"></span><span>Update release notes</span><code>68d129a</code></div>
+          </div>
+        </li>
+        <li>
+          <h3>Review and commit</h3>
+          <p>Review diffs, stage files or folders, and create, amend, or sign commits</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Changes</span><span class="mini-button">Commit</span></div>
+            <div class="mini-row"><span class="mini-check">✓</span><span>theme.css</span><small>Staged</small></div>
+            <div class="mini-code mini-removed">− gap: 4px;</div>
+            <div class="mini-code mini-added">+ gap: 8px;</div>
+          </div>
+        </li>
+        <li>
+          <h3>Branches and tags</h3>
+          <p>Manage branches and tags, rebase, and sync with remotes</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Branches</span><span>Fetch · Pull · Push</span></div>
+            <div class="mini-row"><span class="mini-node"></span><span>main</span><small>↑ 2</small></div>
+            <div class="mini-row"><span class="mini-node"></span><span>feature/ui</span></div>
+            <div class="mini-row"><span>◇</span><span>v0.3.2</span><small>Tag</small></div>
+          </div>
+        </li>
+        <li>
+          <h3>Resolve conflicts</h3>
+          <p>Compare both sides, jump between changes, and stage your resolution</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Conflicts</span><span>‹ &nbsp; 1 / 2 &nbsp; ›</span></div>
+            <div class="mini-split">
+              <div><div class="mini-row">Ours</div><div class="mini-code mini-removed">gap: 4px;</div></div>
+              <div><div class="mini-row">Theirs</div><div class="mini-code mini-added">gap: 8px;</div></div>
+            </div>
+            <div class="mini-row"><span>Result</span><code>gap: 8px;</code></div>
+          </div>
+        </li>
+        <li>
+          <h3>Stash changes</h3>
+          <p>Set unfinished work aside, inspect it, and apply it when you are ready</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Stash</span><span class="mini-button">Apply</span></div>
+            <div class="mini-row mini-selected"><span>▤</span><span>Sidebar experiments</span></div>
+            <div class="mini-row"><code>stash@{0}</code><small>2 changed files</small></div>
+            <div class="mini-row"><span>↳</span><span>theme.css</span></div>
+          </div>
+        </li>
+        <li>
+          <h3>Switch themes</h3>
+          <p>Preview light and dark palettes before applying one</p>
+          <div class="feature-preview" aria-hidden="true">
+            <div class="mini-bar"><span>Appearance</span><span class="mini-button">Apply</span></div>
+            <div class="mini-split mini-palettes">
+              <div><strong>Night Owl Light</strong><span></span><span></span></div>
+              <div><strong>Rosé Pine Moon</strong><span></span><span></span></div>
+            </div>
+          </div>
+        </li>
       </ul>
     </section>
-    <section class="downloads wrap" id="downloads"><div><h2>Get started with GIT UI</h2><p class="download-description">Choose the installer for your Mac, then open a local repository. Git must be installed first</p><p class="download-description">It will always be free and open source</p></div><div class="download-panel"><div class="download-heading"><h3>Download GIT UI</h3><span id="version">Desktop app</span></div><div id="download-list"><p class="muted">Checking available downloads…</p></div><p class="download-footnote" id="download-footnote">Installers are hosted on GitHub Releases</p><a class="text-link" id="all-releases" href="https://github.com/ufocoder/git-ui/releases">All releases <span aria-hidden="true">↗</span></a><noscript><p>JavaScript is disabled. <a href="https://github.com/ufocoder/git-ui/releases">Download from GitHub Releases</a></p></noscript></div></section>
+    <section class="downloads wrap" id="downloads"><div><h2>Get started with GIT UI</h2><p class="download-description">It will always be free and open source</p><p class="download-description">Make sure Git is installed before setting up GIT UI. Then open a local repository to get started</p></div><div class="download-panel"><div class="download-heading"><h3>Download GIT UI</h3><span id="version">Desktop app</span></div><div id="download-list"><p class="muted">Checking available downloads…</p></div><p class="download-footnote" id="download-footnote">Installers are hosted on GitHub Releases</p><a class="text-link" id="all-releases" href="https://github.com/ufocoder/git-ui/releases">All releases <span aria-hidden="true">↗</span></a><noscript><p>JavaScript is disabled. <a href="https://github.com/ufocoder/git-ui/releases">Download from GitHub Releases</a></p></noscript></div></section>
   </main>
   <footer class="wrap"><a class="brand" href="#"><img src="./assets/logo.svg" width="24" height="24" alt="">GIT UI</a><span>Always free · Open source</span><a data-repository href="https://github.com/ufocoder/git-ui">Made in the open ↗</a></footer>
 </body>
