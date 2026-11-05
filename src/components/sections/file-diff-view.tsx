@@ -1,3 +1,5 @@
+import { PanelHeader } from "~/components/ui/panel-header";
+import { FilePathLabel } from "~/components/ui/file-path-label";
 import { t } from "~/lib/i18n";
 import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js";
 import { Alert, AlertDescription } from "~/components/ui/alert";
@@ -15,10 +17,6 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set());
   const [currentHunk, setCurrentHunk] = createSignal(0);
   const parsed = createMemo(() => parseDiff(props.diff.patch));
-  const pathParts = createMemo(() => {
-    const index = props.diff.file.path.lastIndexOf("/");
-    return { directory: props.diff.file.path.slice(0, index + 1), name: props.diff.file.path.slice(index + 1) };
-  });
   const stats = createMemo(() => {
     let added = 0, removed = 0;
     for (const hunk of parsed().hunks) for (const line of hunk.lines) {
@@ -55,19 +53,16 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     </div>;
   }
   return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff01")}>
-    <header class="shrink-0 space-y-2">
-      <div class="flex min-w-0 items-center gap-2">
+    <div class="shrink-0 space-y-2">
+      <PanelHeader>
         <FileStatus status={props.diff.file.status} />
-        <h3 class="flex min-w-0 flex-1 items-baseline text-sm font-medium" title={props.diff.file.path} aria-label={props.diff.file.path}>
-          <Show when={pathParts().directory}><span class="min-w-0 truncate font-normal text-muted-foreground">{pathParts().directory}</span></Show>
-          <span class="max-w-full shrink-0 truncate">{pathParts().name}</span>
-        </h3>
+        <h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.diff.file.path} /></h3>
         <Show when={parsed().hunks.length}>
           <span class="flex shrink-0 gap-2 text-xs tabular-nums" aria-label={t("diff17", { added: stats().added, removed: stats().removed })}>
             <span class="text-success-foreground">+{stats().added}</span><span class="text-destructive">−{stats().removed}</span>
           </span>
         </Show>
-      </div>
+      </PanelHeader>
       <div class="flex flex-wrap items-center gap-2">
         <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage01") : t("stage02")}</Badge></Show>
         <Show when={props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff03", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
@@ -89,7 +84,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
           </div>
         </div>
       </Show>
-    </header>
+    </div>
     <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff04")}</AlertDescription></Alert></Show>
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff05")}</AlertDescription></Alert></Show>
     <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto" : "min-h-0 flex-1 overflow-auto"} aria-label={t("diff06")}>

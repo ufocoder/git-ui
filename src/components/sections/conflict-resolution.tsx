@@ -1,3 +1,5 @@
+import { PanelHeader } from "~/components/ui/panel-header";
+import { FilePathLabel } from "~/components/ui/file-path-label";
 import ConflictCode from "./conflict-code";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { createConflictDraft, type ConflictDraft } from "~/lib/repository-drafts";
@@ -88,10 +90,10 @@ export default function ConflictResolution(props: Props) {
     finally { setPending(false); props.onBusyChange(false); }
   }
   return <div class="flex h-full min-h-0 flex-col">
-    <header class="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2">
-      <h2 class="text-sm font-medium">{t("conf12", { count: props.history.conflicts?.length ?? 0 })}</h2>
+    <PanelHeader class="px-4">
+      <h2>{t("conf12", { count: props.history.conflicts?.length ?? 0 })}</h2>
       <Button size="sm" variant="ghost" disabled={props.disabled || pending()} onClick={() => void refresh()}>{t("op28")}</Button>
-    </header>
+    </PanelHeader>
     <Show when={props.history.conflicts?.length} fallback={
       <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <p class="text-base font-medium">{t("conf10")}</p>
@@ -107,7 +109,7 @@ export default function ConflictResolution(props: Props) {
         <ResizablePanel minSize={0.4} class="min-h-0 min-w-0 overflow-hidden">
           <Show when={!loading()} fallback={<p class="p-4 text-sm text-muted-foreground" role="status">{t("cf13")}</p>}>
             <Show when={data()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("conf11")}</p>}>{current => <section class="flex h-full min-h-0 flex-col gap-3 p-4">
-              <h3 class="shrink-0 break-all font-mono text-sm font-semibold">{current().file.path}</h3>
+              <PanelHeader><h3 class="flex min-w-0 flex-1"><FilePathLabel path={current().file.path} /></h3></PanelHeader>
               <Resizable layoutId="conflicts.result" orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
                 <ResizablePanel minSize={0.15} class="min-h-0 overflow-hidden pb-3">
                   <div class="grid h-full min-h-0 grid-cols-2 gap-3">
@@ -145,7 +147,7 @@ export default function ConflictResolution(props: Props) {
 
 function ConflictSide(props: { identity: string; base: string | null; title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
   return <div class="flex min-h-0 min-w-0 flex-col gap-2">
-    <div class="flex shrink-0 flex-wrap items-center justify-between gap-2"><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></div>
+    <PanelHeader><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></PanelHeader>
     <Show when={props.version.exists && !props.version.large && !props.version.binary && props.version.mode !== "120000" && props.version.text !== null} fallback={
       <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : t("conf17")}</pre>
     }>

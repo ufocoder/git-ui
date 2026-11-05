@@ -1,3 +1,4 @@
+import { FilePathLabel } from "./file-path-label";
 import type { FileRowRenderer } from "~/lib/file-actions-context";
 import { t } from "~/lib/i18n";
 import { For, Show, type JSX } from "solid-js";
@@ -39,7 +40,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={() => props.onSelect(file().value)} title={props.fileTitle?.(file().value) ?? file().path}>
           {props.renderIcon(file().value)}
-          <span class="min-w-0 truncate">{file().name}</span>
+          <FilePathLabel path={file().name} />
         </Button>
         </div>
         </TreeRow>

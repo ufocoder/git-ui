@@ -1,3 +1,4 @@
+import { PanelHeader } from "~/components/ui/panel-header";
 import CommitMessageFields from "./commit-message-fields";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { readPanelSizes } from "~/lib/layout-preferences";
@@ -195,10 +196,10 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             { kind: "unstaged" as const, label: t("stage02"), files: unstagedFiles, action: t("stage03"), staged: false },
             { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
           ]}>{group => <section class="space-y-1" aria-label={group.label}>
-            <header class="flex flex-wrap items-center justify-between gap-1 border-b pb-1">
+            <PanelHeader>
               <h2 class="text-xs font-medium">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
-            </header>
+            </PanelHeader>
             <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
             <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
               renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage07", { path }) : t("stage06", { path })} />}

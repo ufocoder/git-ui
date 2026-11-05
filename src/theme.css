@@ -22,6 +22,7 @@
   --control-height-lg: 2.75rem;
   --control-height-compact: 1.75rem;
   --control-height-toolbar: 2rem;
+  --panel-header-height: 2.25rem;
   --control-padding: 1rem;
   --control-padding-sm: 0.75rem;
   --control-padding-lg: 2rem;
@@ -399,3 +400,5 @@ html, body {
 }
 
 :root[data-theme="rose-pine-moon"] .italic { font-style: normal; }
+
+.panel-header { min-height: var(--panel-header-height); }
