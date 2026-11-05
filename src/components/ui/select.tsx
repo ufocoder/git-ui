@@ -1,5 +1,5 @@
 import * as SelectPrimitive from "@kobalte/core/select";
-import { Show, createMemo, splitProps, type ComponentProps } from "solid-js";
+import { For, Show, createMemo, createSignal, splitProps, type ComponentProps } from "solid-js";
 import { cn } from "~/lib/utils";
 
 export const Select = SelectPrimitive.Root;
@@ -21,15 +21,44 @@ export function SelectField(props: {
 }) {
   const value = createMemo(() => props.options.find(option => option.value === props.value));
   return <Select<SelectOption> class={cn("min-w-0 space-y-1", props.class)} options={props.options} optionValue={option => `option-${encodeURIComponent(option.value)}`} optionTextValue="label"
-    value={value()} disabled={props.disabled} disallowEmptySelection onChange={option => { if (option && option.value !== props.value) props.onChange(option.value); }}
+    virtualized={props.options.length > 100} value={value()} disabled={props.disabled} disallowEmptySelection onChange={option => { if (option && option.value !== props.value) props.onChange(option.value); }}
     placeholder={props.placeholder}
     itemComponent={item => <SelectItem item={item.item}><SelectItemLabel class="break-all">{item.item.rawValue.label}</SelectItemLabel></SelectItem>}>
     <Show when={props.label}><SelectPrimitive.Label class="block text-sm font-medium">{props.label}</SelectPrimitive.Label></Show>
     <SelectTrigger id={props.id} class={cn("w-full font-normal", props.triggerClass)} aria-label={props["aria-label"]}>
       <span class="min-w-0 truncate"><SelectValue<SelectOption>>{state => state.selectedOption()?.label ?? props.placeholder ?? ""}</SelectValue></span>
     </SelectTrigger>
-    <SelectContent />
+    <Show when={props.options.length > 100} fallback={<SelectContent />}><VirtualSelectContent /></Show>
   </Select>;
+}
+
+function VirtualSelectContent() {
+  const context = SelectPrimitive.useSelectContext();
+  const items = createMemo(() => [...context.listState().collection()]);
+  const [scrollTop, setScrollTop] = createSignal(0);
+  let list: HTMLDivElement | undefined;
+  const rowHeight = 32;
+  const start = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight) - 3));
+  const end = createMemo(() => Math.min(items().length, start() + 14));
+  function scrollToItem(key: string) {
+    const index = items().findIndex(item => item.key === key);
+    if (!list || index < 0) return;
+    if (index * rowHeight < list.scrollTop) list.scrollTop = index * rowHeight;
+    else if ((index + 1) * rowHeight > list.scrollTop + list.clientHeight) list.scrollTop = (index + 1) * rowHeight - list.clientHeight;
+    setScrollTop(list.scrollTop);
+  }
+  return <SelectPrimitive.Portal>
+    <SelectPrimitive.Content class="z-50 min-w-[var(--kb-popper-anchor-width)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+      <div ref={element => { list = element; }} class="max-h-64 overflow-auto" onScroll={event => setScrollTop(event.currentTarget.scrollTop)}>
+      <SelectPrimitive.Listbox class="outline-none" scrollRef={() => list} scrollToItem={scrollToItem}
+        style={{ "padding-top": `${start() * rowHeight}px`, "padding-bottom": `${Math.max(0, items().length - end()) * rowHeight}px`, "box-sizing": "content-box" }}>
+        {() => <For each={items().slice(start(), end())}>{item =>
+          <SelectItem item={item} class="h-8 py-0"><SelectItemLabel class="block max-w-80 truncate">{item.rawValue.label}</SelectItemLabel></SelectItem>
+        }</For>}
+      </SelectPrimitive.Listbox>
+      </div>
+    </SelectPrimitive.Content>
+  </SelectPrimitive.Portal>;
 }
 
 export function SelectTrigger(props: ComponentProps<typeof SelectPrimitive.Trigger>) {

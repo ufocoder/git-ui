@@ -1,13 +1,15 @@
+import { WindowedList } from "~/components/ui/windowed-list";
+import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
 import type { ReferenceAction } from "./reference-action-dialog";
 import TagsSection from "./tags-section";
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
-import { For, Show, createSignal, createMemo, createEffect, on } from "solid-js";
+import { For, Show, createSignal, createMemo, createEffect, on, onCleanup } from "solid-js";
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
   SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
-  SidebarMenuSub, SidebarMenuSubItem, SidebarSeparator, SidebarResizeHandle,
+  SidebarMenuSubItem, SidebarSeparator, SidebarResizeHandle,
 } from "~/components/ui/sidebar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/components/ui/collapsible";
 import { Button } from "~/components/ui/button";
@@ -26,6 +28,29 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
   });
   createEffect(on(() => props.history.path, () => setBranchSearch("")));
   createEffect(() => { if (!searchable()) setBranchSearch(""); });
+  const [visibleBranches, setVisibleBranches] = createSignal<readonly string[]>([]);
+  const [comparisons, setComparisons] = createSignal<History["branch_comparisons"]>({});
+  const comparisonSnapshot = createMemo(() => JSON.stringify([props.history.path, props.history.tip, props.history.current_branch, props.history.sync.upstream, props.history.branch_tips]));
+  let requestedComparisons = new Set<string>();
+  let comparisonGeneration = 0;
+  let comparisonTimer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(on(comparisonSnapshot, () => { comparisonGeneration++; requestedComparisons = new Set(); setComparisons({}); }));
+  createEffect(() => {
+    const names = visibleBranches().filter(name => !comparisons()[name] && !requestedComparisons.has(name));
+    const generation = comparisonGeneration;
+    const active = props.mode === "history";
+    clearTimeout(comparisonTimer);
+    if (!active || !names.length) return;
+    comparisonTimer = setTimeout(() => {
+      names.forEach(name => requestedComparisons.add(name));
+      void git.getBranchComparisons([...names]).then(result => {
+        if (generation === comparisonGeneration) setComparisons(previous => ({ ...previous, ...result }));
+      }).catch(() => {
+        if (generation === comparisonGeneration) names.forEach(name => requestedComparisons.delete(name));
+      });
+    }, 150);
+  });
+  onCleanup(() => { comparisonGeneration++; clearTimeout(comparisonTimer); });
   function branchActions(branch: string) {
     return <>
       <ContextMenuItem disabled={props.disabled || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("refAct10")}</ContextMenuItem>
@@ -78,14 +103,13 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
             </div>
             <Show when={!branches().length}><p class="px-2 py-2 text-xs text-muted-foreground" role="status">{t("branchFind03")}</p></Show>
           </Show>
-          <SidebarMenu>
-            <For each={branches()}>{branch => <SidebarMenuItem><ContextMenu>
+          <WindowedList items={branches()} resetKey={branchSearch()} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
               <ContextMenuTrigger as={SidebarMenuButton} disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
                 class="group/branch min-w-0 flex-1 h-8 min-h-8 justify-between gap-2 pl-8 pr-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
                 <span class="min-w-0 flex-1 truncate">{branch}</span>
-                <Show when={props.history.branch_comparisons[branch]}>{comparison =>
+                <Show when={comparisons()[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
                   <span class="flex shrink-0 gap-1 text-2xs font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-branch-counter-foreground"
                     title={t("repo05", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}
@@ -99,8 +123,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               <ContextMenuContent>
                 {branchActions(branch)}
               </ContextMenuContent></ContextMenu>
-            </SidebarMenuItem>}</For>
-          </SidebarMenu>
+            </SidebarMenuItem>}</WindowedList>
           <Show when={!props.history.branches.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo06")}</p></Show>
         </SidebarGroupContent>
       </SidebarSection>
@@ -117,11 +140,9 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               </SidebarMenuButton>
               <CollapsibleContent>
               <Show when={remote.branches.length} fallback={<p class="px-2 pb-2 text-xs text-muted-foreground">{t("repo10")}</p>}>
-                <SidebarMenuSub>
-                  <For each={remote.branches}>{branch => <SidebarMenuSubItem>
-                    <p class="truncate py-1 text-xs text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
-                  </SidebarMenuSubItem>}</For>
-                </SidebarMenuSub>
+                <div class="ml-7"><WindowedList items={remote.branches}>{branch => <SidebarMenuSubItem>
+                    <p class="h-8 truncate py-1 text-xs text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
+                  </SidebarMenuSubItem>}</WindowedList></div>
               </Show>
               </CollapsibleContent>
               </Collapsible>

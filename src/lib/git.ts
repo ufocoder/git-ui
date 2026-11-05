@@ -70,6 +70,7 @@ export type SyncAction = "fetch" | "pull" | "push";
 
 const operationLabels = (): Record<string, string> => ({
   restore_project_path: t("fileAct03"), preview_restore_path: t("fileAct03"), reveal_project_path: t("fileAct04"),
+  get_branch_comparisons: t("repo03"),
   get_git_settings: t("cfg01"), save_git_settings: t("cfg01"),
   stash_project: t("stash01"), get_stash_details: t("stash01"), get_stash_diff: t("stash01"),
   preview_branch_action: t("branchAct03"), execute_branch_action: t("refAct09"),
@@ -138,6 +139,7 @@ export const git = {
   initializeProject: (path: string) => request<void>("initialize_project", { path }),
   openProject: (path: string) => request<OpenProjectResult>("open_project", { path }),
   getTerminalLog: () => request<TerminalLog | null>("get_project_terminal_log"),
+  getBranchComparisons: (names: string[]) => request<History["branch_comparisons"]>("get_branch_comparisons", { names }),
   getHistory: () => request<History>("get_project_history"),
   getCommitPage: (tip: string, offset: number, allBranches = true, tips?: string[]) => request<CommitPage>("get_commit_page", { tip, offset, allBranches, tips }),
   getSyncCommitPage: (localTip: string, remoteTip: string, direction: Exclude<HistoryScope, "all">, offset: number) => request<CommitPage>("get_sync_commit_page", { localTip, remoteTip, direction, offset }),

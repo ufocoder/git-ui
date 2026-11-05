@@ -41,7 +41,12 @@ pub fn page_with_branches(path: &Path, local_tip: &str, remote_tip: Option<&str>
 
 pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
     if tips.is_some_and(|tips| tips.iter().any(|tip| !valid_tip(tip))) { return Err(locale::text("err12").into()); }
-    let branch_args: Vec<String> = tips.map(|tips| tips.to_vec()).unwrap_or_else(|| vec!["--branches".into(), "--remotes".into()]);
+    let branch_args: Vec<String> = tips.map(|tips| {
+        let mut unique = tips.to_vec();
+        unique.sort_unstable();
+        unique.dedup();
+        unique
+    }).unwrap_or_else(|| vec!["--branches".into(), "--remotes".into()]);
     if !["all", "incoming", "outgoing"].contains(&scope) {
         return Err(locale::text("sync09").into());
     }

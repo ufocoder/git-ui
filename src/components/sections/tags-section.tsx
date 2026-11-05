@@ -1,9 +1,10 @@
+import { WindowedList } from "~/components/ui/windowed-list";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
-import { For, Show, createSignal, createEffect, onCleanup } from "solid-js";
+import { Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
 import { SidebarSection } from "~/components/ui/sidebar-section";
-import { SidebarGroupContent, SidebarMenu, SidebarMenuItem } from "~/components/ui/sidebar";
+import { SidebarGroupContent, SidebarMenuItem } from "~/components/ui/sidebar";
 import { SectionIcon } from "~/components/ui/repository-icons";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "~/components/ui/dialog";
@@ -60,8 +61,7 @@ export default function TagsSection(props: {
     <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     }>
-      <SidebarGroupContent><SidebarMenu>
-        <For each={props.history.tags}>{tag => <SidebarMenuItem>
+      <SidebarGroupContent><WindowedList items={props.history.tags}>{tag => <SidebarMenuItem>
           <ContextMenu>
             <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span class="truncate" title={tag}>{tag}</span>
@@ -74,8 +74,7 @@ export default function TagsSection(props: {
               <ContextMenuItem class="text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-        </SidebarMenuItem>}</For>
-      </SidebarMenu><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show></SidebarGroupContent>
+        </SidebarMenuItem>}</WindowedList><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show></SidebarGroupContent>
     </SidebarSection>
     <Dialog open={Boolean(selection())} onOpenChange={value => { if (!value && !disabled()) setSelection(undefined); }}>
       <DialogContent>

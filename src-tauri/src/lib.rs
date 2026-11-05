@@ -16,6 +16,7 @@ mod tracking;
 mod tags;
 mod reference_actions;
 mod branch_actions;
+mod branch_comparisons;
 mod update_menu;
 mod updates;
 
@@ -38,7 +39,7 @@ fn read_commit_references(path: &Path) -> Result<HashMap<String, Vec<CommitRefer
         path,
         &[
             "for-each-ref",
-            "--format=%(refname)%00%(objectname)%00%(objecttype)%00%(symref)",
+            "--format=%(refname)%00%(objectname)%00%(objecttype)%00%(symref)%00%(*objectname)%00%(*objecttype)",
             "refs/heads/",
             "refs/remotes/",
             "refs/tags/",
@@ -47,7 +48,7 @@ fn read_commit_references(path: &Path) -> Result<HashMap<String, Vec<CommitRefer
     let mut references: HashMap<String, Vec<CommitReference>> = HashMap::new();
     for line in output.lines() {
         let fields: Vec<_> = line.split('\0').collect();
-        if fields.len() != 4 || !fields[3].is_empty() {
+        if fields.len() != 6 || !fields[3].is_empty() {
             continue;
         }
         let (kind, name) = if let Some(name) = fields[0].strip_prefix("refs/heads/") {
@@ -59,7 +60,9 @@ fn read_commit_references(path: &Path) -> Result<HashMap<String, Vec<CommitRefer
         } else {
             continue;
         };
-        let hash = if fields[2] == "tag" {
+        let hash = if fields[2] == "tag" && fields[5] == "commit" {
+            fields[4].to_owned()
+        } else if fields[2] == "tag" {
             match git(
                 path,
                 &[
@@ -134,65 +137,20 @@ struct BranchComparison {
     behind: usize,
 }
 
+#[cfg(test)]
 fn read_branch_comparisons(
     path: &Path,
     head: &str,
 ) -> Result<HashMap<String, BranchComparison>, String> {
-    let mut comparisons = HashMap::new();
-    if head.is_empty() {
-        return Ok(comparisons);
-    }
-    let refs = git(
+    let names = git(
         path,
-        &[
-            "for-each-ref",
-            "--format=%(refname)%00%(upstream)",
-            "refs/heads/",
-        ],
+        &["for-each-ref", "--format=%(refname:strip=2)", "refs/heads/"],
     )?;
-    for line in refs.lines() {
-        let Some((reference, upstream)) = line.split_once('\0') else {
-            continue;
-        };
-        let count = |base: &str| {
-            git(
-                path,
-                &[
-                    "rev-list",
-                    "--left-right",
-                    "--count",
-                    &format!("{reference}...{base}"),
-                    "--",
-                ],
-            )
-        };
-        let (base, counts) = if !upstream.is_empty() {
-            match count(upstream) {
-                Ok(counts) => (
-                    upstream
-                        .strip_prefix("refs/remotes/")
-                        .unwrap_or(upstream)
-                        .to_owned(),
-                    counts,
-                ),
-                Err(_) => ("HEAD".into(), count(head)?),
-            }
-        } else {
-            ("HEAD".into(), count(head)?)
-        };
-        let values: Vec<_> = counts.split_whitespace().collect();
-        if let [ahead, behind] = values.as_slice() {
-            comparisons.insert(
-                reference.trim_start_matches("refs/heads/").into(),
-                BranchComparison {
-                    base,
-                    ahead: ahead.parse().map_err(|_| locale::text("err08"))?,
-                    behind: behind.parse().map_err(|_| locale::text("err08"))?,
-                },
-            );
-        }
-    }
-    Ok(comparisons)
+    branch_comparisons::read(
+        path,
+        head,
+        &names.lines().map(str::to_owned).collect::<Vec<_>>(),
+    )
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -298,22 +256,73 @@ fn git(path: &Path, args: &[&str]) -> Result<String, String> {
 
 fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     let log_id = terminal_log::begin(path, args);
-    let output = process::background("git")
+    // Large immutable branch snapshots can exceed the OS argument-size limit.
+    let mut arguments = args.to_vec();
+    let mut revisions = Vec::new();
+    if (args.first() == Some(&"log") || args.get(1) == Some(&"log")) && args.len() > 1000 {
+        let boundary = arguments
+            .iter()
+            .position(|arg| *arg == "--")
+            .unwrap_or(arguments.len());
+        let mut index = 0;
+        arguments.retain(|arg| {
+            let is_revision = index < boundary
+                && [40, 64].contains(&arg.len())
+                && arg.bytes().all(|byte| byte.is_ascii_hexdigit());
+            index += 1;
+            if is_revision {
+                revisions.push(*arg);
+            }
+            !is_revision
+        });
+        if !revisions.is_empty() {
+            arguments.insert(2, "--stdin");
+        }
+    }
+    let mut command = process::background("git");
+    command
         .arg("-C")
         .arg(path)
-        .args(args)
+        .args(&arguments)
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
         .env_remove("GIT_COMMON_DIR")
         .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GIT_EDITOR", "true")
-        .output()
-        .map_err(|e| {
-            let message = locale::format("err02", &[("e", e.to_string())]);
-            terminal_log::finish(path, log_id, message.clone(), false, None);
-            message
-        })?;
+        .env("GIT_EDITOR", "true");
+    let output = if revisions.is_empty() {
+        command.output()
+    } else {
+        use std::io::Write;
+        use std::process::Stdio;
+        command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        command.spawn().and_then(|mut child| {
+            let input = revisions.join("\n") + "\n";
+            // Drain output while writing, including when Git exits before reading stdin.
+            let writer = child
+                .stdin
+                .take()
+                .map(|mut stdin| std::thread::spawn(move || stdin.write_all(input.as_bytes())));
+            let output = child.wait_with_output();
+            if let Some(writer) = writer {
+                let written = writer
+                    .join()
+                    .map_err(|_| std::io::Error::other("Git stdin writer failed"))?;
+                if output.as_ref().is_ok_and(|output| output.status.success()) {
+                    written?;
+                }
+            }
+            output
+        })
+    }
+    .map_err(|e| {
+        let message = locale::format("err02", &[("e", e.to_string())]);
+        terminal_log::finish(path, log_id, message.clone(), false, None);
+        message
+    })?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = if stdout.is_empty() {
@@ -356,7 +365,8 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
     let tip = refs.trim().to_owned();
     let branch_tips: HashMap<String, String> = git(&path, &["for-each-ref", "--format=%(refname)%00%(objectname)", "refs/heads/", "refs/remotes/"])?
         .lines().filter_map(|line| line.split_once('\0').map(|(name, tip)| (name.to_owned(), tip.to_owned()))).collect();
-    let tips: Vec<String> = branch_tips.values().cloned().collect();
+    let mut tips: Vec<String> = branch_tips.values().cloned().collect();
+    tips.sort(); tips.dedup();
     let page = read_branch_commit_page_at_tips(&path, &tip, 0, true, Some(&tips))?;
     let working_files = read_worktree_files(&path)?;
     let current_branch = git(&path, &["branch", "--show-current"])?.trim().to_owned();
@@ -372,7 +382,7 @@ fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         last_fetch: fetch_status::read(&path),
         path: path.to_string_lossy().into_owned(),
         commits: page.commits,
-        branch_comparisons: read_branch_comparisons(&path, &tip)?,
+        branch_comparisons: HashMap::new(),
         branch_tips,
         tip,
         has_more: page.has_more,
@@ -441,7 +451,9 @@ fn read_commit_range_with_refs(path: &Path, revision: &str, offset: usize, inclu
     if include_refs {
         if let Some(tips) = tips {
             if tips.iter().any(|tip| ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit())) { return Err(locale::text("err12").into()); }
-            args.extend(tips.iter().map(String::as_str));
+            let mut unique_tips: Vec<&str> = tips.iter().map(String::as_str).collect();
+            unique_tips.sort_unstable(); unique_tips.dedup();
+            args.extend(unique_tips);
         } else { args.extend(["--branches", "--remotes"]); }
     }
     args.extend([revision, "--"]);
@@ -1415,6 +1427,7 @@ pub fn run() {
             frontend_ready,
             sync_project,
             commit_ops::run_commit_operation,
+            branch_comparisons::get_branch_comparisons,
             branch_actions::preview_branch_action,
             branch_actions::execute_branch_action,
             reference_actions::change_project_reference,
@@ -3432,7 +3445,8 @@ mod tests {
         git(&repo.0, &["update-ref", "refs/remotes/origin/main", &base]).unwrap();
         git(&repo.0, &["branch", "--set-upstream-to=origin/main", &main]).unwrap();
         commit_file(&repo, "local", "Local");
-        let comparisons = read_history(&repo.0).unwrap().branch_comparisons;
+        let history = read_history(&repo.0).unwrap();
+        let comparisons = read_branch_comparisons(&repo.0, &history.tip).unwrap();
         assert_eq!(comparisons[&main].base, "origin/main");
         assert_eq!(
             (comparisons[&main].ahead, comparisons[&main].behind),
@@ -3442,7 +3456,8 @@ mod tests {
         commit_file(&repo, "remote", "Remote");
         git(&repo.0, &["update-ref", "refs/remotes/origin/main", "HEAD"]).unwrap();
         git(&repo.0, &["switch", &main]).unwrap();
-        let comparisons = read_history(&repo.0).unwrap().branch_comparisons;
+        let history = read_history(&repo.0).unwrap();
+        let comparisons = read_branch_comparisons(&repo.0, &history.tip).unwrap();
         assert_eq!(
             (comparisons[&main].ahead, comparisons[&main].behind),
             (1, 1)
