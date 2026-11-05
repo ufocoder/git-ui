@@ -1,5 +1,4 @@
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { For, Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
@@ -58,21 +57,18 @@ export default function TagsSection(props: {
   }
   const disabled = () => props.disabled || pending();
   return <>
-    <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={<div class="flex shrink-0 items-center">
-      <DropdownMenu placement="bottom-end" gutter={4}>
-        <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7" disabled={disabled() || !props.history.tags.length} aria-label={t("refAct01", { name: t("repo07") })}>⋯</DropdownMenuTrigger>
-        <DropdownMenuContent><DropdownMenuItem disabled={disabled() || !props.history.tags.length} onSelect={() => open(null)}>{t("tagPush02")}</DropdownMenuItem></DropdownMenuContent>
-      </DropdownMenu>
+    <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
-    </div>}>
+    }>
       <SidebarGroupContent><SidebarMenu>
         <For each={props.history.tags}>{tag => <SidebarMenuItem>
           <ContextMenu>
-            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md px-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span class="truncate" title={tag}>{tag}</span>
             </ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tagPush03", { tag })}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tagPush02")}</ContextMenuItem>
               <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("refAct02")}</ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem class="text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</ContextMenuItem>

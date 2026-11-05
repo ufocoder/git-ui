@@ -1,15 +1,15 @@
+import { Portal } from "solid-js/web";
 import { For, Show, createSignal } from "solid-js";
 import { locale, t } from "~/lib/i18n";
 import type { History, StashAction, StashEntry } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { SidebarGroupContent } from "~/components/ui/sidebar";
-import { SectionIcon } from "~/components/ui/repository-icons";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { TextField, TextFieldInput, TextFieldLabel } from "~/components/ui/text-field";
 
 type Action = { kind: "save" } | { kind: "apply" | "drop"; entry: StashEntry };
-export default function StashSection(props: { history: History; selected?: string; onSelect?: (entry: StashEntry) => void; disabled: boolean; onAction: (action: StashAction) => Promise<void> }) {
+export default function StashSection(props: { actionsMount?: HTMLDivElement; history: History; selected?: string; onSelect?: (entry: StashEntry) => void; disabled: boolean; onAction: (action: StashAction) => Promise<void> }) {
   const [action, setAction] = createSignal<Action>();
   const [message, setMessage] = createSignal("");
   const [includeUntracked, setIncludeUntracked] = createSignal(true);
@@ -36,22 +36,18 @@ export default function StashSection(props: { history: History; selected?: strin
     finally { setPending(false); }
   }
   return <>
-    <Show when={props.onSelect && props.selected}><div class="flex flex-wrap gap-2 border-b p-3"><Button size="sm" disabled={props.disabled} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "apply", entry: saved }); }}>{t("stash08")}</Button><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "drop", entry: saved }); }}>{t("stash09")}</Button></div></Show>
+    <Show when={props.actionsMount}><Portal mount={props.actionsMount}><div class="flex items-center gap-2"><Button size="sm" class="h-control-toolbar" disabled={props.disabled || pending() || !props.selected} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "apply", entry: saved }); }}>{t("stash08")}</Button><Button size="sm" class="h-control-toolbar" variant="outline" disabled={props.disabled || pending() || !props.selected} onClick={() => { const saved = props.history.stashes.find(item => item.id === props.selected); if (saved) open({ kind: "drop", entry: saved }); }}>{t("stash09")}</Button></div></Portal></Show>
     <section class="p-2" aria-label={t("stash01")}>
-      <header class="flex h-8 items-center gap-2 px-2 text-xs font-medium text-muted-foreground"><SectionIcon name="stash" /><h2>{t("stash01")}</h2></header>
       <SidebarGroupContent>
         <Show when={props.history.stashes?.length} fallback={<p class="px-2 py-2 text-xs text-muted-foreground">{t("stash03")}</p>}>
           <ul class="space-y-1">
             <For each={props.history.stashes}>{saved => <li class="flex min-w-0 items-center gap-1">
-              <Button variant="ghost" class="h-auto min-w-0 flex-1 flex-col items-start gap-1 px-2 py-2 text-left" disabled={props.disabled}
+              <Button variant="ghost" class="h-auto min-w-0 flex-1 flex-col items-start gap-1 pl-8 pr-2 py-2 text-left" disabled={props.disabled}
                 title={props.onSelect ? saved.message : t("stash23", { name: saved.message })} aria-pressed={props.selected === saved.id} classList={{ "bg-accent": props.selected === saved.id }} onClick={() => props.onSelect ? props.onSelect(saved) : open({ kind: "apply", entry: saved })}>
                 <span class="w-full truncate text-xs">{saved.message}</span>
                 <span class="w-full truncate text-3xs font-normal text-muted-foreground">{saved.reference} · {new Date(saved.date).toLocaleString(locale())}</span>
               </Button>
-              <Button variant="ghost" size="icon" class="size-7 shrink-0 text-muted-foreground hover:text-destructive" disabled={props.disabled}
-                title={t("stash09")} aria-label={t("stash09")} onClick={() => open({ kind: "drop", entry: saved })}>
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" /></svg>
-              </Button>
+
             </li>}</For>
           </ul>
         </Show>

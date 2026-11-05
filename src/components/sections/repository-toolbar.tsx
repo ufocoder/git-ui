@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import type { History, RepositoryMode, SyncAction } from "~/lib/git";
 
 type RepositoryToolbarProps = {
+  onStashActionsMount: (element: HTMLDivElement) => void;
   mode: RepositoryMode;
   historyBranch: string;
   onHistoryBranchChange: (value: string) => void;
@@ -55,9 +56,10 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               </DropdownMenu>
             </div>
           </div>
-          <SelectField class="w-48 max-w-full" triggerClass="h-control-toolbar" aria-label={t("historyView03")} value={props.historyBranch} onChange={props.onHistoryBranchChange} disabled={props.busy}
+          <SelectField class="w-fit max-w-[min(10rem,100%)]" triggerClass="h-control-toolbar gap-1.5 border-transparent bg-transparent px-2 shadow-none hover:bg-accent" aria-label={t("historyView03")} value={props.historyBranch} onChange={props.onHistoryBranchChange} disabled={props.busy}
             options={[{ value: "all", label: t("historyView01") }, ...(props.history?.branches ?? []).map(branch => ({ value: `refs/heads/${branch}`, label: branch })), ...(props.history?.remotes ?? []).flatMap(remote => remote.branches.map(branch => ({ value: `refs/remotes/${remote.name}/${branch}`, label: `${remote.name}/${branch}` }))), ...(!props.history?.current_branch ? [{ value: "current", label: "HEAD" }] : [])]} />
           </Show>
+          <Show when={props.mode === "stash"}><div ref={props.onStashActionsMount} class="flex items-center gap-2" /></Show>
           <Show when={props.mode === "commit"}><Button variant="outline" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("hist01") : !props.history?.tip ? t("stash13") : props.history.operation ? t("stash12") : !props.history.has_changes ? t("stash14") : t("stash25")}>{t("stash24")}</Button></Show>
           <Button variant={props.terminalOpen ? "secondary" : "ghost"} class="ml-auto h-control-toolbar px-control-sm-x" aria-pressed={props.terminalOpen} aria-controls="repository-terminal" onClick={props.onToggleTerminal}>
             <span aria-hidden="true" class="font-mono">{t("nav10")}</span> {t("nav11")}</Button>

@@ -542,7 +542,6 @@
   "confNav05": "No changes from the common ancestor",
   "confNav06": "Common ancestor unavailable for comparison",
   "compose06": "Amend replaces the latest commit with a new one. Review the message and confirm replacement.",
-  "refAct01": "Actions for {name}",
   "refAct02": "Rename",
   "refAct03": "Delete branch",
   "refAct04": "New name",

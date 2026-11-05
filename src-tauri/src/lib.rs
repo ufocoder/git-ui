@@ -876,7 +876,8 @@ async fn open_project(
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| history.path.clone());
-    window.set_title(&title).map_err(|e| e.to_string())?;
+    let branch = if history.current_branch.is_empty() { "HEAD" } else { &history.current_branch };
+    window.set_title(&format!("{title} ({branch})")).map_err(|e| e.to_string())?;
     let canonical_path = history.path.clone();
     app.state::<Projects>().0.lock().map_err(|e| e.to_string())?
         .insert(window.label().to_owned(), history.clone());

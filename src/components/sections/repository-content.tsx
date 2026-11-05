@@ -12,6 +12,8 @@ import WorktreeCommit from "./worktree-commit";
 import TerminalPanel from "./terminal-panel";
 
 type RepositoryContentProps = {
+  stashListMount?: HTMLDivElement;
+  stashActionsMount?: HTMLDivElement;
   onStash: (action: StashAction) => Promise<void>;
   mode: RepositoryMode;
   onModeChange: (mode: RepositoryMode) => void;
@@ -51,7 +53,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
             <ConflictResolution draft={conflictDraft} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} onRefresh={props.onRefresh} onCreateCommit={() => props.onModeChange("commit")} />
           </Match>
           <Match when={props.mode === "stash"}>
-            <StashWorkspace history={props.history} disabled={props.disabled} onAction={props.onStash} />
+            <StashWorkspace listMount={props.stashListMount} actionsMount={props.stashActionsMount} history={props.history} disabled={props.disabled} onAction={props.onStash} />
           </Match>
         </Switch>
       </Suspense>
