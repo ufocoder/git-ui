@@ -3,7 +3,6 @@ export type GraphRow = { column: number; edges: GraphEdge[] };
 
 export function buildCommitGraph(commits: readonly { hash: string; parents: string[] }[]): { rows: GraphRow[]; width: number } {
   const lanes: string[] = [];
-  const visible = new Set(commits.map(commit => commit.hash));
   let width = 1;
   const rows = commits.map(commit => {
     const continued = lanes.includes(commit.hash);
@@ -11,7 +10,7 @@ export function buildCommitGraph(commits: readonly { hash: string; parents: stri
     const before = [...lanes];
     const column = before.indexOf(commit.hash);
     lanes.splice(column, 1);
-    const parents = commit.parents.filter(parent => visible.has(parent));
+    const parents = commit.parents;
     const active = new Set(lanes);
     const newParents = parents.filter(parent => !active.has(parent));
     lanes.splice(column, 0, ...newParents);
