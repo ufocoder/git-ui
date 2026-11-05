@@ -15,21 +15,15 @@ try {
     const label = document.createElement('div');
     label.textContent = download.name;
     const detail = document.createElement('small');
-    const size = Number.isSafeInteger(download.size) && download.size > 0
-      ? new Intl.NumberFormat(document.documentElement.lang || undefined, {
-          style: 'unit',
-          unit: 'megabyte',
-          maximumSignificantDigits: 3,
-        }).format(download.size / 1_000_000)
-      : null;
-    detail.textContent = size ? `${download.detail} · ${size}` : download.detail;
+    const size = formatFileSize(download.size);
+    detail.textContent = download.detail;
     label.append(detail);
     row.append(label);
     const action = document.createElement(download.url ? 'a' : 'span');
     if (download.url) {
       action.href = download.url;
-      action.textContent = 'Download ↓';
-      action.setAttribute('aria-label', `Download for ${download.name} ${download.detail}`);
+      action.textContent = size ? `Download · ${size} ↓` : 'Download ↓';
+      action.setAttribute('aria-label', `Download for ${download.name} ${download.detail}${size ? `, ${size}` : ""}`);
     } else {
       action.className = 'unavailable';
       action.textContent = 'Coming soon';
@@ -70,7 +64,17 @@ async function recommendInstaller(downloads) {
   if (!installer) return;
 
   primary.href = installer.url;
-  primary.firstChild.textContent = platform === 'mac-arm'
-    ? 'Download for Apple Silicon '
-    : 'Download for Intel Mac ';
+  const label = platform === 'mac-arm' ? 'Download for Apple Silicon' : 'Download for Intel Mac';
+  const size = formatFileSize(installer.size);
+  primary.firstChild.textContent = size ? `${label} · ${size} ` : `${label} `;
+}
+
+
+function formatFileSize(bytes) {
+  if (!Number.isSafeInteger(bytes) || bytes <= 0) return null;
+  return new Intl.NumberFormat(document.documentElement.lang || undefined, {
+    style: 'unit',
+    unit: 'megabyte',
+    maximumSignificantDigits: 3,
+  }).format(bytes / 1_000_000);
 }
