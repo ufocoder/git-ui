@@ -1,9 +1,9 @@
 import { SelectField } from "~/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { Show, createSignal, onCleanup } from "solid-js";
 import { language, locale, t } from "~/lib/i18n";
 import { Button } from "~/components/ui/button";
-import type { History, RepositoryMode, SyncAction } from "~/lib/git";
+import type { History, PullMode, RepositoryMode, SyncAction } from "~/lib/git";
 
 type RepositoryToolbarProps = {
   onStashActionsMount: (element: HTMLDivElement) => void;
@@ -17,7 +17,7 @@ type RepositoryToolbarProps = {
   terminalOpen: boolean;
   onToggleTerminal: () => void;
   onConfigureUpstream: () => void;
-  onSync: (action: SyncAction) => void;
+  onSync: (action: SyncAction, pullMode?: PullMode) => void;
 };
 export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   const [now, setNow] = createSignal(Date.now());
@@ -32,14 +32,37 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
     const age = minutes < 60 ? format.format(-minutes, "minute") : minutes < 1440 ? format.format(-Math.floor(minutes / 60), "hour") : format.format(-Math.floor(minutes / 1440), "day");
     return t("fetch03", { age });
   };
+  const pullBlocked = () => {
+    if (props.busy) return t("hist01");
+    if (!props.history?.current_branch) return t("repo04");
+    if (props.history.operation) return t("stash12");
+    if (!props.history.sync.upstream) return t(props.history.remotes.length ? "sync08" : "err45");
+    return undefined;
+  };
   return (
         <nav aria-label={t("nav01")} class="flex shrink-0 flex-wrap items-center justify-start gap-2 border-b px-4 py-2 min-h-12">
           <Show when={props.mode === "history"} fallback={<Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conf01") : t("stash01")}</h1></Show>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.remotes.length}
               onClick={() => void props.onSync("fetch")} title={`${t("sync02")}\n${fetchAge()}\n${props.history?.last_fetch ? t("fetch04", { date: new Date(props.history.last_fetch).toLocaleString(locale()) }) : t("fetch05")}`}>{props.action === "fetch" ? t("sync03") : t("sync01")}</Button>
-            <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.current_branch || !props.history?.sync.upstream || !props.history?.remotes.length}
-              onClick={() => void props.onSync("pull")} title={t("nav02")}>{props.action === "pull" ? t("nav03") : t("nav04")}</Button>
+            <div class="flex items-center">
+              <span title={pullBlocked() ?? t("nav02")}>
+                <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={Boolean(pullBlocked())}
+                  onClick={() => props.onSync("pull")}>{props.action === "pull" ? t("nav03") : t("nav04")}</Button>
+              </span>
+              <DropdownMenu placement="bottom-end" gutter={4}>
+                <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.busy} aria-label={t("pull01")} title={t("pull01")}>
+                  <svg aria-hidden="true" class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 9 6 6 6-6" /></svg>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem disabled={Boolean(pullBlocked())} onSelect={() => props.onSync("pull", "fast-forward-only")}>{t("pull02")}</DropdownMenuItem>
+                  <DropdownMenuItem disabled={Boolean(pullBlocked())} onSelect={() => props.onSync("pull", "rebase")}>{t("pull03")}</DropdownMenuItem>
+                  <DropdownMenuItem disabled={Boolean(pullBlocked())} onSelect={() => props.onSync("pull", "merge")}>{t("pull04")}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled={!props.history?.current_branch || !props.history.tip || !props.history.remotes.length || Boolean(props.history.operation)} onSelect={props.onConfigureUpstream}>{props.history?.sync.upstream ? t("track03") : t("track02")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div class="flex min-w-0 items-center">
               <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
                 onClick={() => void props.onSync("push")} title={props.history?.sync.upstream ? `${t("nav05")}\n${t("sync12", { branch: props.history.sync.upstream })}${!props.history.sync.ahead && !props.history.sync.behind ? `\n${t("sync07")}` : ""}` : t("nav05")}>

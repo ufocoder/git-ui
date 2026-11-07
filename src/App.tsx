@@ -11,7 +11,7 @@ import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { t } from "~/lib/i18n";
 import { Show, batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { git, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type SyncAction } from "~/lib/git";
+import { git, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type PullMode, type SyncAction } from "~/lib/git";
 import { terminalError, clearTerminalError } from "~/lib/terminal";
 import TerminalPanel from "~/components/sections/terminal-panel";
 import { isTauri } from "@tauri-apps/api/core";
@@ -270,23 +270,23 @@ function App() {
     } finally { setBusy(false); }
   }
 
-  async function syncProject(action: SyncAction) {
+  async function syncProject(action: SyncAction, pullMode?: PullMode) {
     if (busy()) return;
     setBusy(true); setError(""); setSyncAction(action);
     try {
-      setHistory(await git.sync(action));
+      setHistory(await git.sync(action, pullMode));
     } catch (e) {
       setError(String(e));
       try { setHistory(await git.getHistory()); } catch { /* Keep the loaded history. */ }
     } finally { setSyncAction(null); setBusy(false); }
   }
 
-  function requestSync(action: SyncAction) {
+  function requestSync(action: SyncAction, pullMode?: PullMode) {
     if (busy()) return;
     const project = history();
     if ((action === "push" && (!project?.remotes.length || !project.sync.upstream)) || (action === "pull" && !project?.sync.upstream)) {
       setTrackingMode(action === "push" ? "publish" : "upstream");
-    } else void syncProject(action);
+    } else void syncProject(action, pullMode);
   }
   async function configureTracking(mode: TrackingMode, branch: string, remote: string, remoteBranch: string, url?: string) {
     if (busy()) throw new Error(t("hist01"));

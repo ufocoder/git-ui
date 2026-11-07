@@ -26,12 +26,21 @@ pub fn read(path: &Path, head: &str, branch: &str) -> Result<SyncStatus, String>
     if upstream.is_empty() {
         return Ok(SyncStatus::default());
     }
+    let upstream_name = upstream
+        .strip_prefix("refs/remotes/")
+        .unwrap_or(upstream)
+        .to_owned();
     let remote_tip = match git(
         path,
         &["rev-parse", "--verify", &format!("{upstream}^{{commit}}")],
     ) {
         Ok(tip) => tip.trim().to_string(),
-        Err(_) => return Ok(SyncStatus::default()),
+        Err(_) => {
+            return Ok(SyncStatus {
+                upstream: Some(upstream_name),
+                ..SyncStatus::default()
+            });
+        }
     };
     let counts = git(
         path,
@@ -48,12 +57,7 @@ pub fn read(path: &Path, head: &str, branch: &str) -> Result<SyncStatus, String>
         return Err(locale::text("err08").into());
     };
     Ok(SyncStatus {
-        upstream: Some(
-            upstream
-                .strip_prefix("refs/remotes/")
-                .unwrap_or(upstream)
-                .into(),
-        ),
+        upstream: Some(upstream_name),
         remote_tip: Some(remote_tip),
         ahead: ahead.parse().map_err(|_| locale::text("err08"))?,
         behind: behind.parse().map_err(|_| locale::text("err08"))?,

@@ -1291,12 +1291,12 @@ async fn commit_project_changes(
     .map_err(|e| e.to_string())?
 }
 
-fn sync_repository(path: &Path, action: &str) -> Result<ProjectHistory, String> {
+fn sync_repository(path: &Path, action: &str, pull_mode: tracking::PullMode) -> Result<ProjectHistory, String> {
     let history = read_history(path)?;
     if action != "fetch" && history.current_branch.is_empty() {
         return Err(locale::text("err44").into());
     }
-    if history.remotes.is_empty() {
+    if history.remotes.is_empty() && !(action == "pull" && history.sync.upstream.is_some()) {
         return Err(locale::text("err45").into());
     }
     match action {
@@ -1305,7 +1305,7 @@ fn sync_repository(path: &Path, action: &str) -> Result<ProjectHistory, String> 
             fetch_status::record(path);
         }
         "pull" => {
-            tracking::pull_current(path)?;
+            tracking::pull_current(path, pull_mode)?;
             fetch_status::record(path);
         }
         "push" => {
@@ -1321,9 +1321,10 @@ async fn sync_project(
     window: WebviewWindow,
     projects: State<'_, Projects>,
     action: String,
+    pull_mode: Option<tracking::PullMode>,
 ) -> Result<ProjectHistory, String> {
     let path = project_path(&window, &projects)?;
-    tauri::async_runtime::spawn_blocking(move || sync_repository(Path::new(&path), &action))
+    tauri::async_runtime::spawn_blocking(move || sync_repository(Path::new(&path), &action, pull_mode.unwrap_or_default()))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -1954,19 +1955,19 @@ mod tests {
         )
         .unwrap();
         commit_file(&first, "updated", "Pushed commit");
-        let pushed = sync_repository(&first.0, "push").unwrap();
-        let pulled = sync_repository(&second.0, "pull").unwrap();
+        let pushed = sync_repository(&first.0, "push", tracking::PullMode::Configured).unwrap();
+        let pulled = sync_repository(&second.0, "pull", tracking::PullMode::Configured).unwrap();
         assert_eq!(pulled.tip, pushed.tip);
         assert_eq!(
             std::fs::read_to_string(second.0.join("file.txt")).unwrap(),
             "updated"
         );
         commit_file(&first, "first change", "Remote side");
-        sync_repository(&first.0, "push").unwrap();
+        sync_repository(&first.0, "push", tracking::PullMode::Configured).unwrap();
         commit_file(&second, "second change", "Local side");
         let before = read_history(&second.0).unwrap().tip;
-        assert!(sync_repository(&second.0, "pull").is_err());
-        assert!(sync_repository(&second.0, "push").is_err());
+        assert!(sync_repository(&second.0, "pull", tracking::PullMode::FastForwardOnly).is_err());
+        assert!(sync_repository(&second.0, "push", tracking::PullMode::Configured).is_err());
         assert_eq!(read_history(&second.0).unwrap().tip, before);
     }
     fn commit_operation_repo() -> TempRepo {
@@ -2652,7 +2653,7 @@ mod tests {
             ],
         )
         .unwrap();
-        sync_repository(&repo.0, "push").unwrap();
+        sync_repository(&repo.0, "push", tracking::PullMode::Configured).unwrap();
         assert_eq!(
             git(&backup.0, &["rev-parse", "refs/heads/review/feature"])
                 .unwrap()
@@ -2739,7 +2740,7 @@ mod tests {
         .unwrap();
         commit_file(&source, "new remote content", "Remote update");
         git(&source.0, &["push"]).unwrap();
-        let pulled = sync_repository(&repo.0, "pull").unwrap();
+        let pulled = sync_repository(&repo.0, "pull", tracking::PullMode::Configured).unwrap();
         assert_eq!(pulled.current_branch, before.current_branch);
         assert_eq!(
             std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
@@ -2750,7 +2751,7 @@ mod tests {
             "keep"
         );
         let log = terminal_log::latest(&repo.0).unwrap().unwrap();
-        assert!(log.command.starts_with("git pull --ff-only"));
+        assert_eq!(log.command, "git pull");
         git(&repo.0, &["switch", "--detach", &pulled.tip]).unwrap();
         assert!(tracking::publish(&repo.0, &before.current_branch, "origin", "trunk").is_err());
         let empty = TempRepo::new();
@@ -3235,7 +3236,7 @@ mod tests {
         std::fs::write(local.0.join("untracked.txt"), "keep").unwrap();
         let before = read_history(&local.0).unwrap();
         let index = git(&local.0, &["diff", "--cached"]).unwrap();
-        let fetched = sync_repository(&local.0, "fetch").unwrap();
+        let fetched = sync_repository(&local.0, "fetch", tracking::PullMode::Configured).unwrap();
         assert_eq!(fetched.tip, before.tip);
         assert_eq!(fetched.current_branch, before.current_branch);
         assert_eq!(git(&local.0, &["diff", "--cached"]).unwrap(), index);
@@ -3319,13 +3320,13 @@ mod tests {
         assert_eq!(log.command, "git fetch --all --prune");
         assert_eq!(log.status, "success");
         git(&local.0, &["switch", "--detach", &fetched.tip]).unwrap();
-        let detached = sync_repository(&local.0, "fetch").unwrap();
+        let detached = sync_repository(&local.0, "fetch", tracking::PullMode::Configured).unwrap();
         assert!(detached.current_branch.is_empty());
         assert!(detached.sync.upstream.is_none());
         let timestamp = detached.last_fetch.expect("successful fetch records its time");
         assert_eq!(read_history(&local.0).unwrap().last_fetch, Some(timestamp));
         git(&local.0, &["remote", "set-url", "origin", "/git-ui-missing-remote"]).unwrap();
-        assert!(sync_repository(&local.0, "fetch").is_err());
+        assert!(sync_repository(&local.0, "fetch", tracking::PullMode::Configured).is_err());
         assert_eq!(read_history(&local.0).unwrap().last_fetch, Some(timestamp));
     }
 
@@ -3335,12 +3336,12 @@ mod tests {
         repo.init();
         commit_file(&repo, "base", "Base");
         assert!(
-            sync_repository(&repo.0, "pull")
+            sync_repository(&repo.0, "pull", tracking::PullMode::Configured)
                 .unwrap_err()
                 .contains("remote")
         );
-        assert!(sync_repository(&repo.0, "push").is_err());
-        assert!(sync_repository(&repo.0, "fetch").is_err());
+        assert!(sync_repository(&repo.0, "push", tracking::PullMode::Configured).is_err());
+        assert!(sync_repository(&repo.0, "fetch", tracking::PullMode::Configured).is_err());
     }
     #[test]
     fn creates_tags_and_remotes_and_rejects_invalid_or_duplicate_names() {

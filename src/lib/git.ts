@@ -66,6 +66,7 @@ export type FileDiff = { commit: string; file: CommitFile; patch: string; trunca
 export type OpenProjectResult = { history: History; recent_projects: string[]; warning: string | null };
 export type ResetMode = "soft" | "mixed" | "hard";
 export type TerminalLog = { id: number; command: string; output: string; status: "running" | "success" | "error"; exit_code: number | null };
+export type PullMode = "fast-forward-only" | "rebase" | "merge";
 export type SyncAction = "fetch" | "pull" | "push";
 
 const operationLabels = (): Record<string, string> => ({
@@ -169,7 +170,7 @@ export const git = {
   publishBranch: (branch: string, remote: string, remoteBranch: string) => request<History>("publish_project_branch", { branch, remote, remoteBranch }),
   setUpstream: (branch: string, remote: string, remoteBranch: string) => request<History>("set_project_upstream", { branch, remote, remoteBranch }),
   commitOperation: (head: string, branch: string, action: CommitOperation, options?: CommitOptions) => request<History>("run_commit_operation", { head, branch, action, options }),
-  sync: (action: SyncAction) => request<History>("sync_project", { action }),
+  sync: (action: SyncAction, pullMode?: PullMode) => request<History>("sync_project", { action, pullMode }),
 };
 
 export function createWorktreeCommit(tip: string): Commit {
