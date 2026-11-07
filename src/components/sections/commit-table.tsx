@@ -1,3 +1,4 @@
+import { graphEdgePath } from "~/lib/commit-graph";
 import { preservedSelection, anchoredScroll } from "~/lib/history-view";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
@@ -193,7 +194,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
           "aria-busy": loading() || debouncing(),
         }}>
         <colgroup><col style={{ width: `${graph().width}px` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
-        <TableHeader ref={element => { header = element; }} class="sticky top-0 z-10 bg-background" onKeyDown={event => {
+        <TableHeader ref={element => { header = element; }} class="history-columns sticky top-0 z-10" onKeyDown={event => {
           if (matchesShortcut("dismiss", event) && searchOpen()) {
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
@@ -224,16 +225,16 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
               aria-selected={selectedCommit()?.hash === row.commit.hash} tabindex={props.disabled ? -1 : 0}
               onClick={() => { if (!props.disabled) setSelectedCommit(row.commit); }}
               onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(row.commit); } }}
-              class="data-[state=selected]:bg-primary/10 data-[state=selected]:hover:bg-primary/20 data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
+              class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
               <TableCell class="px-0">
                 <svg class={row.commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: row.commit.parents.length })}>
                   <For each={row.graph.edges}>{edge =>
-                    <path d={`M ${12 + edge.from * 16} ${edge.top ? 0 : 17} L ${12 + edge.to * 16} ${edge.bottom ? 34 : 17}`} fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.from} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
+                    <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
                   }</For>
-                  <circle cx={12 + row.graph.column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill="hsl(var(--primary))" stroke="hsl(var(--background))" />
+                  <circle cx={12 + row.graph.column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill={`hsl(calc(var(--graph-hue-start) + ${row.graph.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} stroke="hsl(var(--background))" />
                 </svg>
               </TableCell>
-              <TableCell><CommitDescription subject={row.commit.subject} references={row.commit.refs} bold={row.commit.uncommitted} /></TableCell>
+              <TableCell><CommitDescription subject={row.commit.subject} references={row.commit.refs} currentBranch={props.history.current_branch} bold={row.commit.uncommitted} /></TableCell>
               <TableCell>
                 <Show when={!row.commit.uncommitted} fallback={<span aria-label={t("cf02")}>*</span>}>
                 <Tooltip openDelay={350}>
@@ -244,8 +245,8 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
                 </Tooltip>
                 </Show>
               </TableCell>
-              <TableCell title={row.commit.author}>{row.commit.author}</TableCell>
-              <TableCell><Show when={row.commit.date} fallback="—"><time dateTime={row.commit.date} title={row.commit.date}>{date(row.commit.date)}</time></Show></TableCell>
+              <TableCell class="text-muted-foreground" title={row.commit.author}>{row.commit.author}</TableCell>
+              <TableCell class="text-muted-foreground tabular-nums"><Show when={row.commit.date} fallback="—"><time dateTime={row.commit.date} title={row.commit.date}>{date(row.commit.date)}</time></Show></TableCell>
             </ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(row.commit)}>{t("hist13")}</ContextMenuItem>

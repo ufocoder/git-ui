@@ -23,6 +23,11 @@
   --control-height-compact: 1.75rem;
   --control-height-toolbar: 2rem;
   --panel-header-height: 2.25rem;
+  --panel-surface: var(--background);
+  --panel-heading: var(--muted);
+  --panel-divider: var(--border);
+  --commit-selection: var(--accent);
+  --commit-selection-foreground: var(--accent-foreground);
   --control-padding: 1rem;
   --control-padding-sm: 0.75rem;
   --control-padding-lg: 2rem;
@@ -401,4 +406,44 @@ html, body {
 
 :root[data-theme="rose-pine-moon"] .italic { font-style: normal; }
 
-.panel-header { min-height: var(--panel-header-height); }
+.panel-header {
+  min-height: var(--panel-header-height);
+  background: hsl(var(--panel-heading) / 0.5);
+  border-color: hsl(var(--panel-divider));
+}
+.panel-surface { background: hsl(var(--panel-surface)); }
+.panel-actions {
+  background: hsl(var(--panel-heading) / 0.45);
+  border-color: hsl(var(--panel-divider));
+}
+.commit-row[data-state="selected"] {
+  background: hsl(var(--commit-selection));
+  color: hsl(var(--commit-selection-foreground));
+}
+.commit-row[data-state="selected"]:hover { background: hsl(var(--commit-selection)); }
+.commit-reference {
+  border-color: color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--border)));
+  background: color-mix(in srgb, hsl(var(--primary)) 8%, hsl(var(--background)));
+  color: hsl(var(--foreground));
+}
+.commit-reference[data-kind="remote"] {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-color: hsl(var(--border));
+}
+.commit-reference[data-kind="tag"] {
+  background: hsl(var(--warning));
+  color: hsl(var(--warning-foreground));
+  border-color: color-mix(in srgb, hsl(var(--warning-foreground)) 30%, hsl(var(--border)));
+}
+.commit-reference[data-current="true"] {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+.history-columns { background: hsl(var(--panel-heading)); }
+.commit-row > td { border-bottom-color: hsl(var(--panel-divider) / 0.5); }
+.commit-row[data-state="selected"] .text-muted-foreground {
+  color: hsl(var(--commit-selection-foreground));
+}

@@ -3,21 +3,21 @@ import { For, Show } from "solid-js";
 import { Badge } from "./badge";
 import type { CommitReference } from "~/lib/git";
 
-type CommitDescriptionProps = { subject: string; references: CommitReference[]; bold?: boolean };
+type CommitDescriptionProps = { subject: string; references: CommitReference[]; bold?: boolean; currentBranch?: string };
 export function CommitDescription(props: CommitDescriptionProps) {
-  return <div class="relative min-w-0" title={props.subject}>
-    <span class={props.bold ? "block truncate font-bold" : "block truncate"}>{props.subject}</span>
+  return <div class="flex min-w-0 items-center gap-2" title={props.subject}>
+    <span class={props.bold ? "min-w-0 flex-1 truncate font-bold" : "min-w-0 flex-1 truncate"}>{props.subject}</span>
     <Show when={props.references.length}>
-      <div class="absolute right-0 top-1/2 flex max-w-[85%] -translate-y-1/2 items-center gap-1 overflow-hidden pl-2"
+      <div class="flex max-w-[55%] shrink-0 items-center gap-1 overflow-hidden"
         title={props.references.map(reference => reference.name).join(", ")}>
         <For each={props.references.slice(0, 3)}>{reference =>
-          <Badge variant={reference.kind === "tag" ? "outline" : "secondary"} class="max-w-40 shrink-0 gap-1 bg-secondary px-1.5 py-0 text-3xs leading-4"
+          <Badge variant="outline" data-kind={reference.kind} data-current={reference.kind === "branch" && reference.name === props.currentBranch ? "true" : undefined} class="commit-reference max-w-40 shrink-0 gap-1 rounded-sm px-1.5 py-0 text-3xs font-medium leading-4"
             aria-label={t("ref03", { p1: reference.kind === "tag" ? t("ref01") : t("ref02"), p2: reference.name })}>
             <span aria-hidden="true">{reference.kind === "tag" ? "◇" : "⑂"}</span>
             <span class="truncate">{reference.name}</span>
           </Badge>
         }</For>
-        <Show when={props.references.length > 3}><Badge variant="secondary" class="shrink-0 px-1.5 py-0 text-3xs leading-4">+{props.references.length - 3}</Badge></Show>
+        <Show when={props.references.length > 3}><Badge variant="secondary" class="shrink-0 rounded-sm px-1.5 py-0 text-3xs font-normal leading-4">+{props.references.length - 3}</Badge></Show>
       </div>
     </Show>
   </div>;
