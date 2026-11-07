@@ -224,7 +224,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     </ResizablePanel>
   </Resizable></div>
     <Show when={props.onCommitted && !props.history?.operation}>
-      <div class="max-h-[50%] shrink-0 overflow-y-auto border-t bg-muted/20 p-4">
+      <div class="max-h-[50%] shrink-0 panel-surface overflow-y-auto border-t p-4">
           <form onSubmit={submit} class="shrink-0 space-y-3">
             <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
             <Show when={amendTarget()}>
@@ -234,7 +234,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                 <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
               </div>
             </Show>
-            <div class="flex flex-wrap items-center justify-end gap-3">
+            <div class="panel-actions -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-3 border-t px-4 py-3">
               <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
               <span>{t("commit16")}</span>

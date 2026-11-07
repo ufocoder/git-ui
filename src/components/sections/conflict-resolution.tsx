@@ -126,9 +126,9 @@ export default function ConflictResolution(props: Props) {
                   }>
                     <ConflictCode identity={`${current().file.path}:result`} text={draft()} base={current().base.exists ? current().base.text : ""} label={t("conf04")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
                   </Show>
-                  <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
+                  <div class="panel-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2">
                     <p class="text-xs text-muted-foreground">{t("conf32")}</p>
-                    <Button variant={deleting() ? "destructive" : "default"} disabled={disabled() || !current().supported || (choice() === "manual" && !current().editable)} onClick={() => void save()}>{pending() ? t("add10") : deleting() ? t("conf23") : t("conf07")}</Button>
+                    <Button size="sm" class="h-control-toolbar px-control-sm-x" variant={deleting() ? "destructive" : "default"} disabled={disabled() || !current().supported || (choice() === "manual" && !current().editable)} onClick={() => void save()}>{pending() ? t("add10") : deleting() ? t("conf23") : t("conf07")}</Button>
                   </div>
                 </ResizablePanel>
               </Resizable>

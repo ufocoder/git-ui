@@ -11,7 +11,7 @@ import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
 import { WORKTREE, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
 
 function readView() { try { return localStorage.getItem("git-ui.diff-view") === "split"; } catch { return false; } }
-export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean }) {
+export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stash?: boolean }) {
   const [split, setSplit] = createSignal(readView());
   const [collapse, setCollapse] = createSignal(true);
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set());
@@ -54,7 +54,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
   }
   return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff01")}>
     <div class="shrink-0 space-y-2">
-      <PanelHeader>
+      <PanelHeader class="-mx-4 px-4">
         <FileStatus status={props.diff.file.status} />
         <h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.diff.file.path} /></h3>
         <Show when={parsed().hunks.length}>
@@ -63,10 +63,10 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
           </span>
         </Show>
       </PanelHeader>
-      <div class="flex flex-wrap items-center gap-2">
+      <Show when={props.scope || (!props.stash && props.diff.commit !== WORKTREE)}><div class="flex flex-wrap items-center gap-2">
         <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage01") : t("stage02")}</Badge></Show>
-        <Show when={props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff03", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
-      </div>
+        <Show when={!props.stash && props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff03", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
+      </div></Show>
       <Show when={props.diff.file.old_path}><p class="break-all text-xs text-muted-foreground">{t("diff02", { path: props.diff.file.old_path ?? "" })}</p></Show>
       <Show when={parsed().hunks.length}>
         <div class="flex flex-wrap items-center gap-1">
@@ -87,7 +87,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     </div>
     <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff04")}</AlertDescription></Alert></Show>
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff05")}</AlertDescription></Alert></Show>
-    <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto" : "min-h-0 flex-1 overflow-auto"} aria-label={t("diff06")}>
+    <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto rounded-md border-0 shadow-none" : "min-h-0 flex-1 overflow-auto rounded-md border-0 shadow-none"} aria-label={t("diff06")}>
       <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-diff leading-diff">{props.diff.patch}</pre>}>
         <Show when={split()} fallback={<div class="min-w-max py-2"><For each={rows()}>{row => renderRow(row)}</For></div>}>
           <div class="grid grid-cols-2 divide-x">
