@@ -80,7 +80,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
         }</For>
       </nav>
     </SidebarHeader>
-    <SidebarContent>
+    <SidebarContent class="overflow-x-hidden overflow-y-scroll [scrollbar-gutter:stable]">
       <Show when={props.mode === "conflicts"}>
         <div class="mx-2 mt-2 flex items-center gap-2 rounded-md border px-2 py-2 text-xs text-muted-foreground" title={props.history.current_branch || t("repo04")}>
           <SectionIcon name="branches" /><span class="truncate">{props.history.current_branch || t("repo04")}</span>
@@ -138,12 +138,12 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               <SidebarMenuButton as={CollapsibleTrigger} class="group/section h-8 pl-8 pr-2 py-1 text-sm font-medium leading-5" title={remote.name}>
                 <span class="min-w-0 truncate">{remote.name}</span><Chevron />
               </SidebarMenuButton>
-              <CollapsibleContent>
-              <Show when={remote.branches.length} fallback={<p class="px-2 pb-2 text-xs text-muted-foreground">{t("repo10")}</p>}>
-                <div class="ml-7"><WindowedList items={remote.branches}>{branch => <SidebarMenuSubItem>
-                    <p class="h-8 truncate py-1 text-xs text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
-                  </SidebarMenuSubItem>}</WindowedList></div>
-              </Show>
+              <CollapsibleContent class="ml-8 pl-3">
+                <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("repo10")}</p>}>
+                  <WindowedList items={remote.branches}>{branch => <SidebarMenuSubItem>
+                    <p class="h-8 truncate pr-2 text-xs leading-8 text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
+                  </SidebarMenuSubItem>}</WindowedList>
+                </Show>
               </CollapsibleContent>
               </Collapsible>
             </SidebarMenuItem>}</For>

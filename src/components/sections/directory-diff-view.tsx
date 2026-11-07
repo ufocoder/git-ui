@@ -60,7 +60,7 @@ function DirectoryFileDiff(props: { path: string; commit: string; stash?: boolea
     finally { if (request === generation) setLoading(false); }
   }
   return <div ref={value => { element = value; }} class="min-w-0 px-4 pb-4" aria-busy={loading()}>
-    <Show when={diff()} fallback={<div class="space-y-2"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("cf13")}</p></Show></div>}>{data =>
+    <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("cf13")}</p></Show></div>}>{data =>
       <FileDiffView diff={data()} scope={props.scope} stash={props.stash} inline />
     }</Show>
     <Show when={failed()}><p role="alert" class="mt-2 text-xs text-destructive">{t("dir02")}</p><Button variant="link" size="sm" onClick={() => void load()}>{t("hist17")}</Button></Show>
