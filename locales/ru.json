@@ -393,7 +393,6 @@
   "reset.target": "Переместить ветку {p1} на выбранный коммит.",
   "reset.to-commit": "Reset branch to this commit",
   "rewrite.affected": "Изменятся хэши коммитов ({count})",
-  "rewrite.append-messages": "Добавить остальные сообщения",
   "rewrite.combine": "Объединить",
   "rewrite.confirm": "Подтверждаю переписывание истории",
   "rewrite.confirm-published": "Подтверждаю переписывание опубликованной истории",

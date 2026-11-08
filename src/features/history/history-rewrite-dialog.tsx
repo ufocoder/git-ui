@@ -15,7 +15,6 @@ export default function HistoryRewriteDialog(props: {
 }) {
   const [preview, setPreview] = createSignal<HistoryRewritePreview>();
   const [message, setMessage] = createSignal("");
-  const [appended, setAppended] = createSignal(false);
   const [confirmed, setConfirmed] = createSignal(false);
   const [pending, setPending] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -27,14 +26,14 @@ export default function HistoryRewriteDialog(props: {
   const title = () => squash() ? t("rewrite.squash") : t("rewrite.reword");
   createEffect(() => {
     const request = target();
-    setPreview(undefined); setMessage(""); setConfirmed(false); setAppended(false); setError("");
+    setPreview(undefined); setMessage(""); setConfirmed(false); setError("");
     if (!request) return;
     let active = true;
     onCleanup(() => { active = false; });
     void git.previewHistoryRewrite(request).then(result => {
       if (active) {
         setPreview(result);
-        setMessage(result.messages[0]?.trimEnd() ?? "");
+        setMessage(result.messages.map(text => text.trimEnd()).filter(Boolean).join("\n\n"));
       }
     }).catch(error => { if (active) setError(String(error)); });
   });
@@ -71,12 +70,6 @@ export default function HistoryRewriteDialog(props: {
             <TextFieldLabel>{t("commit.message")}</TextFieldLabel>
             <TextFieldTextArea class="max-h-56 min-h-24" rows={5} />
           </TextField>
-          <Show when={squash()}>
-            <Button type="button" variant="outline" size="sm" disabled={pending() || appended()} onClick={() => {
-              setMessage([message().trimEnd(), ...details().messages.slice(1).map(text => text.trimEnd())].filter(Boolean).join("\n\n"));
-              setAppended(true);
-            }}>{t("rewrite.append-messages")}</Button>
-          </Show>
           <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} /><span classList={{ "text-destructive": details().published }}>{details().published ? t("rewrite.confirm-published") : t("rewrite.confirm")}</span></label>
         </>}</Show>
         <DialogFooter class="gap-2">

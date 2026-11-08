@@ -393,7 +393,6 @@
   "reset.target": "Move branch {p1} to the selected commit.",
   "reset.to-commit": "Reset branch to this commit",
   "rewrite.affected": "Commit hashes will change ({count})",
-  "rewrite.append-messages": "Add remaining messages",
   "rewrite.combine": "Squash",
   "rewrite.confirm": "Confirm history rewrite",
   "rewrite.confirm-published": "Confirm rewriting already published history",
