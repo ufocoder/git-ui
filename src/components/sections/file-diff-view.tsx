@@ -1,3 +1,4 @@
+import { diffSyntax } from "~/lib/diff-syntax";
 import { PanelHeader } from "~/components/ui/panel-header";
 import { FilePathLabel } from "~/components/ui/file-path-label";
 import { t } from "~/lib/i18n";
@@ -49,7 +50,11 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
       <Show when={side !== "right"}><span class="w-10 shrink-0 border-r px-1 text-right tabular-nums text-muted-foreground" aria-hidden="true">{row.left?.oldLine ?? ""}</span></Show>
       <Show when={side !== "left"}><span class="w-10 shrink-0 border-r px-1 text-right tabular-nums text-muted-foreground" aria-hidden="true">{row.right?.newLine ?? ""}</span></Show>
       <span class="w-4 shrink-0 text-center" aria-hidden="true">{line?.kind === "add" ? "+" : line?.kind === "remove" ? "−" : " "}</span>
-      <code class="block whitespace-pre pr-3">{line?.text || " "}</code>
+      <code class="block whitespace-pre pr-3">
+        <For each={diffSyntax(line?.text || " ", props.diff.file.path)}>{token =>
+          <span class={token.kind ? `diff-token-${token.kind}` : undefined}>{token.text}</span>
+        }</For>
+      </code>
     </div>;
   }
   return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff01")}>

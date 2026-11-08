@@ -447,3 +447,8 @@ html, body {
 .commit-row[data-state="selected"] .text-muted-foreground {
   color: hsl(var(--commit-selection-foreground));
 }
+
+.diff-token-comment { font-style: italic; }
+.diff-token-keyword { color: hsl(var(--info-foreground)); font-weight: var(--weight-semibold); }
+.diff-token-string { color: hsl(var(--success-foreground)); }
+.diff-token-number { color: hsl(var(--warning-foreground)); }
