@@ -468,7 +468,6 @@
   "sidebar.unfetched": "No branches fetched.",
   "sidebar.width": "Sidebar width",
   "stage.all": "Stage all",
-  "stage.commit-count": "{action} · {count}",
   "stage.empty": "No files",
   "stage.file": "Stage: {path}",
   "stage.invalid-scope": "Invalid file comparison scope",

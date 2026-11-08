@@ -7,7 +7,7 @@ export default function FileViewControls(props: { value: FilePresentation; onCha
   const options: FileSort[] = ["path", "name", "status"];
   const label = (sort: FileSort) => sort === "path" ? t("files.by-path") : sort === "name" ? t("files.by-name") : t("files.by-status");
   const change = (value: Partial<FilePresentation>) => props.onChange({ ...props.value, ...value });
-  return <div class="flex flex-wrap items-center gap-1 border-b pb-2" aria-label={t("files.presentation")}>
+  return <div class="flex flex-wrap items-center gap-1 pb-2" aria-label={t("files.presentation")}>
     <div class="flex gap-1" role="group" aria-label={t("files.view")}>
       <Button size="sm" class="h-7 px-2 text-xs" variant={props.value.view === "tree" ? "secondary" : "ghost"} aria-pressed={props.value.view === "tree"} onClick={() => change({ view: "tree" })}>{t("files.tree")}</Button>
       <Button size="sm" class="h-7 px-2 text-xs" variant={props.value.view === "list" ? "secondary" : "ghost"} aria-pressed={props.value.view === "list"} onClick={() => change({ view: "list" })}>{t("files.list")}</Button>

@@ -171,20 +171,22 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     } catch { /* Preserve the message and report failures in the terminal. */ }
   }
   return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
-    <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable]">
-      <section class="space-y-3 p-4" aria-label={t("commit.files")}>
+    <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto" classList={{ "[scrollbar-gutter:stable]": !props.onCommitted }}>
+      <section class="px-4 pb-4 pt-4" aria-label={t("commit.files")}>
         <Show when={props.onCommitted}>
-          <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
+          <div class="-mx-4 border-b px-4">
+            <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
+          </div>
           <p class="sr-only" role="status">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</p>
         </Show>
         <Show when={loading()}><p role="status" class="sr-only">{t("commit.loading-files")}</p></Show>
-        <Show when={!loading() && !files().length}><div class="rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
+        <Show when={!loading() && !files().length}><div class="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
         <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
           <For each={[
             { kind: "unstaged" as const, label: t("stage.unstaged"), files: unstagedFiles, action: t("stage.all"), staged: false },
             { kind: "staged" as const, label: t("stage.staged"), files: stagedFiles, action: t("stage.unstage-all"), staged: true },
-          ]}>{group => <section class="space-y-1" aria-label={group.label}>
-            <PanelHeader>
+          ]}>{group => <section class="space-y-1 [&+section]:mt-3" aria-label={group.label}>
+            <PanelHeader class="-mx-4 px-4">
               <h2 class="text-xs font-medium">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </PanelHeader>
@@ -198,12 +200,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     </ResizablePanel>
     <ResizableHandle withHandle aria-label={t("commit.resize")} />
     <ResizablePanel initialSize={panelSizes[1]} minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
-      <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("details.diff")}>
+      <section class="flex h-full min-h-0 flex-col px-4 pb-4" aria-label={t("details.diff")}>
         <div class="min-h-0 flex-1">
           <Show when={selectedDirectory()} fallback={<>
-          <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
+          <Show when={diffLoading()}><p role="status" class="pt-4 text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
           <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
-          <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="text-sm text-muted-foreground">{t("commit.select-file")}</p></Show>
+          <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="pt-4 text-sm text-muted-foreground">{t("commit.select-file")}</p></Show>
           </>}>
             <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined} />
           </Show>
@@ -212,7 +214,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     </ResizablePanel>
   </Resizable></div>
     <Show when={props.onCommitted && !props.history?.operation}>
-      <div class="max-h-[50%] shrink-0 panel-surface overflow-y-auto border-t p-4">
+      <div class="max-h-[50%] shrink-0 panel-surface overflow-y-auto border-t px-4 pt-4">
           <form onSubmit={submit} class="shrink-0 space-y-3">
             <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
             <Show when={amendTarget()}>
@@ -222,7 +224,14 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                 <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("operation.confirm-amend")}</label>
               </div>
             </Show>
-            <div class="panel-actions -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-3 border-t px-4 py-3">
+            <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
+              <div class="flex items-center justify-end gap-3 text-sm">
+                <span>{t("upstream.push-remote")}</span>
+                <SelectField class="w-48 max-w-full" aria-label={t("upstream.push-remote")} value={pushRemote()} disabled={disabled()}
+                  options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
+              </div>
+            </Show>
+            <div class="panel-actions -mx-4 flex flex-wrap items-center justify-end gap-3 border-t px-4 py-3">
               <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("upstream.no-remotes") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit.push-after")} />
               <span>{t("commit.push-after")}</span>
@@ -236,15 +245,8 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                   <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose.amend-warning")}>{t("commit.amend")}</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("push.running") : props.commitPhase === "committing" ? t("common.saving") : amendTarget() ? t("operation.amend-commit") : t("stage.commit-count", { action: t("commit.create"), count: stagedCount() })}</Button>
+              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("push.running") : props.commitPhase === "committing" ? t("common.saving") : amendTarget() ? t("operation.amend-commit") : t("commit.create")}</Button>
             </div>
-            <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
-              <div class="flex items-center justify-end gap-3 text-sm">
-                <span>{t("upstream.push-remote")}</span>
-                <SelectField class="w-48 max-w-full" aria-label={t("upstream.push-remote")} value={pushRemote()} disabled={disabled()}
-                  options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
-              </div>
-            </Show>
           </form>
       </div>
     </Show>
