@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCommitGraph, graphEdgePath } from "../src/lib/commit-graph.ts";
+import { buildCommitGraph, createCommitGraph, graphEdgePath } from "../src/lib/commit-graph.ts";
 
 test("continues to an unloaded parent and ends only at a root", () => {
   const head = { hash: "head", parents: ["middle"] };
@@ -62,4 +62,19 @@ test("lane colors follow ancestry when another lane closes", () => {
 test("curves have vertical tangents and straight lanes retain their coordinates", () => {
   assert.equal(graphEdgePath({ from: 0, to: 0, top: true, bottom: true, color: 0 }, 34), "M 12 0 L 12 34");
   assert.equal(graphEdgePath({ from: 0, to: 1, top: false, bottom: true, color: 0 }, 34), "M 12 17 C 12 25.5, 28 25.5, 28 34");
+});
+
+test("appending pages preserves existing rows and continues their lanes", () => {
+  const commits = Array.from({ length: 10_000 }, (_, index) => ({
+    hash: `commit-${index}`,
+    parents: index < 9_999 ? [`commit-${index + 1}`] : [],
+  }));
+  const builder = createCommitGraph();
+  const firstRow = builder.append(commits.slice(0, 50)).rows[0];
+  let graph;
+  for (let start = 50; start < commits.length; start += 50) {
+    graph = builder.append(commits.slice(start, start + 50));
+  }
+  assert.equal(graph.rows[0], firstRow);
+  assert.deepEqual(graph, buildCommitGraph(commits));
 });

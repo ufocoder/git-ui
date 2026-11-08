@@ -1,12 +1,16 @@
 export type GraphEdge = { from: number; to: number; top: boolean; bottom: boolean; color: number };
 export type GraphRow = { column: number; color: number; edges: GraphEdge[] };
 
-export function buildCommitGraph(commits: readonly { hash: string; parents: string[] }[]): { rows: GraphRow[]; width: number } {
+type GraphCommit = { hash: string; parents: string[] };
+
+export function createCommitGraph() {
   const lanes: string[] = [];
   let width = 1;
   let nextColor = 0;
   const colors = new Map<string, number>();
-  const rows = commits.map(commit => {
+  const rows: GraphRow[] = [];
+
+  function appendRow(commit: GraphCommit) {
     const continued = lanes.includes(commit.hash);
     if (!colors.has(commit.hash)) colors.set(commit.hash, nextColor++);
     const color = colors.get(commit.hash)!;
@@ -31,9 +35,21 @@ export function buildCommitGraph(commits: readonly { hash: string; parents: stri
       else edges.push({ from, to: positions.get(hash)!, top: true, bottom: true, color: colors.get(hash)! });
     });
     parents.forEach(parent => edges.push({ from: column, to: positions.get(parent)!, top: false, bottom: true, color: parents[0] === parent ? color : colors.get(parent)! }));
-    return { column, color, edges };
-  });
-  return { rows, width: Math.max(56, width * 16 + 16) };
+    rows.push({ column, color, edges });
+    colors.delete(commit.hash);
+  }
+
+  return {
+    get length() { return rows.length; },
+    append(commits: readonly GraphCommit[]) {
+      commits.forEach(appendRow);
+      return { rows, width: Math.max(56, width * 16 + 16) };
+    },
+  };
+}
+
+export function buildCommitGraph(commits: readonly GraphCommit[]) {
+  return createCommitGraph().append(commits);
 }
 
 

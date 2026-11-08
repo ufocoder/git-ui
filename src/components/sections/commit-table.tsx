@@ -1,4 +1,4 @@
-import { graphEdgePath } from "~/lib/commit-graph";
+import { createCommitGraph, graphEdgePath } from "~/lib/commit-graph";
 import { preservedSelection, anchoredScroll } from "~/lib/history-view";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
@@ -16,7 +16,7 @@ import HistoryFilters from "./history-filters";
 import WorktreeCommit from "./worktree-commit";
 import CommitFiles from "~/components/sections/commit-files";
 import { reportTerminalError } from "~/lib/terminal";
-import { git, buildCommitGraph, createWorktreeCommit, type Commit, type HistoryScope, type HistoryFilter, type History } from "~/lib/git";
+import { git, createWorktreeCommit, type Commit, type HistoryScope, type HistoryFilter, type History } from "~/lib/git";
 
 const ROW_HEIGHT = 34;
 
@@ -42,6 +42,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
   const [dialogAction, setDialogAction] = createSignal<CommitDialogAction>();
   const [selectedCommit, setSelectedCommit] = createSignal<Commit>();
   const [commits, setCommits] = createSignal<Commit[]>([]);
+  const [graphRevision, setGraphRevision] = createSignal(0);
   const [hasMore, setHasMore] = createSignal(false);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -96,6 +97,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
         if (request !== generation) return;
         const rows = scope === "all" && showWorktree && !hasFilter && history.has_changes ? [createWorktreeCommit(history.tip), ...updated] : updated;
         batch(() => {
+          setGraphRevision(revision => revision + 1);
           setCommits(updated); setHasMore(page.has_more);
           setSelectedCommit(preserve ? preservedSelection(previous, rows) : rows[0]);
         });
@@ -142,7 +144,19 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
     if (!debouncing() && nearBottom && hasMore() && !loading() && !error() && !props.disabled) untrack(() => void loadMore());
   });
 
-  const graph = createMemo(() => buildCommitGraph(displayedCommits()));
+  let graphBuilder = createCommitGraph();
+  let builtRevision = -1;
+  let firstGraphCommit: Commit | undefined;
+  const graph = createMemo(() => {
+    const rows = displayedCommits();
+    const revision = graphRevision();
+    if (revision !== builtRevision || rows[0] !== firstGraphCommit || rows.length < graphBuilder.length) {
+      graphBuilder = createCommitGraph();
+      builtRevision = revision;
+      firstGraphCommit = rows[0];
+    }
+    return graphBuilder.append(rows.slice(graphBuilder.length));
+  });
   const start = createMemo(() => Math.max(0, Math.floor(Math.max(0, scrollTop() - headerHeight()) / ROW_HEIGHT) - Math.ceil(height() / ROW_HEIGHT)));
   const end = createMemo(() => Math.min(displayedCommits().length, start() + Math.ceil(height() / ROW_HEIGHT) * 3 + 4));
   const visibleRows = createMemo(() => displayedCommits().slice(start(), end()).map((commit, index) => ({ commit, graph: graph().rows[start() + index] })));
