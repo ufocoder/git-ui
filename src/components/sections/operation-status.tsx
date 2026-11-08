@@ -10,7 +10,7 @@ export default function OperationStatus(props: { onOpenTerminal?: () => void }) 
     const timer = window.setTimeout(() => dismissOperation(notice.id), 5000);
     onCleanup(() => window.clearTimeout(timer));
   });
-  return <Show when={operationNotice()}>{notice => <div class="fixed bottom-4 right-4 z-40 flex max-w-[min(28rem,calc(100vw-2rem))] flex-wrap items-center gap-2 rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md" role={notice().state === "error" ? "alert" : "status"}>
+  return <Show when={operationNotice()}>{notice => <div class="fixed bottom-4 right-4 z-40 flex max-w-[min(28rem,calc(100vw-2rem))] flex-wrap items-center gap-2 rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground" role={notice().state === "error" ? "alert" : "status"}>
     <Show when={notice().state === "running"} fallback={
       <span aria-hidden="true" class={notice().state === "error" ? "text-destructive" : "text-success-foreground"}>{notice().state === "error" ? "!" : "✓"}</span>
     }>
