@@ -4,21 +4,21 @@ type Chord = { key: string; primary?: boolean; shift?: boolean };
 type Shortcut = { chords: Chord[]; description: () => string };
 
 export const shortcuts = {
-  refresh: { chords: [{ key: "r", primary: true }], description: () => t("key03") },
-  help: { chords: [{ key: "F1" }], description: () => t("key04") },
-  selectCommit: { chords: [{ key: "Enter" }, { key: " " }], description: () => t("key05") },
-  dismiss: { chords: [{ key: "Escape" }], description: () => t("key06") },
-  focus: { chords: [{ key: "Tab" }, { key: "Tab", shift: true }], description: () => t("key07") },
+  refresh: { chords: [{ key: "r", primary: true }], description: () => t("shortcuts.refresh") },
+  help: { chords: [{ key: "F1" }], description: () => t("shortcuts.help") },
+  selectCommit: { chords: [{ key: "Enter" }, { key: " " }], description: () => t("shortcuts.select-commit") },
+  dismiss: { chords: [{ key: "Escape" }], description: () => t("shortcuts.close") },
+  focus: { chords: [{ key: "Tab" }, { key: "Tab", shift: true }], description: () => t("shortcuts.tab") },
   sidebarResize: {
     chords: [{ key: "ArrowLeft" }, { key: "ArrowRight" }, { key: "ArrowLeft", shift: true }, { key: "ArrowRight", shift: true }],
-    description: () => t("key08"),
+    description: () => t("shortcuts.resize-sidebar"),
   },
-  sidebarBounds: { chords: [{ key: "Home" }, { key: "End" }], description: () => t("key09") },
+  sidebarBounds: { chords: [{ key: "Home" }, { key: "End" }], description: () => t("shortcuts.sidebar-limits") },
   panelBounds: {
     chords: [{ key: "Home" }, { key: "End" }, { key: "ArrowLeft", shift: true }, { key: "ArrowRight", shift: true }, { key: "ArrowUp", shift: true }, { key: "ArrowDown", shift: true }],
-    description: () => t("key12"),
+    description: () => t("shortcuts.size-limit"),
   },
-  panelResize: { chords: [{ key: "ArrowLeft" }, { key: "ArrowRight" }, { key: "ArrowUp" }, { key: "ArrowDown" }], description: () => t("key10") },
+  panelResize: { chords: [{ key: "ArrowLeft" }, { key: "ArrowRight" }, { key: "ArrowUp" }, { key: "ArrowDown" }], description: () => t("shortcuts.resize") },
 } satisfies Record<string, Shortcut>;
 
 export type ShortcutId = keyof typeof shortcuts;
@@ -32,7 +32,7 @@ export function matchesShortcut(id: ShortcutId, event: KeyEvent): boolean {
 }
 
 export function shortcutLabels(id: ShortcutId, mac: boolean): string[] {
-  const names: Record<string, string> = { " ": t("key11"), Escape: "Esc", ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
+  const names: Record<string, string> = { " ": t("shortcuts.space"), Escape: "Esc", ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
   return (shortcuts[id].chords as Chord[]).map(chord =>
     `${chord.primary ? mac ? "⌘" : "Ctrl+" : ""}${chord.shift ? "Shift+" : ""}${names[chord.key] ?? (chord.key.length === 1 ? chord.key.toUpperCase() : chord.key)}`);
 }

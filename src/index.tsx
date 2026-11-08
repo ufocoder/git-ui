@@ -17,10 +17,10 @@ import.meta.hot?.dispose(() => window.removeEventListener("contextmenu", suppres
 async function start() {
   await initializeLanguage().catch(console.error);
   render(() => <ErrorBoundary fallback={error => <main class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6">
-    <h1 class="text-lg font-semibold">{t("crash01")}</h1>
-    <p class="text-sm text-muted-foreground">{t("crash02")}</p>
+    <h1 class="text-lg font-semibold">{t("crash.title")}</h1>
+    <p class="text-sm text-muted-foreground">{t("crash.description")}</p>
     <pre role="alert" class="max-h-60 max-w-full select-text overflow-auto whitespace-pre-wrap break-all rounded-md border p-4 text-xs">{error?.stack && !error.stack.includes(String(error)) ? `${String(error)}\n${error.stack}` : String(error?.stack ?? error)}</pre>
-    <Button onClick={() => window.location.reload()}>{t("crash03")}</Button>
+    <Button onClick={() => window.location.reload()}>{t("crash.reload")}</Button>
   </main>}><App /></ErrorBoundary>, document.getElementById("root") as HTMLElement);
 
   // Hidden WebViews can suspend animation frames. Reveal after mounting instead.

@@ -5,32 +5,32 @@ use tauri::{State, WebviewWindow};
 fn current_branch(path: &Path, expected: Option<&str>) -> Result<String, String> {
     let branch = git(path, &["branch", "--show-current"])?.trim().to_owned();
     if branch.is_empty() {
-        return Err(locale::text("err44").into());
+        return Err(locale::text("error.local-branch-required").into());
     }
     if expected.is_some_and(|expected| expected != branch) {
-        return Err(locale::text("track12").into());
+        return Err(locale::text("upstream.branch-changed").into());
     }
     if git(path, &["rev-parse", "--revs-only", "HEAD"])?
         .trim()
         .is_empty()
     {
-        return Err(locale::text("track13").into());
+        return Err(locale::text("upstream.first-commit").into());
     }
     Ok(branch)
 }
 fn validate_remote(path: &Path, name: &str) -> Result<(), String> {
     if name.starts_with('-') || !read_remotes(path)?.iter().any(|remote| remote.name == name) {
-        return Err(locale::text("track14").into());
+        return Err(locale::text("upstream.remote-missing").into());
     }
     Ok(())
 }
 fn target_ref(path: &Path, branch: &str) -> Result<String, String> {
     if branch.is_empty() || branch.trim() != branch || branch.starts_with('-') {
-        return Err(locale::text("track15").into());
+        return Err(locale::text("upstream.invalid-branch").into());
     }
     let reference = format!("refs/heads/{branch}");
     git(path, &["check-ref-format", &reference])
-        .map_err(|_| locale::text("track15").to_string())?;
+        .map_err(|_| locale::text("upstream.invalid-branch").to_string())?;
     Ok(reference)
 }
 
@@ -72,9 +72,9 @@ pub fn set_upstream(
     let known = read_remotes(path)?
         .into_iter()
         .find(|entry| entry.name == remote)
-        .ok_or(locale::text("track14"))?;
+        .ok_or(locale::text("upstream.remote-missing"))?;
     if !known.branches.iter().any(|branch| branch == remote_branch) {
-        return Err(locale::text("track16").into());
+        return Err(locale::text("upstream.branch-missing").into());
     }
     let reference = format!("refs/remotes/{remote}/{remote_branch}");
     git(
@@ -99,10 +99,10 @@ fn destination(path: &Path, branch: &str) -> Result<(String, String), String> {
         ],
     )?;
     let Some((remote, reference)) = output.trim_end().split_once('\0') else {
-        return Err(locale::text("track17").into());
+        return Err(locale::text("upstream.required").into());
     };
     if remote.is_empty() || !reference.starts_with("refs/heads/") {
-        return Err(locale::text("track17").into());
+        return Err(locale::text("upstream.required").into());
     }
     validate_remote(path, remote)?;
     Ok((remote.into(), reference.into()))

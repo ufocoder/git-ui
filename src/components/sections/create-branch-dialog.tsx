@@ -17,18 +17,18 @@ export default function CreateBranchDialog(props: CreateBranchDialogProps) {
   return <Dialog open={props.open} onOpenChange={props.onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>{t("act17")}</DialogTitle>
-        <DialogDescription>{t("br01")}</DialogDescription>
+        <DialogTitle>{t("branch.create")}</DialogTitle>
+        <DialogDescription>{t("branch.create-description")}</DialogDescription>
       </DialogHeader>
       <form onSubmit={props.onSubmit} class="space-y-4">
         <TextField value={props.name} onChange={props.onNameChange} disabled={props.pending} validationState={props.error ? "invalid" : "valid"}>
-          <TextFieldLabel>{t("act15")}</TextFieldLabel>
-          <TextFieldInput placeholder={t("br02")} autocomplete="off" spellcheck={false} />
+          <TextFieldLabel>{t("branch.input-name")}</TextFieldLabel>
+          <TextFieldInput placeholder={t("branch.example")} autocomplete="off" spellcheck={false} />
           <Show when={props.error}><TextFieldErrorMessage role="alert">{props.error}</TextFieldErrorMessage></Show>
         </TextField>
         <DialogFooter class="gap-2">
-          <Button type="button" variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>{t("add09")}</Button>
-          <Button type="submit" disabled={props.pending || !props.name.trim()}>{props.pending ? t("br03") : t("br04")}</Button>
+          <Button type="button" variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button type="submit" disabled={props.pending || !props.name.trim()}>{props.pending ? t("branch.creating") : t("branch.create-switch")}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

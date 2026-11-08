@@ -44,7 +44,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
     if (props.terminalOpen && validPanelSizes(next, 2)) setTerminalSizes(next);
   }} class="min-h-0 min-w-0">
     <ResizablePanel minSize={0.3} class="min-h-0 min-w-0 overflow-hidden">
-      <Suspense fallback={<p role="status" class="p-4 text-sm text-muted-foreground">{t("ui01")}</p>}>
+      <Suspense fallback={<p role="status" class="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>}>
         <Switch>
           <Match when={props.mode === "history"}>
             <CommitTable branch={props.historyBranch} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
@@ -61,7 +61,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
         </Switch>
       </Suspense>
     </ResizablePanel>
-    <ResizableHandle withHandle class={props.terminalOpen ? "" : "hidden"} aria-label={t("view01")} />
+    <ResizableHandle withHandle class={props.terminalOpen ? "" : "hidden"} aria-label={t("terminal.resize")} />
     <ResizablePanel minSize={props.terminalOpen ? 0.12 : 0} maxSize={0.6} class="min-h-0 min-w-0 overflow-hidden" id="repository-terminal" aria-hidden={!props.terminalOpen}>
       <Show when={props.terminalOpen}><TerminalPanel busy={props.disabled} /></Show>
     </ResizablePanel>

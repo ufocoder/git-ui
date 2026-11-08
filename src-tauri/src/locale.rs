@@ -49,13 +49,13 @@ pub fn get_app_language() -> &'static str {
 #[tauri::command]
 pub fn set_app_language(app: AppHandle, language: String) -> Result<(), String> {
     if !["ru", "en"].contains(&language.as_str()) {
-        return Err(crate::locale::text("lang07").into());
+        return Err(crate::locale::text("language.invalid").into());
     }
     let _lock = SAVE_LOCK.lock().map_err(|e| e.to_string())?;
     let path = settings_path(&app)?;
     std::fs::create_dir_all(path.parent().expect("language settings parent"))
         .and_then(|_| std::fs::write(&path, serde_json::to_vec(&language).expect("language JSON")))
-        .map_err(|error| format("lang06", &[("error", error.to_string())]))?;
+        .map_err(|error| format("language.save-error", &[("error", error.to_string())]))?;
     ENGLISH.store(language == "en", Ordering::Relaxed);
     let _ = crate::update_menu::install(&app);
     // Notify every open WebView, including the updater.

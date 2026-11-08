@@ -91,44 +91,44 @@ export default function ConflictResolution(props: Props) {
   }
   return <div class="flex h-full min-h-0 flex-col">
     <PanelHeader class="px-4">
-      <h2>{t("conf12", { count: props.history.conflicts?.length ?? 0 })}</h2>
-      <Button size="sm" variant="ghost" disabled={props.disabled || pending()} onClick={() => void refresh()}>{t("op28")}</Button>
+      <h2>{t("conflict.count", { count: props.history.conflicts?.length ?? 0 })}</h2>
+      <Button size="sm" variant="ghost" disabled={props.disabled || pending()} onClick={() => void refresh()}>{t("operation.refresh")}</Button>
     </PanelHeader>
     <Show when={props.history.conflicts?.length} fallback={
       <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <p class="text-base font-medium">{t("conf10")}</p>
-        <Show when={resolved()}><p class="text-sm text-muted-foreground">{t("conf29")}</p></Show>
-        <Show when={resolved() && props.history.has_changes && !props.history.operation}><Button variant="outline" onClick={props.onCreateCommit}>{t("conf30")}</Button></Show>
+        <p class="text-base font-medium">{t("conflict.empty")}</p>
+        <Show when={resolved()}><p class="text-sm text-muted-foreground">{t("conflict.staged")}</p></Show>
+        <Show when={resolved() && props.history.has_changes && !props.history.operation}><Button variant="outline" onClick={props.onCreateCommit}>{t("conflict.commit")}</Button></Show>
       </div>
     }>
       <Resizable layoutId="conflicts.columns" orientation="horizontal" initialSizes={[1 / 3, 2 / 3]} class="min-h-0 flex-1">
         <ResizablePanel minSize={0.15} class="min-h-0 min-w-0 overflow-auto p-3">
           <ChangedFilesTree files={props.history.conflicts ?? []} selectedPath={selected()} disabled={props.disabled || pending()} onSelect={file => selectFile(file.path)} />
         </ResizablePanel>
-        <ResizableHandle withHandle aria-label={t("cf11")} />
+        <ResizableHandle withHandle aria-label={t("details.resize")} />
         <ResizablePanel minSize={0.4} class="min-h-0 min-w-0 overflow-hidden">
-          <Show when={!loading()} fallback={<p class="p-4 text-sm text-muted-foreground" role="status">{t("cf13")}</p>}>
-            <Show when={data()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("conf11")}</p>}>{current => <section class="flex h-full min-h-0 flex-col gap-3 p-4">
+          <Show when={!loading()} fallback={<p class="p-4 text-sm text-muted-foreground" role="status">{t("details.loading-diff")}</p>}>
+            <Show when={data()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("conflict.select-file")}</p>}>{current => <section class="flex h-full min-h-0 flex-col gap-3 p-4">
               <PanelHeader><h3 class="flex min-w-0 flex-1"><FilePathLabel path={current().file.path} /></h3></PanelHeader>
               <Resizable layoutId="conflicts.result" orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
                 <ResizablePanel minSize={0.15} class="min-h-0 overflow-hidden pb-3">
                   <div class="grid h-full min-h-0 grid-cols-2 gap-3">
-                    <ConflictSide identity={`${current().file.path}:ours`} base={current().base.exists ? current().base.text : ""} title={t("conf02")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conf05")} />
-                    <ConflictSide identity={`${current().file.path}:theirs`} base={current().base.exists ? current().base.text : ""} title={t("conf03")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conf06")} />
+                    <ConflictSide identity={`${current().file.path}:ours`} base={current().base.exists ? current().base.text : ""} title={t("conflict.ours")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conflict.use-ours")} />
+                    <ConflictSide identity={`${current().file.path}:theirs`} base={current().base.exists ? current().base.text : ""} title={t("conflict.theirs")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conflict.use-theirs")} />
                   </div>
                 </ResizablePanel>
-                <ResizableHandle withHandle aria-label={t("conf04")} />
+                <ResizableHandle withHandle aria-label={t("conflict.result")} />
                 <ResizablePanel minSize={0.25} class="flex min-h-0 flex-col gap-3 overflow-hidden pt-3">
                   <Show when={current().editable && !deleting() && (choice() === "manual" || chosenVersion()?.text !== null)} fallback={
                     <div class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                      {!current().supported ? t("conf17") : deleting() ? t("conf13") : choice() === "ours" ? t("conf27") : choice() === "theirs" ? t("conf28") : t("conf18")}
+                      {!current().supported ? t("conflict.unsupported") : deleting() ? t("conflict.delete-description") : choice() === "ours" ? t("conflict.ours-selected") : choice() === "theirs" ? t("conflict.theirs-selected") : t("conflict.readonly")}
                     </div>
                   }>
-                    <ConflictCode identity={`${current().file.path}:result`} text={draft()} base={current().base.exists ? current().base.text : ""} label={t("conf04")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
+                    <ConflictCode identity={`${current().file.path}:result`} text={draft()} base={current().base.exists ? current().base.text : ""} label={t("conflict.result")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
                   </Show>
                   <div class="panel-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2">
-                    <p class="text-xs text-muted-foreground">{t("conf32")}</p>
-                    <Button size="sm" class="h-control-toolbar px-control-sm-x" variant={deleting() ? "destructive" : "default"} disabled={disabled() || !current().supported || (choice() === "manual" && !current().editable)} onClick={() => void save()}>{pending() ? t("add10") : deleting() ? t("conf23") : t("conf07")}</Button>
+                    <p class="text-xs text-muted-foreground">{t("conflict.save-description")}</p>
+                    <Button size="sm" class="h-control-toolbar px-control-sm-x" variant={deleting() ? "destructive" : "default"} disabled={disabled() || !current().supported || (choice() === "manual" && !current().editable)} onClick={() => void save()}>{pending() ? t("common.saving") : deleting() ? t("conflict.delete-and-resolve") : t("conflict.save")}</Button>
                   </div>
                 </ResizablePanel>
               </Resizable>
@@ -138,8 +138,8 @@ export default function ConflictResolution(props: Props) {
       </Resizable>
     </Show>
     <Dialog open={Boolean(navigation())} onOpenChange={value => { if (!value) setNavigation(undefined); }}>
-      <DialogContent><DialogHeader><DialogTitle>{t("conf20")}</DialogTitle><DialogDescription>{t("conf21")}</DialogDescription></DialogHeader>
-        <DialogFooter class="gap-2"><Button variant="outline" onClick={() => setNavigation(undefined)}>{t("add09")}</Button><Button variant="destructive" onClick={() => void discardDraft()}>{t("conf22")}</Button></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{t("conflict.discard-title")}</DialogTitle><DialogDescription>{t("conflict.discard-description")}</DialogDescription></DialogHeader>
+        <DialogFooter class="gap-2"><Button variant="outline" onClick={() => setNavigation(undefined)}>{t("common.cancel")}</Button><Button variant="destructive" onClick={() => void discardDraft()}>{t("conflict.discard")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </div>;
@@ -149,7 +149,7 @@ function ConflictSide(props: { identity: string; base: string | null; title: str
   return <div class="flex min-h-0 min-w-0 flex-col gap-2">
     <PanelHeader><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></PanelHeader>
     <Show when={props.version.exists && !props.version.large && !props.version.binary && props.version.mode !== "120000" && props.version.text !== null} fallback={
-      <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conf08") : props.version.large ? t("conf24") : props.version.binary ? t("conf09") : props.version.mode === "120000" ? t("conf31") : t("conf17")}</pre>
+      <pre class="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conflict.deleted") : props.version.large ? t("conflict.large") : props.version.binary ? t("conflict.binary") : props.version.mode === "120000" ? t("conflict.symlink") : t("conflict.unsupported")}</pre>
     }>
       <ConflictCode identity={props.identity} text={props.version.text ?? ""} base={props.base} label={props.title} tone={props.identity.endsWith(":ours") ? "ours" : "theirs"} />
     </Show>

@@ -15,7 +15,7 @@ fn target(root: &Path, file: &str) -> Result<PathBuf, String> {
                     .eq_ignore_ascii_case(".git")
         })
     {
-        return Err(locale::text("fileAct12").into());
+        return Err(locale::text("file-action.invalid-path").into());
     }
     let target = root.join(relative);
     let mut parent = target.parent();
@@ -24,11 +24,11 @@ fn target(root: &Path, file: &str) -> Result<PathBuf, String> {
             return Ok(target);
         }
         if std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
-            return Err(locale::text("fileAct12").into());
+            return Err(locale::text("file-action.invalid-path").into());
         }
         parent = path.parent();
     }
-    Err(locale::text("fileAct12").into())
+    Err(locale::text("file-action.invalid-path").into())
 }
 
 #[derive(Serialize)]
@@ -42,7 +42,7 @@ pub struct RestorePreview {
 fn preview(root: &Path, file: &str, commit: &str) -> Result<RestorePreview, String> {
     target(root, file)?;
     if !(4..=64).contains(&commit.len()) || !commit.bytes().all(|value| value.is_ascii_hexdigit()) {
-        return Err(locale::text("err12").into());
+        return Err(locale::text("error.invalid-history").into());
     }
     let commit = git(
         root,
@@ -82,15 +82,15 @@ fn restore(
     confirmed: bool,
 ) -> Result<ProjectHistory, String> {
     if !confirmed {
-        return Err(locale::text("fileAct13").into());
+        return Err(locale::text("file-action.confirm-required").into());
     }
     let current = preview(root, file, commit)?;
     if current.head != head || current.branch != branch {
-        return Err(locale::text("safe05").into());
+        return Err(locale::text("safety.stale-head").into());
     }
     let history = read_history(root)?;
     if history.operation.is_some() || !history.conflicts.is_empty() {
-        return Err(locale::text("fileAct14").into());
+        return Err(locale::text("file-action.operation-in-progress").into());
     }
     git(
         root,

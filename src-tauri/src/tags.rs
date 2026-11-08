@@ -4,18 +4,18 @@ use tauri::{State, WebviewWindow};
 
 fn push(path: &Path, remote: &str, tag: Option<&str>) -> Result<ProjectHistory, String> {
     if remote.starts_with('-') || !read_remotes(path)?.iter().any(|entry| entry.name == remote) {
-        return Err(locale::text("track14").into());
+        return Err(locale::text("upstream.remote-missing").into());
     }
     let references: Vec<String> = match tag {
         Some(name) => {
             let reference = format!("refs/tags/{name}");
             if name.is_empty() || name.starts_with('-') {
-                return Err(locale::text("tagPush06").into());
+                return Err(locale::text("tag-push.invalid-tag").into());
             }
             git(path, &["check-ref-format", &reference])
-                .map_err(|_| locale::text("tagPush06").to_owned())?;
+                .map_err(|_| locale::text("tag-push.invalid-tag").to_owned())?;
             git(path, &["show-ref", "--verify", &reference])
-                .map_err(|_| locale::text("tagPush06").to_owned())?;
+                .map_err(|_| locale::text("tag-push.invalid-tag").to_owned())?;
             vec![reference]
         }
         None => git(path, &["for-each-ref", "--format=%(refname)", "refs/tags/"])?
@@ -24,7 +24,7 @@ fn push(path: &Path, remote: &str, tag: Option<&str>) -> Result<ProjectHistory, 
             .collect(),
     };
     if references.is_empty() {
-        return Err(locale::text("tagPush06").into());
+        return Err(locale::text("tag-push.invalid-tag").into());
     }
     let refspecs: Vec<String> = references
         .iter()
@@ -64,14 +64,14 @@ pub async fn push_project_tags(
 
 fn remote_tag_exists(path: &Path, remote: &str, tag: &str) -> Result<bool, String> {
     if remote.starts_with('-') || !read_remotes(path)?.iter().any(|entry| entry.name == remote) {
-        return Err(locale::text("track14").into());
+        return Err(locale::text("upstream.remote-missing").into());
     }
     let reference = format!("refs/tags/{tag}");
     if tag.is_empty() || tag.starts_with('-') {
-        return Err(locale::text("tagPush06").into());
+        return Err(locale::text("tag-push.invalid-tag").into());
     }
     git(path, &["check-ref-format", &reference])
-        .map_err(|_| locale::text("tagPush06").to_owned())?;
+        .map_err(|_| locale::text("tag-push.invalid-tag").to_owned())?;
     let refs = git(path, &["ls-remote", "--refs", "--", remote, &reference])?;
     Ok(refs.lines().any(|line| {
         line.split_once('\t')
@@ -99,21 +99,21 @@ fn delete(
     confirmed: bool,
 ) -> Result<ProjectHistory, String> {
     if !confirmed {
-        return Err(locale::text("tagDel05").into());
+        return Err(locale::text("tag-delete.confirm").into());
     }
     let reference = format!("refs/tags/{tag}");
     if tag.is_empty() || tag.starts_with('-') {
-        return Err(locale::text("tagPush06").into());
+        return Err(locale::text("tag-push.invalid-tag").into());
     }
     git(path, &["check-ref-format", &reference])
-        .map_err(|_| locale::text("tagPush06").to_owned())?;
+        .map_err(|_| locale::text("tag-push.invalid-tag").to_owned())?;
     let object = git(path, &["rev-parse", "--verify", &reference])
-        .map_err(|_| locale::text("tagPush06").to_owned())?;
+        .map_err(|_| locale::text("tag-push.invalid-tag").to_owned())?;
     let object = object.trim();
     if let Some(remote) = remote {
         if remote.starts_with('-') || !read_remotes(path)?.iter().any(|entry| entry.name == remote)
         {
-            return Err(locale::text("track14").into());
+            return Err(locale::text("upstream.remote-missing").into());
         }
         if remote_tag_exists(path, remote, tag)? {
             let mirror = format!("remote.{remote}.mirror=false");

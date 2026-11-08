@@ -26,7 +26,7 @@ fn scope_flag(scope: &str) -> Result<&'static str, String> {
     match scope {
         "local" => Ok("--local"),
         "global" => Ok("--global"),
-        _ => Err(locale::text("cfg17").into()),
+        _ => Err(locale::text("git-settings.invalid").into()),
     }
 }
 fn parse(output: &str) -> BTreeMap<String, String> {
@@ -73,7 +73,7 @@ fn read(path: &Path, scope: &str) -> Result<Settings, String> {
 }
 fn validate(change: &Change) -> Result<(), String> {
     if !KEYS.contains(&change.key.as_str()) {
-        return Err(locale::text("cfg17").into());
+        return Err(locale::text("git-settings.invalid").into());
     }
     if let Some(value) = &change.value {
         let valid = !value.is_empty()
@@ -91,7 +91,7 @@ fn validate(change: &Change) -> Result<(), String> {
                 _ => true,
             };
         if !valid {
-            return Err(locale::text("cfg17").into());
+            return Err(locale::text("git-settings.invalid").into());
         }
     }
     Ok(())

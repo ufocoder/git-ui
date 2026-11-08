@@ -9,8 +9,8 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [solid(), {
     name: "locale-html",
-    transformIndexHtml: html => html.replace(/\{\{(home01|noJs)\}\}/g,
-      (_, key: "home01" | "noJs") => ru[key]),
+    transformIndexHtml: html => html.replace(/\{\{(home\.name|app\.no-js)\}\}/g,
+      (_, key: "home.name" | "app.no-js") => ru[key]),
   }],
   resolve: { alias: { "~": new URL("./src", import.meta.url).pathname } },
 

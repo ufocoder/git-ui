@@ -40,16 +40,16 @@ export default function TerminalPanel(props: TerminalPanelProps) {
     const entry = displayedLog();
     if (entry) queueMicrotask(() => { if (active && output) output.scrollTop = output.scrollHeight; });
   });
-  return <section class="flex h-full min-h-0 flex-col bg-muted/30" aria-label={t("log01")}>
+  return <section class="flex h-full min-h-0 flex-col bg-muted/30" aria-label={t("terminal.last-operation")}>
     <PanelHeader class="px-4">
-      <h2>{t("nav11")}</h2>
-      <span role="status" class="text-muted-foreground">{displayedLog()?.status === "running" ? t("log02") : displayedLog() ? (displayedLog()?.status === "error" && displayedLog()?.exit_code === null ? t("log03") : t("log04", { p1: displayedLog()?.exit_code ?? "—" })) : ""}</span>
+      <h2>{t("terminal.title")}</h2>
+      <span role="status" class="text-muted-foreground">{displayedLog()?.status === "running" ? t("terminal.running") : displayedLog() ? (displayedLog()?.status === "error" && displayedLog()?.exit_code === null ? t("terminal.error") : t("terminal.exit-code", { p1: displayedLog()?.exit_code ?? "—" })) : ""}</span>
     </PanelHeader>
-    <div ref={element => { output = element; }} class="min-h-0 flex-1 cursor-text select-text overflow-auto px-4 py-3 font-mono text-xs leading-5 [&_*]:select-text" tabindex="0" aria-label={t("log05")}>
+    <div ref={element => { output = element; }} class="min-h-0 flex-1 cursor-text select-text overflow-auto px-4 py-3 font-mono text-xs leading-5 [&_*]:select-text" tabindex="0" aria-label={t("terminal.output")}>
       <Show when={error()}><p class="text-destructive">{error()}</p></Show>
-      <Show when={displayedLog()} fallback={<p class="text-muted-foreground">{t("log06")}</p>}>{entry => <>
+      <Show when={displayedLog()} fallback={<p class="text-muted-foreground">{t("terminal.empty")}</p>}>{entry => <>
         <pre class="whitespace-pre-wrap break-all font-semibold">$ {entry().command}</pre>
-        <pre class={`whitespace-pre-wrap break-all ${entry().status === "error" ? "text-destructive" : ""}`}>{entry().output || (entry().status === "running" ? t("log07") : t("log08"))}</pre>
+        <pre class={`whitespace-pre-wrap break-all ${entry().status === "error" ? "text-destructive" : ""}`}>{entry().output || (entry().status === "running" ? t("terminal.waiting") : t("terminal.no-output"))}</pre>
       </>}</Show>
     </div>
   </section>;

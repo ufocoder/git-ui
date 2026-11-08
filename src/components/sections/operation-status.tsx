@@ -17,7 +17,7 @@ export default function OperationStatus(props: { onOpenTerminal?: () => void }) 
       <span aria-hidden="true" class="size-3 shrink-0 rounded-full border border-current border-r-transparent text-muted-foreground motion-safe:animate-spin" />
     </Show>
     <span class="min-w-0 flex-1 break-words" classList={{ "text-destructive": notice().state === "error" }}>{notice().message}</span>
-    <Show when={notice().state === "error" && props.onOpenTerminal}><Button size="sm" variant="ghost" class="h-7 text-xs" onClick={props.onOpenTerminal}>{t("notice03")}</Button></Show>
-    <Show when={notice().state !== "running"}><Button size="icon" variant="ghost" class="size-6 shrink-0" aria-label={t("notice04")} title={t("notice04")} onClick={() => dismissOperation(notice().id)}>×</Button></Show>
+    <Show when={notice().state === "error" && props.onOpenTerminal}><Button size="sm" variant="ghost" class="h-7 text-xs" onClick={props.onOpenTerminal}>{t("notice.terminal")}</Button></Show>
+    <Show when={notice().state !== "running"}><Button size="icon" variant="ghost" class="size-6 shrink-0" aria-label={t("notice.dismiss")} title={t("notice.dismiss")} onClick={() => dismissOperation(notice().id)}>×</Button></Show>
   </div>}</Show>;
 }

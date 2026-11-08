@@ -37,20 +37,20 @@ export default function BranchActionDialog(props: { action?: BranchAction; busy:
     finally { setPending(false); }
   }
   return <Dialog open={Boolean(props.action)} onOpenChange={open => { if (!open && !pending() && !props.busy) props.onClose(); }}>
-    <DialogContent><DialogHeader><DialogTitle>{props.action?.kind === "delete" ? t("refAct03") : t("branchAct01")}</DialogTitle>
-      <DialogDescription>{props.action?.kind === "delete" ? t("refAct06", { name: props.action.name }) : t("branchAct02", { current: preview()?.branch ?? "…", target: props.action?.name ?? "" })}</DialogDescription></DialogHeader>
+    <DialogContent><DialogHeader><DialogTitle>{props.action?.kind === "delete" ? t("ref-action.delete-branch") : t("branch-action.rebase")}</DialogTitle>
+      <DialogDescription>{props.action?.kind === "delete" ? t("ref-action.delete-description", { name: props.action.name }) : t("branch-action.rebase-confirm", { current: preview()?.branch ?? "…", target: props.action?.name ?? "" })}</DialogDescription></DialogHeader>
       <form class="space-y-4" onSubmit={submit}>
-        <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("branchAct03")}</p></Show>
+        <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("branch-action.checking")}</p></Show>
         <Show when={preview() && props.action?.kind === "delete"}>
-          <Show when={remotes().length} fallback={<p class="text-sm text-muted-foreground">{t("branchAct05")}</p>}>
-            <label class="flex items-center gap-2 text-sm"><Checkbox checked={removeRemote()} onChange={setRemoveRemote} disabled={pending() || props.busy} />{t("branchAct04")}</label>
-            <Show when={removeRemote()}><SelectField options={remotes().map(item => ({ value: item.remote, label: `${item.remote}/${item.reference.replace(/^refs\/heads\//, "")}` }))} value={remote()} onChange={setRemote} disabled={pending() || props.busy} aria-label={t("branchAct04")} /></Show>
+          <Show when={remotes().length} fallback={<p class="text-sm text-muted-foreground">{t("branch-action.remote-absent")}</p>}>
+            <label class="flex items-center gap-2 text-sm"><Checkbox checked={removeRemote()} onChange={setRemoveRemote} disabled={pending() || props.busy} />{t("branch-action.delete-remote")}</label>
+            <Show when={removeRemote()}><SelectField options={remotes().map(item => ({ value: item.remote, label: `${item.remote}/${item.reference.replace(/^refs\/heads\//, "")}` }))} value={remote()} onChange={setRemote} disabled={pending() || props.busy} aria-label={t("branch-action.delete-remote")} /></Show>
           </Show>
-          <Show when={preview()?.remotes.some(item => item.error)}><p class="text-sm text-muted-foreground">{t("branchAct06")}</p></Show>
+          <Show when={preview()?.remotes.some(item => item.error)}><p class="text-sm text-muted-foreground">{t("branch-action.remote-check-error")}</p></Show>
         </Show>
-        <Show when={props.action?.kind === "rebase"}><p class="text-sm text-muted-foreground">{t("branchAct07")}</p></Show>
+        <Show when={props.action?.kind === "rebase"}><p class="text-sm text-muted-foreground">{t("branch-action.rebase-warning")}</p></Show>
         <Show when={error()}><p role="alert" class="break-words text-sm text-destructive">{error()}</p></Show>
-        <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("add09")}</Button><Button type="submit" variant={props.action?.kind === "delete" ? "destructive" : "default"} disabled={!preview() || loading() || pending() || props.busy}>{pending() ? t("add10") : props.action?.kind === "delete" ? t("refAct03") : t("branchAct01")}</Button></DialogFooter>
+        <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("common.cancel")}</Button><Button type="submit" variant={props.action?.kind === "delete" ? "destructive" : "default"} disabled={!preview() || loading() || pending() || props.busy}>{pending() ? t("common.saving") : props.action?.kind === "delete" ? t("ref-action.delete-branch") : t("branch-action.rebase")}</Button></DialogFooter>
       </form>
     </DialogContent>
   </Dialog>;

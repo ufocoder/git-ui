@@ -58,7 +58,7 @@ export default function TagsSection(props: {
   }
   const disabled = () => props.disabled || pending();
   return <>
-    <SidebarSection title={t("repo07")} icon={<SectionIcon name="tags" />} action={
+    <SidebarSection title={t("sidebar.tags")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     }>
       <SidebarGroupContent><WindowedList items={props.history.tags}>{tag => <SidebarMenuItem>
@@ -67,32 +67,32 @@ export default function TagsSection(props: {
               <span class="truncate" title={tag}>{tag}</span>
             </ContextMenuTrigger>
             <ContextMenuContent>
-              <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tagPush03", { tag })}</ContextMenuItem>
-              <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tagPush02")}</ContextMenuItem>
-              <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("refAct02")}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tag-push.selected", { tag })}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tag-push.all")}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("ref-action.rename")}</ContextMenuItem>
               <ContextMenuSeparator />
-              <ContextMenuItem class="text-destructive" title={t("tagDel02", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tagDel01")}</ContextMenuItem>
+              <ContextMenuItem class="text-destructive" title={t("tag-delete.selected", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tag-delete.title")}</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-        </SidebarMenuItem>}</WindowedList><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("repo08")}</p></Show></SidebarGroupContent>
+        </SidebarMenuItem>}</WindowedList><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("sidebar.no-tags")}</p></Show></SidebarGroupContent>
     </SidebarSection>
     <Dialog open={Boolean(selection())} onOpenChange={value => { if (!value && !disabled()) setSelection(undefined); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{selection()?.deleting ? t("tagDel01") : t("tagPush01")}</DialogTitle><DialogDescription>{selection()?.deleting ? t("tagDel03", { tag: selection()?.tag ?? "" }) : selection()?.tag === null ? t("tagPush04", { count: props.history.tags.length }) : t("tagPush03", { tag: selection()?.tag ?? "" })}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{selection()?.deleting ? t("tag-delete.title") : t("tag-push.title")}</DialogTitle><DialogDescription>{selection()?.deleting ? t("tag-delete.description", { tag: selection()?.tag ?? "" }) : selection()?.tag === null ? t("tag-push.all-description", { count: props.history.tags.length }) : t("tag-push.selected", { tag: selection()?.tag ?? "" })}</DialogDescription></DialogHeader>
         <form onSubmit={submit} class="space-y-4">
           <Show when={selection()?.deleting && props.history.remotes.length}>
-            <label class="flex items-center gap-2 text-sm"><Checkbox checked={deleteRemote()} onChange={setDeleteRemote} disabled={disabled() || remoteTag() !== "present"} />{t("tagDel04")}</label>
+            <label class="flex items-center gap-2 text-sm"><Checkbox checked={deleteRemote()} onChange={setDeleteRemote} disabled={disabled() || remoteTag() !== "present"} />{t("tag-delete.remote")}</label>
           </Show>
           <Show when={!selection()?.deleting || props.history.remotes.length > 0}>
-          <Show when={props.history.remotes.length} fallback={<p class="text-sm text-muted-foreground">{t("tagPush05")}</p>}>
-            <SelectField label={t("track04")} value={remote()} onChange={setRemote} disabled={disabled()} options={props.history.remotes.map(entry => ({ value: entry.name, label: entry.name }))} />
+          <Show when={props.history.remotes.length} fallback={<p class="text-sm text-muted-foreground">{t("tag-push.no-remote")}</p>}>
+            <SelectField label={t("upstream.remote")} value={remote()} onChange={setRemote} disabled={disabled()} options={props.history.remotes.map(entry => ({ value: entry.name, label: entry.name }))} />
           </Show>
           </Show>
           <Show when={selection()?.deleting && props.history.remotes.length > 0}>
-            <p role="status" class="text-xs text-muted-foreground">{remoteTag() === "checking" ? t("tagDel06") : remoteTag() === "absent" ? t("tagDel07") : remoteTag() === "error" ? t("tagDel08") : ""}</p>
+            <p role="status" class="text-xs text-muted-foreground">{remoteTag() === "checking" ? t("tag-delete.checking") : remoteTag() === "absent" ? t("tag-delete.absent") : remoteTag() === "error" ? t("tag-delete.check-error") : ""}</p>
           </Show>
           <Show when={error()}><p role="alert" class="break-words text-sm text-destructive">{error()}</p></Show>
-          <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={disabled()} onClick={() => setSelection(undefined)}>{t("add09")}</Button><Button type="submit" variant={selection()?.deleting ? "destructive" : "default"} disabled={disabled() || (deleteRemote() && remoteTag() !== "present") || ((!selection()?.deleting || deleteRemote()) && !props.history.remotes.some(entry => entry.name === remote()))}>{pending() ? t("add10") : selection()?.deleting ? t("tagDel01") : t("nav07")}</Button></DialogFooter>
+          <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={disabled()} onClick={() => setSelection(undefined)}>{t("common.cancel")}</Button><Button type="submit" variant={selection()?.deleting ? "destructive" : "default"} disabled={disabled() || (deleteRemote() && remoteTag() !== "present") || ((!selection()?.deleting || deleteRemote()) && !props.history.remotes.some(entry => entry.name === remote()))}>{pending() ? t("common.saving") : selection()?.deleting ? t("tag-delete.title") : t("push.action")}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

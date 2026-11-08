@@ -172,38 +172,38 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   }
   return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
     <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable]">
-      <section class="space-y-3 p-4" aria-label={t("commit04")}>
+      <section class="space-y-3 p-4" aria-label={t("commit.files")}>
         <Show when={props.onCommitted}>
           <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
-          <p class="sr-only" role="status">{t("commit05", { count: stagedCount(), total: files().length })}</p>
+          <p class="sr-only" role="status">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</p>
         </Show>
-        <Show when={loading()}><p role="status" class="sr-only">{t("commit07")}</p></Show>
-        <Show when={!loading() && !files().length}><div class="rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit08")}</div></Show>
+        <Show when={loading()}><p role="status" class="sr-only">{t("commit.loading-files")}</p></Show>
+        <Show when={!loading() && !files().length}><div class="rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
         <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
           <For each={[
-            { kind: "unstaged" as const, label: t("stage02"), files: unstagedFiles, action: t("stage03"), staged: false },
-            { kind: "staged" as const, label: t("stage01"), files: stagedFiles, action: t("stage04"), staged: true },
+            { kind: "unstaged" as const, label: t("stage.unstaged"), files: unstagedFiles, action: t("stage.all"), staged: false },
+            { kind: "staged" as const, label: t("stage.staged"), files: stagedFiles, action: t("stage.unstage-all"), staged: true },
           ]}>{group => <section class="space-y-1" aria-label={group.label}>
             <PanelHeader>
               <h2 class="text-xs font-medium">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </PanelHeader>
-            <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage05")}</p></Show>
+            <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage.empty")}</p></Show>
             <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
-              renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage07", { path }) : t("stage06", { path })} />}
-              renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage07", { path: file.path }) : t("stage06", { path: file.path })} />} />
+              renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />}
+              renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
           </section>}</For>
         </Show>
       </section>
     </ResizablePanel>
-    <ResizableHandle withHandle aria-label={t("commit12")} />
+    <ResizableHandle withHandle aria-label={t("commit.resize")} />
     <ResizablePanel initialSize={panelSizes[1]} minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
-      <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("cf12")}>
+      <section class="flex h-full min-h-0 flex-col gap-3 p-4" aria-label={t("details.diff")}>
         <div class="min-h-0 flex-1">
           <Show when={selectedDirectory()} fallback={<>
-          <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("cf13")}</p></Show>
+          <Show when={diffLoading()}><p role="status" class="text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
           <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
-          <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="text-sm text-muted-foreground">{t("commit17")}</p></Show>
+          <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="text-sm text-muted-foreground">{t("commit.select-file")}</p></Show>
           </>}>
             <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined} />
           </Show>
@@ -217,31 +217,31 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
             <Show when={amendTarget()}>
               <div class="space-y-2 border-l-2 border-warning-foreground pl-3">
-                <p class="text-xs text-muted-foreground">{t("commit23", { sha: amendTarget()!.head.slice(0, 8) })}</p>
-                <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("op16")}</p></Show>
-                <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("op09")}</label>
+                <p class="text-xs text-muted-foreground">{t("commit.amending", { sha: amendTarget()!.head.slice(0, 8) })}</p>
+                <Show when={!amendValid()}><p role="alert" class="text-xs text-destructive">{t("operation.stale-target")}</p></Show>
+                <label class="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={amendConfirmed()} onChange={setAmendConfirmed} disabled={disabled()} />{t("operation.confirm-amend")}</label>
               </div>
             </Show>
             <div class="panel-actions -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-3 border-t px-4 py-3">
-              <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("track19") : undefined}>
-              <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit16")} />
-              <span>{t("commit16")}</span>
+              <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("upstream.no-remotes") : undefined}>
+              <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit.push-after")} />
+              <span>{t("commit.push-after")}</span>
             </label>
               <DropdownMenu placement="top-start" gutter={4}>
                 <DropdownMenuTrigger as={Button} type="button" variant="ghost" size="sm" class="h-control-toolbar gap-2 px-2 text-muted-foreground" disabled={disabled()}>
-                  {t("compose07")}<span aria-hidden="true">{sign() || amendTarget() ? "✓" : "⋯"}</span>
+                  {t("compose.options")}<span aria-hidden="true">{sign() || amendTarget() ? "✓" : "⋯"}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuCheckboxItem checked={sign()} onChange={setSign} disabled={disabled()} title={t("commit21")}>{t("commit20")}</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose06")}>{t("commit22")}</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sign()} onChange={setSign} disabled={disabled()} title={t("commit.sign-description")}>{t("commit.sign")}</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose.amend-warning")}>{t("commit.amend")}</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("nav06") : props.commitPhase === "committing" ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
+              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("push.running") : props.commitPhase === "committing" ? t("common.saving") : amendTarget() ? t("operation.amend-commit") : t("stage.commit-count", { action: t("commit.create"), count: stagedCount() })}</Button>
             </div>
             <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
               <div class="flex items-center justify-end gap-3 text-sm">
-                <span>{t("track18")}</span>
-                <SelectField class="w-48 max-w-full" aria-label={t("track18")} value={pushRemote()} disabled={disabled()}
+                <span>{t("upstream.push-remote")}</span>
+                <SelectField class="w-48 max-w-full" aria-label={t("upstream.push-remote")} value={pushRemote()} disabled={disabled()}
                   options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
               </div>
             </Show>

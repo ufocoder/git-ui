@@ -12,7 +12,7 @@ export function CommitDescription(props: CommitDescriptionProps) {
         title={props.references.map(reference => reference.name).join(", ")}>
         <For each={props.references.slice(0, 3)}>{reference =>
           <Badge variant="outline" data-kind={reference.kind} data-current={reference.kind === "branch" && reference.name === props.currentBranch ? "true" : undefined} class="commit-reference max-w-40 shrink-0 gap-1 rounded-sm px-1.5 py-0 text-3xs font-medium leading-4"
-            aria-label={t("ref03", { p1: reference.kind === "tag" ? t("ref01") : t("ref02"), p2: reference.name })}>
+            aria-label={t("ref.label", { p1: reference.kind === "tag" ? t("ref.tag") : t("ref.branch"), p2: reference.name })}>
             <span aria-hidden="true">{reference.kind === "tag" ? "◇" : "⑂"}</span>
             <span class="truncate">{reference.name}</span>
           </Badge>

@@ -54,13 +54,13 @@ pub fn read(path: &Path, head: &str, branch: &str) -> Result<SyncStatus, String>
     )?;
     let values: Vec<_> = counts.split_whitespace().collect();
     let [ahead, behind] = values.as_slice() else {
-        return Err(locale::text("err08").into());
+        return Err(locale::text("error.commit-count").into());
     };
     Ok(SyncStatus {
         upstream: Some(upstream_name),
         remote_tip: Some(remote_tip),
-        ahead: ahead.parse().map_err(|_| locale::text("err08"))?,
-        behind: behind.parse().map_err(|_| locale::text("err08"))?,
+        ahead: ahead.parse().map_err(|_| locale::text("error.commit-count"))?,
+        behind: behind.parse().map_err(|_| locale::text("error.commit-count"))?,
     })
 }
 
@@ -75,13 +75,13 @@ pub fn page(
 ) -> Result<CommitPage, String> {
     for tip in [local_tip, remote_tip] {
         if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|ch| ch.is_ascii_hexdigit()) {
-            return Err(locale::text("err12").into());
+            return Err(locale::text("error.invalid-history").into());
         }
     }
     let range = match direction {
         "incoming" => format!("{local_tip}..{remote_tip}"),
         "outgoing" => format!("{remote_tip}..{local_tip}"),
-        _ => return Err(locale::text("sync09").into()),
+        _ => return Err(locale::text("sync.invalid-direction").into()),
     };
     read_commit_range(path, &range, offset)
 }

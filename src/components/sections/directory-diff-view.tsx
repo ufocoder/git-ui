@@ -11,10 +11,10 @@ type Props = { path: string; files: CommitFile[]; commit: string; stash?: boolea
 export default function DirectoryDiffView(props: Props) {
   let viewport!: HTMLDivElement;
   createEffect(() => { void props.path; if (viewport) viewport.scrollTop = 0; });
-  return <section class="flex h-full min-h-0 min-w-0 flex-col" aria-label={t("dir01", { path: props.path })}>
+  return <section class="flex h-full min-h-0 min-w-0 flex-col" aria-label={t("directory.diff", { path: props.path })}>
     <PanelHeader class="-mx-4 px-4">
       <h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3>
-      <span class="shrink-0 text-muted-foreground">{t("cf08", { count: props.files.length })}</span>
+      <span class="shrink-0 text-muted-foreground">{t("details.files", { count: props.files.length })}</span>
     </PanelHeader>
     <div ref={value => { viewport = value; }} class="-mx-4 min-h-0 flex-1 divide-y overflow-auto">
       <For each={props.files.map(file => file.path)}>{path =>
@@ -60,9 +60,9 @@ function DirectoryFileDiff(props: { path: string; commit: string; stash?: boolea
     finally { if (request === generation) setLoading(false); }
   }
   return <div ref={value => { element = value; }} class="min-w-0 px-4 pb-4" aria-busy={loading()}>
-    <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("cf13")}</p></Show></div>}>{data =>
+    <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("details.loading-diff")}</p></Show></div>}>{data =>
       <FileDiffView diff={data()} scope={props.scope} stash={props.stash} inline />
     }</Show>
-    <Show when={failed()}><p role="alert" class="mt-2 text-xs text-destructive">{t("dir02")}</p><Button variant="link" size="sm" onClick={() => void load()}>{t("hist17")}</Button></Show>
+    <Show when={failed()}><p role="alert" class="mt-2 text-xs text-destructive">{t("directory.load-error")}</p><Button variant="link" size="sm" onClick={() => void load()}>{t("history.retry")}</Button></Show>
   </div>;
 }

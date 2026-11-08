@@ -165,7 +165,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
   const date = (value: string) => new Date(value).toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   async function runAction(operation: () => Promise<History>) {
-    if (props.disabled) throw new Error(t("hist01"));
+    if (props.disabled) throw new Error(t("history.busy"));
     props.onBusyChange(true); setError("");
     try { props.onHistoryChange(await operation()); }
     catch (error) {
@@ -183,8 +183,8 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
     setError(""); setCopyStatus("");
     try {
       await navigator.clipboard.writeText(commit.hash);
-      setCopyStatus(t("hist02"));
-    } catch (e) { reportTerminalError(t("hist03", { p1: String(e) }), t("hist04")); }
+      setCopyStatus(t("history.hash-copied"));
+    } catch (e) { reportTerminalError(t("history.copy-failed", { p1: String(e) }), t("history.copy-hash")); }
   }
 
   return (
@@ -192,21 +192,21 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <Show when={filter().file}>
         <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-3 py-1.5" role="status">
-          <p class="min-w-0 break-all text-xs text-muted-foreground">{t("find14", { path: filter().file })}</p>
+          <p class="min-w-0 break-all text-xs text-muted-foreground">{t("search.file-history", { path: filter().file })}</p>
           <Button size="sm" variant="ghost" class="h-7 shrink-0 px-2 text-xs" disabled={props.disabled} onClick={() => {
             setFilter({ text: "", sha: "", author: "", file: "" });
             setSearchOpen(false); searchButton?.focus();
-          }}>{t("find15")}</Button>
+          }}>{t("search.all-history")}</Button>
         </div>
       </Show>
-      <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("find07")}</span></Show>
-      <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app05")}
+      <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("search.searching")}</span></Show>
+      <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
         containerProps={{
           ref: element => { viewport = element; },
           onScroll: () => setScrollTop(viewport.scrollTop),
           class: "min-h-0 flex-1 bg-background [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           tabindex: 0,
-          "aria-label": t("hist05"),
+          "aria-label": t("history.title"),
           "aria-busy": loading() || debouncing(),
         }}>
         <colgroup><col style={{ width: `${graph().width}px` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
@@ -216,12 +216,12 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
           }
         }}>
           <TableRow class="hover:bg-transparent">
-            <For each={[t("hist06"), t("hist07"), t("hist08"), t("hist09"), t("hist10")]}>{(heading, index) =>
+            <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{(heading, index) =>
               <TableHead scope="col" class="h-[34px] border-b">
                 <Show when={index() === 1} fallback={heading}>
                   <div class="flex items-center justify-between gap-2"><span>{heading}</span>
                     <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
-                      aria-label={searchOpen() ? t("find13") : t("find01")} title={searchOpen() ? t("find13") : t("find01")}
+                      aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}
                       aria-expanded={searchOpen()} aria-controls={`${searchId}-fields ${searchId}-path`} onClick={() => setSearchOpen(open => !open)}>
                       <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
                     </Button>
@@ -244,7 +244,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
                 onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(commit); } }}
                 class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
                 <TableCell class="px-0">
-                  <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: commit.parents.length })}>
+                  <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>
                     <For each={graphRow().edges}>{edge =>
                       <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
                     }</For>
@@ -253,9 +253,9 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
                 </TableCell>
                 <TableCell><CommitDescription subject={commit.subject} references={commit.refs} currentBranch={props.history.current_branch} bold={commit.uncommitted} /></TableCell>
                 <TableCell>
-                  <Show when={!commit.uncommitted} fallback={<span aria-label={t("cf02")}>*</span>}>
+                  <Show when={!commit.uncommitted} fallback={<span aria-label={t("details.uncommitted")}>*</span>}>
                   <Tooltip openDelay={350}>
-                    <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("hist12", { p1: commit.hash })}>
+                    <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("history.full-hash", { p1: commit.hash })}>
                       {commit.hash.slice(0, 8)}
                     </TooltipTrigger>
                     <TooltipContent class="max-w-[90vw] break-all font-mono text-xs">{commit.hash}</TooltipContent>
@@ -266,31 +266,31 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
                 <TableCell class="text-muted-foreground tabular-nums"><Show when={commit.date} fallback="—"><time dateTime={commit.date} title={commit.date}>{date(commit.date)}</time></Show></TableCell>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(commit)}>{t("hist13")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => void checkout(commit)}>{t("hist14")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("act03")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("act01")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op01")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op02")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || commit.hash !== props.history.tip || Boolean(props.history.operation)} title={t("op14")}
-                  onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op03")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("act02")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(commit)}>{t("history.copy-sha")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => void checkout(commit)}>{t("history.checkout")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("reset.to-commit")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("branch.from-commit")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.cherry-pick")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.revert")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || commit.hash !== props.history.tip || Boolean(props.history.operation)} title={t("operation.amend-head-only")}
+                  onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.amend")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("tag.from-commit")}</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>;
           }}</For>
           <Show when={end() < displayedCommits().length}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${(displayedCommits().length - end()) * ROW_HEIGHT}px` }} /></TableRow></Show>
-          <Show when={!loading() && !debouncing() && !error() && !displayedCommits().length}><TableRow><TableCell colspan="5" class="h-24 text-center text-muted-foreground"><div class="flex flex-col items-center gap-2 py-4"><p>{filtered() ? t("find06") : props.scope === "incoming" ? t("sync10") : props.scope === "outgoing" ? t("sync11") : t("hist15")}</p>
-            <Show when={filtered()}><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => setFilter({ text: "", sha: "", author: "", file: "" })}>{t("find05")}</Button></Show>
+          <Show when={!loading() && !debouncing() && !error() && !displayedCommits().length}><TableRow><TableCell colspan="5" class="h-24 text-center text-muted-foreground"><div class="flex flex-col items-center gap-2 py-4"><p>{filtered() ? t("search.empty") : props.scope === "incoming" ? t("sync.no-incoming") : props.scope === "outgoing" ? t("sync.no-outgoing") : t("history.empty")}</p>
+            <Show when={filtered()}><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => setFilter({ text: "", sha: "", author: "", file: "" })}>{t("search.clear")}</Button></Show>
           </div></TableCell></TableRow></Show>
         </TableBody>
       </Table>
       <span role="status" class="sr-only">{copyStatus()}</span>
-      <Show when={loading()}><span role="status" class="sr-only">{t("hist16")}</span></Show>
-      <Show when={error()}><Button variant="link" size="sm" class="shrink-0 self-start" onClick={() => { setHasMore(true); void loadMore(); }} disabled={props.disabled}>{t("hist17")}</Button></Show>
+      <Show when={loading()}><span role="status" class="sr-only">{t("history.loading")}</span></Show>
+      <Show when={error()}><Button variant="link" size="sm" class="shrink-0 self-start" onClick={() => { setHasMore(true); void loadMore(); }} disabled={props.disabled}>{t("history.retry")}</Button></Show>
       </ResizablePanel>
-      <ResizableHandle withHandle aria-label={t("hist18")} />
+      <ResizableHandle withHandle aria-label={t("history.resize")} />
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-hidden">
-        <Show when={selectedCommit()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("hist19")}</p>}>{commit => <Show when={commit().uncommitted} fallback={<CommitFiles commit={commit()} disabled={props.disabled} />}>
+        <Show when={selectedCommit()} fallback={<p class="p-4 text-sm text-muted-foreground">{t("history.no-selection")}</p>}>{commit => <Show when={commit().uncommitted} fallback={<CommitFiles commit={commit()} disabled={props.disabled} />}>
           <WorktreeCommit history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} />
         </Show>}</Show>
       </ResizablePanel>

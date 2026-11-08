@@ -215,7 +215,8 @@ execution is shared through `git_command.rs`.
 UI components should call `src/lib/git.ts` rather than invoke Git directly.
 Keep process execution and filesystem operations in the Rust backend.
 
-Add short translation keys to both `locales/ru.json` and `locales/en.json`.
+Use short, descriptive translation keys such as `stash.apply` and `diff.split`.
+Add each key to both `locales/ru.json` and `locales/en.json`.
 Use `src/lib/i18n.ts` in the frontend; the Rust backend uses the same dictionaries
 through `locale.rs`. Keep keys and placeholders consistent across both languages.
 

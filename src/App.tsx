@@ -118,7 +118,7 @@ function App() {
     try {
       setChoosingProject(true);
       let path: string | null;
-      try { path = await open({ directory: true, multiple: false, title: t("app01") }); }
+      try { path = await open({ directory: true, multiple: false, title: t("app.choose-folder") }); }
       finally { setChoosingProject(false); }
       if (!path) return;
       await openSelectedProject(path);
@@ -167,12 +167,12 @@ function App() {
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
     <Show keyed when={isHistory() && history()} fallback={
       <main class="flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6">
-        <Show when={!isHistory()} fallback={<p role="status" class="text-sm text-muted-foreground">{error() || t("ui01")}</p>}>
+        <Show when={!isHistory()} fallback={<p role="status" class="text-sm text-muted-foreground">{error() || t("common.loading")}</p>}>
         <ProjectChooser choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
           ready={gitCheck() === "ready"} requirement={<GitRequirement state={gitCheck()} platform={gitPlatform()} onRetry={() => void retryGitCheck()} />}
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
         </Show>
-      <Show when={!isHistory() && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
+      <Show when={!isHistory() && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app.action-failed")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
         <OperationStatus />
       </main>
     }>{project =>
@@ -182,7 +182,7 @@ function App() {
     <GitSettingsDialog hasProject={isHistory() && Boolean(history())} open={settingsOpen()} onClose={() => setSettingsOpen(false)} />
     <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
       <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">
-        <DialogHeader class="sr-only"><DialogTitle>{t("upd02")}</DialogTitle><DialogDescription>{t("upd17")}</DialogDescription></DialogHeader>
+        <DialogHeader class="sr-only"><DialogTitle>{t("update.title")}</DialogTitle><DialogDescription>{t("update.restart-note")}</DialogDescription></DialogHeader>
         <UpdateDialog onClose={() => setUpdatesOpen(false)} onInstallingChange={setInstallingUpdate} />
       </DialogContent></Show>
     </Dialog>

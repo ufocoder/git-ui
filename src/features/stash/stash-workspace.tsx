@@ -15,7 +15,7 @@ export default function StashWorkspace(props: { listMount?: HTMLDivElement; acti
     <Show when={props.listMount}><Portal mount={props.listMount}>
       <StashSection actionsMount={props.actionsMount} history={props.history} selected={selected()} onSelect={saved => setSelected(saved.id)} disabled={props.disabled} onAction={props.onAction} />
     </Portal></Show>
-      <Show when={entry()} fallback={<p class="p-6 text-sm text-muted-foreground">{t("stash03")}</p>}>{saved =>
+      <Show when={entry()} fallback={<p class="p-6 text-sm text-muted-foreground">{t("stash.empty")}</p>}>{saved =>
         <CommitFiles stash commit={{ hash: saved().id, subject: saved().message, author: saved().reference, date: saved().date, parents: [], refs: [] }} disabled={props.disabled} />
       }</Show>
   </>;

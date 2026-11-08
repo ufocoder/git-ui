@@ -45,10 +45,10 @@ export default function ConflictCode(props: Props) {
   return <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-background" role="region" aria-label={props.label}>
     <div class="flex h-control-compact min-w-0 shrink-0 items-center justify-end gap-1 border-b px-2">
       <Show when={props.editable}><span class="mr-auto truncate text-xs font-medium">{props.label}</span></Show>
-      <Show when={blocks().length} fallback={<span class="truncate text-2xs text-muted-foreground">{props.base === null ? t("confNav06") : t("confNav05")}</span>}>
-        <Show when={blocks().length > 1}><Button variant="ghost" size="icon" class="size-6" disabled={current() === 0} aria-label={t("confNav01")} onClick={() => navigate(current() - 1)}>↑</Button></Show>
-        <Button variant="ghost" size="sm" class="h-6 px-1 text-2xs tabular-nums" aria-label={t("confNav04", { line: (blocks()[current()]?.start ?? 0) + 1 })} title={t("confNav03")} onClick={() => navigate(current())}>{current() + 1}/{blocks().length}</Button>
-        <Show when={blocks().length > 1}><Button variant="ghost" size="icon" class="size-6" disabled={current() === blocks().length - 1} aria-label={t("confNav02")} onClick={() => navigate(current() + 1)}>↓</Button></Show>
+      <Show when={blocks().length} fallback={<span class="truncate text-2xs text-muted-foreground">{props.base === null ? t("conflict-nav.no-base") : t("conflict-nav.no-changes")}</span>}>
+        <Show when={blocks().length > 1}><Button variant="ghost" size="icon" class="size-6" disabled={current() === 0} aria-label={t("conflict-nav.previous")} onClick={() => navigate(current() - 1)}>↑</Button></Show>
+        <Button variant="ghost" size="sm" class="h-6 px-1 text-2xs tabular-nums" aria-label={t("conflict-nav.line", { line: (blocks()[current()]?.start ?? 0) + 1 })} title={t("conflict-nav.current")} onClick={() => navigate(current())}>{current() + 1}/{blocks().length}</Button>
+        <Show when={blocks().length > 1}><Button variant="ghost" size="icon" class="size-6" disabled={current() === blocks().length - 1} aria-label={t("conflict-nav.next")} onClick={() => navigate(current() + 1)}>↓</Button></Show>
       </Show>
     </div>
     <div ref={element => { host = element; }} class="relative min-h-0 flex-1 overflow-hidden">

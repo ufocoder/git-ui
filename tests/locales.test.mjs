@@ -21,27 +21,28 @@ test("all frontend and backend translation keys exist in the shared dictionary",
     ...files(new URL("src", root)),
     ...files(new URL("src-tauri/src", root)),
   ].filter(filename => /\.(tsx?|rs)$/.test(filename));
-  const used = new Set();
+  const html = readFileSync(new URL("index.html", root), "utf8");
+  const used = new Set(Array.from(html.matchAll(/\{\{([a-z0-9.-]+)\}\}/g), match => match[1]));
   for (const filename of sources) {
     const source = readFileSync(filename, "utf8");
-    for (const match of source.matchAll(/\b(?:t|locale::text|locale::format|failure)\(\s*"([\w]+)"/g)) {
+    for (const match of source.matchAll(/\b(?:t|locale::text|locale::format|failure)\(\s*"([a-z0-9.-]+)"/g)) {
       assert.equal(typeof ru[match[1]], "string", `${filename}: ${match[1]}`);
       used.add(match[1]);
     }
   }
   for (const [key, value] of Object.entries(ru)) {
     assert.ok(value.length > 0, key);
-    assert.match(key, /^[a-zA-Z]+\d*$/);
-    assert.ok(used.has(key) || key === "noJs", `Unused key: ${key}`);
+    assert.match(key, /^[a-z]+(?:-[a-z]+)*(?:\.[a-z]+(?:-[a-z]+)*)+$/);
+    assert.ok(used.has(key), `Unused key: ${key}`);
   }
 });
 
 test("interpolation preserves Git text and does not replace placeholders inside parameters", () => {
   const name = "feature/{p2}/$&";
-  assert.equal(t("repo05", { p1: name, p2: 2, p3: 0 }),
+  assert.equal(t("sidebar.comparison", { p1: name, p2: 2, p3: 0 }),
     `Относительно ${name}: впереди на 2, позади на 0`);
-  assert.equal(t("commit05", { count: 0, total: 4 }), "Staged: 0 из 4");
-  assert.equal(t("diff02", { path: "/project/{path}" }), "Прежнее имя: /project/{path}");
+  assert.equal(t("commit.staged-count", { count: 0, total: 4 }), "Staged: 0 из 4");
+  assert.equal(t("diff.previous-name", { path: "/project/{path}" }), "Прежнее имя: /project/{path}");
 });
 
 test("production sources contain no hardcoded Russian UI text", () => {
@@ -58,7 +59,7 @@ test("English has all keys and preserves interpolation placeholders", () => {
   for (const [key, value] of Object.entries(en)) {
     assert.ok(value.length > 0, key);
     assert.deepEqual(placeholders(value), placeholders(ru[key]), key);
-    if (key !== "lang02") assert.doesNotMatch(value, /[А-Яа-яЁё]/, key);
+    if (key !== "language.russian") assert.doesNotMatch(value, /[А-Яа-яЁё]/, key);
   }
 });
 
@@ -69,10 +70,10 @@ test("Russian is the default and language switches translations and date locale"
   assert.equal(normalizeLanguage("en"), "en");
   try {
     setLanguage("en");
-    assert.equal(t("commit15"), "Create commit");
-    assert.equal(t("repo05", { p1: "feature/{p2}", p2: 2, p3: 0 }), "Compared with feature/{p2}: 2 ahead, 0 behind");
+    assert.equal(t("commit.create"), "Create commit");
+    assert.equal(t("sidebar.comparison", { p1: "feature/{p2}", p2: 2, p3: 0 }), "Compared with feature/{p2}: 2 ahead, 0 behind");
     assert.equal(locale(), "en-US");
   } finally { setLanguage("ru"); }
   assert.equal(locale(), "ru-RU");
-  assert.equal(t("commit15"), ru.commit15);
+  assert.equal(t("commit.create"), ru["commit.create"]);
 });

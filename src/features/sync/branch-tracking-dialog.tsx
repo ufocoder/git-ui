@@ -47,42 +47,42 @@ export default function BranchTrackingDialog(props: Props) {
   return <Dialog open={Boolean(props.mode)} onOpenChange={open => { if (!open && !pending() && !props.busy) props.onClose(); }}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>{props.mode === "publish" ? t("track01") : t("track02")}</DialogTitle>
-        <DialogDescription>{props.mode === "publish" ? t("track07", { branch: branch() }) : t("track08")}</DialogDescription>
+        <DialogTitle>{props.mode === "publish" ? t("upstream.publish-branch") : t("upstream.set")}</DialogTitle>
+        <DialogDescription>{props.mode === "publish" ? t("upstream.publish-description", { branch: branch() }) : t("upstream.set-description")}</DialogDescription>
       </DialogHeader>
-      <p class="break-all text-sm">{t("track20", { branch: branch() })}</p>
+      <p class="break-all text-sm">{t("upstream.current-branch", { branch: branch() })}</p>
       <form onSubmit={submit} class="space-y-4">
         <Show when={needsOrigin()} fallback={<div class="space-y-1">
-          <label for={remoteId} class="text-sm font-medium">{t("track04")}</label>
-          <SelectField id={remoteId} aria-label={t("track04")} value={remote()} disabled={pending() || props.busy}
+          <label for={remoteId} class="text-sm font-medium">{t("upstream.remote")}</label>
+          <SelectField id={remoteId} aria-label={t("upstream.remote")} value={remote()} disabled={pending() || props.busy}
             options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={name => {
               setRemote(name);
               if (props.mode === "upstream") setRemoteBranch(props.history?.remotes.find(entry => entry.name === name)?.branches[0] ?? "");
             }} />
         </div>}>
           <TextField value={url()} onChange={setUrl} disabled={pending() || props.busy} required>
-            <TextFieldLabel>{t("track21")}</TextFieldLabel>
-            <TextFieldInput placeholder={t("add08")} autocomplete="off" spellcheck={false} />
-            <p class="text-xs text-muted-foreground">{t("track22")}</p>
+            <TextFieldLabel>{t("upstream.origin-url")}</TextFieldLabel>
+            <TextFieldInput placeholder={t("remote.url-example")} autocomplete="off" spellcheck={false} />
+            <p class="text-xs text-muted-foreground">{t("upstream.origin-description")}</p>
           </TextField>
         </Show>
         <Show when={props.mode === "publish"} fallback={
           <div class="space-y-1">
-            <label for={branchId} class="text-sm font-medium">{t("track06")}</label>
-            <SelectField id={branchId} aria-label={t("track06")} value={remoteBranch()} disabled={pending() || props.busy || !branches().length}
+            <label for={branchId} class="text-sm font-medium">{t("upstream.tracking-branch")}</label>
+            <SelectField id={branchId} aria-label={t("upstream.tracking-branch")} value={remoteBranch()} disabled={pending() || props.busy || !branches().length}
               options={branches().map(name => ({ value: name, label: name }))} onChange={setRemoteBranch} />
-            <Show when={!branches().length}><p class="text-xs text-muted-foreground">{t("track11")}</p></Show>
+            <Show when={!branches().length}><p class="text-xs text-muted-foreground">{t("upstream.unfetched")}</p></Show>
           </div>
         }>
           <TextField value={remoteBranch()} onChange={setRemoteBranch} disabled={pending() || props.busy} required>
-            <TextFieldLabel>{t("track05")}</TextFieldLabel>
+            <TextFieldLabel>{t("upstream.remote-branch")}</TextFieldLabel>
             <TextFieldInput autocomplete="off" spellcheck={false} />
           </TextField>
         </Show>
         <DialogFooter class="gap-2">
-          <Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("add09")}</Button>
+          <Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("common.cancel")}</Button>
           <Button type="submit" disabled={pending() || props.busy || !remote() || !remoteBranch().trim() || (needsOrigin() && !url().trim()) || (props.mode === "upstream" && !branches().includes(remoteBranch()))}>
-            {pending() ? (props.mode === "publish" ? t("nav06") : t("act16")) : props.mode === "publish" ? t("track09") : t("track10")}
+            {pending() ? (props.mode === "publish" ? t("push.running") : t("common.running")) : props.mode === "publish" ? t("upstream.publish") : t("upstream.link")}
           </Button>
         </DialogFooter>
       </form>

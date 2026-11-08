@@ -9,7 +9,7 @@ export default function AddSidebarItem(props: { kind: "tag" | "remote"; disabled
   const [name, setName] = createSignal("");
   const [url, setUrl] = createSignal("");
   const [pending, setPending] = createSignal(false);
-  const title = () => props.kind === "tag" ? t("add01") : t("add02");
+  const title = () => props.kind === "tag" ? t("tag.create") : t("remote.add");
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     if (pending() || !name().trim()) return;
@@ -27,22 +27,22 @@ export default function AddSidebarItem(props: { kind: "tag" | "remote"; disabled
     <DialogContent>
       <DialogHeader>
         <DialogTitle>{title()}</DialogTitle>
-        <DialogDescription>{props.kind === "tag" ? t("add03") : t("add04")}</DialogDescription>
+        <DialogDescription>{props.kind === "tag" ? t("tag.create-head") : t("remote.add-description")}</DialogDescription>
       </DialogHeader>
       <form onSubmit={submit} class="space-y-4">
         <TextField value={name()} onChange={setName} disabled={pending()} required>
-          <TextFieldLabel>{props.kind === "tag" ? t("add05") : t("add06")}</TextFieldLabel>
-          <TextFieldInput placeholder={props.kind === "tag" ? t("tagEx") : t("remoteEx")} autocomplete="off" spellcheck={false} />
+          <TextFieldLabel>{props.kind === "tag" ? t("tag.name") : t("remote.name")}</TextFieldLabel>
+          <TextFieldInput placeholder={props.kind === "tag" ? t("tag.example") : t("remote.example")} autocomplete="off" spellcheck={false} />
         </TextField>
         <Show when={props.kind === "remote"}>
           <TextField value={url()} onChange={setUrl} disabled={pending()} required>
-            <TextFieldLabel>{t("add07")}</TextFieldLabel>
-            <TextFieldInput placeholder={t("add08")} autocomplete="off" spellcheck={false} />
+            <TextFieldLabel>{t("remote.url")}</TextFieldLabel>
+            <TextFieldInput placeholder={t("remote.url-example")} autocomplete="off" spellcheck={false} />
           </TextField>
         </Show>
         <DialogFooter class="gap-2">
-          <Button type="button" variant="outline" disabled={pending()} onClick={() => setOpen(false)}>{t("add09")}</Button>
-          <Button type="submit" disabled={pending() || !name().trim() || (props.kind === "remote" && !url().trim())}>{pending() ? t("add10") : props.kind === "tag" ? t("add11") : t("add12")}</Button>
+          <Button type="button" variant="outline" disabled={pending()} onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
+          <Button type="submit" disabled={pending() || !name().trim() || (props.kind === "remote" && !url().trim())}>{pending() ? t("common.saving") : props.kind === "tag" ? t("common.create") : t("common.add")}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

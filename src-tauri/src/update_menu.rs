@@ -13,11 +13,11 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let check = MenuItem::with_id(
         app,
         CHECK_UPDATES,
-        locale::text("upd01"),
+        locale::text("update.check"),
         true,
         None::<&str>,
     )?;
-    let settings = MenuItem::with_id(app, SETTINGS, locale::text("lang04"), true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, SETTINGS, locale::text("settings.title"), true, None::<&str>)?;
     #[cfg(target_os = "macos")]
     if let Some(submenu) = menu
         .items()?
@@ -39,7 +39,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let shortcuts = MenuItem::with_id(
         app,
         KEYBOARD_SHORTCUTS,
-        locale::text("key01"),
+        locale::text("shortcuts.title"),
         true,
         None::<&str>,
     )?;

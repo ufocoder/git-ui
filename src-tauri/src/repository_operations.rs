@@ -10,7 +10,7 @@ pub(super) fn switch_branch(path: &Path, branch: &str) -> Result<ProjectHistory,
     development_guard::ensure_safe(path)?;
     let history = read_history(path)?;
     if !history.branches.iter().any(|name| name == branch) {
-        return Err(locale::text("err25").into());
+        return Err(locale::text("error.branch-not-found").into());
     }
     git(path, &["switch", "--no-guess", "--", branch])?;
     read_history(path)
@@ -30,10 +30,10 @@ pub(super) async fn switch_project_branch(
 
 fn validate_branch_name(path: &Path, name: &str) -> Result<(), String> {
     if name.is_empty() || name.trim() != name || name.starts_with('-') {
-        return Err(locale::text("err26").into());
+        return Err(locale::text("error.branch-name-required").into());
     }
     git(path, &["check-ref-format", &format!("refs/heads/{name}")])
-        .map_err(|_| locale::text("err27").to_string())?;
+        .map_err(|_| locale::text("error.invalid-branch").to_string())?;
     Ok(())
 }
 
@@ -67,10 +67,10 @@ pub(super) fn create_branch(path: &Path, name: &str) -> Result<ProjectHistory, S
     validate_branch_name(path, name)?;
     let history = read_history(path)?;
     if history.tip.is_empty() {
-        return Err(locale::text("err28").into());
+        return Err(locale::text("error.first-branch-commit").into());
     }
     if history.branches.iter().any(|branch| branch == name) {
-        return Err(locale::text("err29").into());
+        return Err(locale::text("error.duplicate-branch").into());
     }
     git(path, &["switch", "-c", name])?;
     read_history(path)
@@ -98,16 +98,16 @@ pub(super) fn create_tag_at_commit(
     commit: &str,
 ) -> Result<ProjectHistory, String> {
     if name.is_empty() || name.trim() != name || name.starts_with('-') {
-        return Err(locale::text("err30").into());
+        return Err(locale::text("error.tag-name-required").into());
     }
     git(path, &["check-ref-format", &format!("refs/tags/{name}")])
-        .map_err(|_| locale::text("err31").to_string())?;
+        .map_err(|_| locale::text("error.invalid-tag").to_string())?;
     let history = read_history(path)?;
     if history.tip.is_empty() {
-        return Err(locale::text("err32").into());
+        return Err(locale::text("error.first-tag-commit").into());
     }
     if history.tags.iter().any(|tag| tag == name) {
-        return Err(locale::text("err33").into());
+        return Err(locale::text("error.duplicate-tag").into());
     }
     if commit != "HEAD" {
         commit_diff_args(path, commit)?;
@@ -131,14 +131,14 @@ pub(super) fn reset_branch_to_commit(
 ) -> Result<ProjectHistory, String> {
     commit_diff_args(path, commit)?;
     if git(path, &["branch", "--show-current"])?.trim().is_empty() {
-        return Err(locale::text("err34").into());
+        return Err(locale::text("error.reset-detached").into());
     }
     let flag = match mode {
         "soft" => "--soft",
         "mixed" => "--mixed",
         "hard" if discard_confirmed => "--hard",
-        "hard" => return Err(locale::text("err35").into()),
-        _ => return Err(locale::text("err36").into()),
+        "hard" => return Err(locale::text("error.hard-reset-confirm").into()),
+        _ => return Err(locale::text("error.invalid-reset").into()),
     };
     git(path, &["reset", flag, commit, "--"])?;
     read_history(path)
@@ -167,7 +167,7 @@ pub(super) fn reset_branch_to_commit_checked(
     if git(path, &["rev-parse", "HEAD"])?.trim() != expected_head
         || git(path, &["branch", "--show-current"])?.trim() != expected_branch
     {
-        return Err(locale::text("safe05").into());
+        return Err(locale::text("safety.stale-head").into());
     }
     reset_branch_to_commit(path, commit, mode, confirmed)
 }
@@ -218,22 +218,22 @@ pub(super) fn add_remote(path: &Path, name: &str, url: &str) -> Result<ProjectHi
         || name.starts_with('-')
         || name.chars().any(char::is_whitespace)
     {
-        return Err(locale::text("err37").into());
+        return Err(locale::text("error.remote-name-required").into());
     }
     git(
         path,
         &["check-ref-format", &format!("refs/remotes/{name}/check")],
     )
-    .map_err(|_| locale::text("err38").to_string())?;
+    .map_err(|_| locale::text("error.invalid-remote").to_string())?;
     if url.trim().is_empty() || url.trim() != url || url.chars().any(char::is_control) {
-        return Err(locale::text("err39").into());
+        return Err(locale::text("error.remote-url-required").into());
     }
     if read_history(path)?
         .remotes
         .iter()
         .any(|remote| remote.name == name)
     {
-        return Err(locale::text("err40").into());
+        return Err(locale::text("error.duplicate-remote").into());
     }
     git(path, &["remote", "add", "--", name, url])?;
     read_history(path)
@@ -272,7 +272,7 @@ pub(super) fn set_file_staged(
     let file = read_worktree_files(path)?
         .into_iter()
         .find(|file| file.path == file_path)
-        .ok_or(locale::text("err41"))?;
+        .ok_or(locale::text("error.stale-file"))?;
     let mut paths = vec![format!(":(literal){}", file.path)];
     if let Some(old) = &file.old_path {
         let literal = format!(":(literal){old}");
@@ -308,10 +308,10 @@ pub(super) fn commit_staged_with_options(
     options: &commit_options::Options,
 ) -> Result<ProjectHistory, String> {
     if message.trim().is_empty() {
-        return Err(locale::text("err42").into());
+        return Err(locale::text("error.commit-message-required").into());
     }
     if git(path, &["diff", "--cached", "--name-only", "-z"])?.is_empty() {
-        return Err(locale::text("err43").into());
+        return Err(locale::text("error.stage-files-required").into());
     }
     commit_options::commit(path, message, false, options)?;
     read_history(path)
@@ -354,10 +354,10 @@ pub(super) fn sync_repository(
 ) -> Result<ProjectHistory, String> {
     let history = read_history(path)?;
     if action != "fetch" && history.current_branch.is_empty() {
-        return Err(locale::text("err44").into());
+        return Err(locale::text("error.local-branch-required").into());
     }
     if history.remotes.is_empty() && !(action == "pull" && history.sync.upstream.is_some()) {
-        return Err(locale::text("err45").into());
+        return Err(locale::text("error.remote-required").into());
     }
     match action {
         "fetch" => {
@@ -371,7 +371,7 @@ pub(super) fn sync_repository(
         "push" => {
             tracking::push_current(path)?;
         }
-        _ => return Err(locale::text("err46").into()),
+        _ => return Err(locale::text("error.invalid-operation").into()),
     }
     read_history(path)
 }

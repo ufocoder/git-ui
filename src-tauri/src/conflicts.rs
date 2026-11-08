@@ -53,19 +53,19 @@ fn target(path: &Path, file: &str) -> Result<PathBuf, String> {
                 .eq_ignore_ascii_case(".git")
         })
     {
-        return Err(locale::text("conf14").into());
+        return Err(locale::text("conflict.unsafe-path").into());
     }
     let target = path.join(relative);
-    let mut ancestor = target.parent().ok_or(locale::text("conf14"))?;
+    let mut ancestor = target.parent().ok_or(locale::text("conflict.unsafe-path"))?;
     while !ancestor.exists() {
-        ancestor = ancestor.parent().ok_or(locale::text("conf14"))?;
+        ancestor = ancestor.parent().ok_or(locale::text("conflict.unsafe-path"))?;
     }
     if !ancestor
         .canonicalize()
         .map_err(|e| e.to_string())?
         .starts_with(path.canonicalize().map_err(|e| e.to_string())?)
     {
-        return Err(locale::text("conf14").into());
+        return Err(locale::text("conflict.unsafe-path").into());
     }
     Ok(target)
 }
@@ -114,7 +114,7 @@ pub fn read(path: &Path, file: &str) -> Result<Conflict, String> {
     let file_entry = read_worktree_files(path)?
         .into_iter()
         .find(|entry| entry.path == file && entry.status == "U")
-        .ok_or(locale::text("conf15"))?;
+        .ok_or(locale::text("conflict.stale-file"))?;
     let target = target(path, file)?;
     let index = git(
         path,
@@ -178,7 +178,7 @@ pub fn read(path: &Path, file: &str) -> Result<Conflict, String> {
                     "hash-object",
                     "--no-filters",
                     "--",
-                    target.to_str().ok_or(locale::text("conf14"))?,
+                    target.to_str().ok_or(locale::text("conflict.unsafe-path"))?,
                 ],
             )?;
             let text = if metadata.len() <= LIMIT as u64 {
@@ -224,7 +224,7 @@ pub fn read(path: &Path, file: &str) -> Result<Conflict, String> {
 }
 
 fn write_atomic(target: &Path, text: &str) -> Result<(), String> {
-    let parent = target.parent().ok_or(locale::text("conf14"))?;
+    let parent = target.parent().ok_or(locale::text("conflict.unsafe-path"))?;
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     let temp = parent.join(format!(
         ".git-ui-conflict-{}-{}.tmp",
@@ -259,10 +259,10 @@ pub fn resolve(
 ) -> Result<ProjectHistory, String> {
     let current = read(path, file)?;
     if current.token != token {
-        return Err(locale::text("conf16").into());
+        return Err(locale::text("conflict.stale-state").into());
     }
     if !current.supported {
-        return Err(locale::text("conf17").into());
+        return Err(locale::text("conflict.unsupported").into());
     }
     let target = target(path, file)?;
     let literal = format!(":(literal){file}");
@@ -273,14 +273,14 @@ pub fn resolve(
     };
     if let Resolution::Manual { content } = &resolution {
         if !current.editable || content.len() > LIMIT {
-            return Err(locale::text("conf18").into());
+            return Err(locale::text("conflict.readonly").into());
         }
         if content.lines().any(|line| {
             line.starts_with("<<<<<<< ")
                 || line.starts_with(">>>>>>> ")
                 || line.starts_with("||||||| ")
         }) {
-            return Err(locale::text("conf19").into());
+            return Err(locale::text("conflict.markers").into());
         }
         write_atomic(&target, content)?;
     } else if selected.is_some_and(|value| !value.exists) {
@@ -295,7 +295,7 @@ pub fn resolve(
         git(path, &["checkout", flag, "--", &literal])?;
     }
     git(path, &["add", "--", &literal])
-        .map_err(|error| locale::format("conf25", &[("p1", error)]))?;
+        .map_err(|error| locale::format("conflict.stage-error", &[("p1", error)]))?;
     read_history(path)
 }
 

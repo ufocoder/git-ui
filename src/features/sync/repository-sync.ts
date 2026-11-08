@@ -49,7 +49,7 @@ export function createRepositorySync(api: SyncPort, session: {
   }
 
   async function configure(mode: TrackingMode, branch: string, remote: string, remoteBranch: string, url?: string) {
-    if (session.busy()) throw new Error(t("hist01"));
+    if (session.busy()) throw new Error(t("history.busy"));
     session.setBusy(true);
     try {
       if (mode === "publish" && url) session.setHistory(await api.addRemote("origin", url));

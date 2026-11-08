@@ -300,7 +300,7 @@ const SidebarTrigger = <T extends ValidComponent = "button">(props: SidebarTrigg
         <rect width="18" height="18" x="3" y="3" rx="2" />
         <path d="M9 3v18" />
       </svg>
-      <span class="sr-only">{t("side01")}</span>
+      <span class="sr-only">{t("sidebar.toggle")}</span>
     </Button>
   )
 }
@@ -312,10 +312,10 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
   return (
     <button
       data-sidebar="rail"
-      aria-label={t("side01")}
+      aria-label={t("sidebar.toggle")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title={t("side01")}
+      title={t("sidebar.toggle")}
       class={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
@@ -342,9 +342,9 @@ const SidebarResizeHandle = () => {
   }
   onCleanup(finish)
   return <Show when={!isMobile() && open()}>
-    <div role="separator" aria-label={t("side02")} aria-orientation="vertical"
+    <div role="separator" aria-label={t("sidebar.width")} aria-orientation="vertical"
       aria-valuemin={180} aria-valuemax={maxWidth()} aria-valuenow={Math.round(width())}
-      tabindex={0} title={t("side03")}
+      tabindex={0} title={t("sidebar.resize")}
       class="absolute inset-y-0 -right-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none before:absolute before:inset-y-0 before:w-px before:bg-sidebar-border hover:before:bg-sidebar-ring focus-visible:before:w-0.5 focus-visible:before:bg-sidebar-ring"
       onPointerDown={event => {
         if (event.button !== 0 || drag) return

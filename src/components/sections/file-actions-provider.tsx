@@ -43,13 +43,13 @@ export default function FileActionsProvider(props: { history: History; disabled:
   return <FileActionsContext.Provider value={{
     disabled: () => props.disabled,
     canRestore,
-    managerLabel: () => platform() === "macos" ? t("fileAct05") : platform() === "windows" ? t("fileAct06") : t("fileAct04"),
+    managerLabel: () => platform() === "macos" ? t("file-action.finder") : platform() === "windows" ? t("file-action.explorer") : t("file-action.reveal"),
     history: props.onHistory,
     copy: path => {
-      const operation = startOperation(t("fileAct02"));
+      const operation = startOperation(t("file-action.copy-path"));
       void navigator.clipboard.writeText(absoluteProjectPath(props.history.path, path))
-        .then(() => finishOperation(operation, t("fileAct02")))
-        .catch(failure => reportTerminalError(failure, t("fileAct02")));
+        .then(() => finishOperation(operation, t("file-action.copy-path")))
+        .catch(failure => reportTerminalError(failure, t("file-action.copy-path")));
     },
     reveal: path => { void git.revealPath(path).catch(() => {}); },
     restore: (path, source) => { setPath(path); setCommit(source && source !== WORKTREE ? source : props.history.tip); setPreview(undefined); setConfirmed(false); setError(""); },
@@ -57,24 +57,24 @@ export default function FileActionsProvider(props: { history: History; disabled:
     {props.children}
     <Dialog open={Boolean(path())} onOpenChange={open => { if (!open && !pending()) setPath(""); }}>
       <Show when={path()}><DialogContent>
-        <DialogHeader><DialogTitle>{t("fileAct03")}</DialogTitle><DialogDescription>{t("fileAct07")}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t("file-action.reset")}</DialogTitle><DialogDescription>{t("file-action.restore-description")}</DialogDescription></DialogHeader>
         <p class="break-all text-sm font-medium">{path()}</p>
         <TextField value={commit()} disabled={pending()} onChange={value => { setCommit(value); setPreview(undefined); setConfirmed(false); }}>
-          <TextFieldLabel>{t("fileAct08")}</TextFieldLabel>
+          <TextFieldLabel>{t("file-action.sha")}</TextFieldLabel>
           <TextFieldInput autocomplete="off" spellcheck={false} />
         </TextField>
         <Show when={preview()}>{target => <div class="space-y-3">
           <p class="break-all text-sm"><code>{target().commit.slice(0, 12)}</code> · {target().subject}</p>
-          <p class="text-sm text-muted-foreground">{t("fileAct09")}</p>
-          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{t("fileAct10")}</label>
+          <p class="text-sm text-muted-foreground">{t("file-action.overwrite-warning")}</p>
+          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{t("file-action.confirm-overwrite")}</label>
         </div>}</Show>
-        <Show when={!canRestore()}><p role="alert" class="text-sm text-destructive">{t("fileAct14")}</p></Show>
-        <Show when={stale()}><p role="alert" class="text-sm text-destructive">{t("safe05")}</p></Show>
+        <Show when={!canRestore()}><p role="alert" class="text-sm text-destructive">{t("file-action.operation-in-progress")}</p></Show>
+        <Show when={stale()}><p role="alert" class="text-sm text-destructive">{t("safety.stale-head")}</p></Show>
         <Show when={error()}><p role="alert" class="break-all text-sm text-destructive">{error()}</p></Show>
         <DialogFooter class="gap-2">
-          <Button variant="outline" disabled={pending()} onClick={() => setPath("")}>{t("add09")}</Button>
-          <Show when={preview()} fallback={<Button disabled={pending() || props.disabled || !commit().trim()} onClick={() => void prepare()}>{pending() ? t("ui01") : t("fileAct11")}</Button>}>
-            <Button variant="destructive" disabled={pending() || props.disabled || !confirmed() || stale() || !canRestore()} onClick={() => void restore()}>{pending() ? t("act16") : t("fileAct15")}</Button>
+          <Button variant="outline" disabled={pending()} onClick={() => setPath("")}>{t("common.cancel")}</Button>
+          <Show when={preview()} fallback={<Button disabled={pending() || props.disabled || !commit().trim()} onClick={() => void prepare()}>{pending() ? t("common.loading") : t("file-action.check-commit")}</Button>}>
+            <Button variant="destructive" disabled={pending() || props.disabled || !confirmed() || stale() || !canRestore()} onClick={() => void restore()}>{pending() ? t("common.running") : t("file-action.restore")}</Button>
           </Show>
         </DialogFooter>
       </DialogContent></Show>

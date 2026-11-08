@@ -66,11 +66,11 @@ pub(crate) fn read(
                 let counts = git(path, &["rev-list", "--left-right", "--count", &range, "--"])?;
                 let values: Vec<_> = counts.split_whitespace().collect();
                 if values.len() != 2 {
-                    return Err(locale::text("err08").into());
+                    return Err(locale::text("error.commit-count").into());
                 }
                 (
-                    values[0].parse().map_err(|_| locale::text("err08"))?,
-                    values[1].parse().map_err(|_| locale::text("err08"))?,
+                    values[0].parse().map_err(|_| locale::text("error.commit-count"))?,
+                    values[1].parse().map_err(|_| locale::text("error.commit-count"))?,
                 )
             };
             let mut cache = cache.lock().map_err(|error| error.to_string())?;
@@ -99,7 +99,7 @@ pub async fn get_branch_comparisons(
     names: Vec<String>,
 ) -> Result<HashMap<String, BranchComparison>, String> {
     if names.len() > 32 {
-        return Err(locale::text("err12").into());
+        return Err(locale::text("error.invalid-history").into());
     }
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {

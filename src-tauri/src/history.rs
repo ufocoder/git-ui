@@ -156,9 +156,9 @@ pub(super) struct ProjectHistory {
 pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
     let path = path
         .canonicalize()
-        .map_err(|_| locale::text("err10").to_string())?;
+        .map_err(|_| locale::text("error.folder-unavailable").to_string())?;
     if !path.is_dir() || !path.join(".git").is_dir() {
-        return Err(locale::text("err11").into());
+        return Err(locale::text("error.no-git").into());
     }
     git(&path, &["rev-parse", "--git-dir"])?;
     let refs = git(&path, &["rev-parse", "--revs-only", "HEAD"])?;
@@ -261,7 +261,7 @@ pub(super) fn read_branch_commit_page_at_tips(
         });
     }
     if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit()) {
-        return Err(locale::text("err12").into());
+        return Err(locale::text("error.invalid-history").into());
     }
     read_commit_range_with_refs(path, tip, offset, all_branches, tips)
 }
@@ -298,7 +298,7 @@ fn read_commit_range_with_refs(
             if tips.iter().any(|tip| {
                 ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit())
             }) {
-                return Err(locale::text("err12").into());
+                return Err(locale::text("error.invalid-history").into());
             }
             let mut unique_tips: Vec<&str> = tips.iter().map(String::as_str).collect();
             unique_tips.sort_unstable();

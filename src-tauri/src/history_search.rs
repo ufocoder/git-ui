@@ -40,7 +40,7 @@ pub fn page_with_branches(path: &Path, local_tip: &str, remote_tip: Option<&str>
 }
 
 pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
-    if tips.is_some_and(|tips| tips.iter().any(|tip| !valid_tip(tip))) { return Err(locale::text("err12").into()); }
+    if tips.is_some_and(|tips| tips.iter().any(|tip| !valid_tip(tip))) { return Err(locale::text("error.invalid-history").into()); }
     let branch_args: Vec<String> = tips.map(|tips| {
         let mut unique = tips.to_vec();
         unique.sort_unstable();
@@ -48,13 +48,13 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
         unique
     }).unwrap_or_else(|| vec!["--branches".into(), "--remotes".into()]);
     if !["all", "incoming", "outgoing"].contains(&scope) {
-        return Err(locale::text("sync09").into());
+        return Err(locale::text("sync.invalid-direction").into());
     }
     if local_tip.is_empty() {
         return Ok(empty_page());
     }
     if !valid_tip(local_tip) {
-        return Err(locale::text("err12").into());
+        return Err(locale::text("error.invalid-history").into());
     }
     let revision = if scope == "all" {
         local_tip.to_string()
@@ -63,7 +63,7 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
             return Ok(empty_page());
         };
         if !valid_tip(remote_tip) {
-            return Err(locale::text("err12").into());
+            return Err(locale::text("error.invalid-history").into());
         }
         if scope == "incoming" {
             format!("{local_tip}..{remote_tip}")
@@ -79,10 +79,10 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
         .iter()
         .any(|value| value.contains('\0'))
     {
-        return Err(locale::text("find08").into());
+        return Err(locale::text("search.invalid-filter").into());
     }
     if file.starts_with('/') || file.split('/').any(|part| part == "..") {
-        return Err(locale::text("find08").into());
+        return Err(locale::text("search.invalid-filter").into());
     }
     if !sha.is_empty()
         && (!(4..=64).contains(&sha.len()) || !sha.bytes().all(|ch| ch.is_ascii_hexdigit()))

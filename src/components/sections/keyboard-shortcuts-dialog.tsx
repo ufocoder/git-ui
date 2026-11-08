@@ -8,8 +8,8 @@ export default function KeyboardShortcutsDialog(props: { open: boolean; onOpenCh
   return <Dialog open={props.open} onOpenChange={props.onOpenChange}>
     <Show when={props.open}><DialogContent class="max-h-[85dvh] sm:max-w-2xl">
       <DialogHeader>
-        <DialogTitle>{t("key01")}</DialogTitle>
-        <DialogDescription>{t("key02")}</DialogDescription>
+        <DialogTitle>{t("shortcuts.title")}</DialogTitle>
+        <DialogDescription>{t("shortcuts.description")}</DialogDescription>
       </DialogHeader>
       <dl class="divide-y text-sm">
         <For each={Object.keys(shortcuts) as ShortcutId[]}>{id =>

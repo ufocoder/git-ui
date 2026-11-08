@@ -12,23 +12,23 @@ fn change(
     let prefix = match kind {
         "branch" => "refs/heads",
         "tag" => "refs/tags",
-        _ => return Err(locale::text("refAct07").into()),
+        _ => return Err(locale::text("ref-action.invalid-name").into()),
     };
     let reference = format!("{prefix}/{name}");
     if name.is_empty() || name.starts_with('-') {
-        return Err(locale::text("refAct07").into());
+        return Err(locale::text("ref-action.invalid-name").into());
     }
     git(path, &["check-ref-format", &reference])
-        .map_err(|_| locale::text("refAct07").to_owned())?;
+        .map_err(|_| locale::text("ref-action.invalid-name").to_owned())?;
     let object = git(path, &["rev-parse", "--verify", &reference])?;
     let object = object.trim();
     if let Some(new_name) = new_name {
         let target = format!("{prefix}/{new_name}");
         if new_name.is_empty() || new_name.starts_with('-') || new_name == name {
-            return Err(locale::text("refAct07").into());
+            return Err(locale::text("ref-action.invalid-name").into());
         }
         git(path, &["check-ref-format", &target])
-            .map_err(|_| locale::text("refAct07").to_owned())?;
+            .map_err(|_| locale::text("ref-action.invalid-name").to_owned())?;
         if kind == "branch" {
             git(path, &["branch", "-m", "--", name, new_name])?;
         } else {
@@ -42,10 +42,10 @@ fn change(
         }
     } else {
         if !confirmed {
-            return Err(locale::text("refAct08").into());
+            return Err(locale::text("ref-action.confirm-delete").into());
         }
         if kind != "branch" {
-            return Err(locale::text("refAct07").into());
+            return Err(locale::text("ref-action.invalid-name").into());
         }
         // Git refuses deleting current, checked-out-in-worktree and unmerged branches.
         git(path, &["branch", "-d", "--", name])?;

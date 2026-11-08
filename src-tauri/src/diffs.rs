@@ -21,7 +21,7 @@ pub(super) struct FileDiff {
 
 pub(super) fn commit_diff_args(path: &Path, commit: &str) -> Result<Vec<String>, String> {
     if ![40, 64].contains(&commit.len()) || !commit.bytes().all(|c| c.is_ascii_hexdigit()) {
-        return Err(locale::text("err13").into());
+        return Err(locale::text("error.invalid-sha").into());
     }
     let resolved = git(
         path,
@@ -57,11 +57,11 @@ pub(super) fn read_worktree_files(path: &Path) -> Result<Vec<CommitFile>, String
     while let Some(entry) = fields.next() {
         let bytes = entry.as_bytes();
         if bytes.len() < 4 {
-            return Err(locale::text("err14").into());
+            return Err(locale::text("error.worktree-status").into());
         }
         let renamed = bytes[..2].iter().any(|b| *b == b'R' || *b == b'C');
         let old_path = if renamed {
-            Some(fields.next().ok_or(locale::text("err15"))?.to_owned())
+            Some(fields.next().ok_or(locale::text("error.missing-original"))?.to_owned())
         } else {
             None
         };
@@ -108,13 +108,13 @@ pub(super) fn read_worktree_diff_scoped(
     let file = read_worktree_files(path)?
         .into_iter()
         .find(|file| file.path == file_path)
-        .ok_or(locale::text("err16"))?;
+        .ok_or(locale::text("error.no-file-changes"))?;
     if matches!(scope, Some(WorktreeDiffScope::Staged)) && !file.staged
         || matches!(scope, Some(WorktreeDiffScope::Unstaged))
             && file.staged
             && !file.partially_staged
     {
-        return Err(locale::text("err16").into());
+        return Err(locale::text("error.no-file-changes").into());
     }
     let untracked = git(
         path,
@@ -165,7 +165,7 @@ pub(super) fn read_worktree_diff_scoped(
     }
     let mut patch = git(path, &args.iter().map(String::as_str).collect::<Vec<_>>())?;
     if patch.is_empty() {
-        patch = locale::text("err17").into();
+        patch = locale::text("error.index-cancels-changes").into();
     }
     let truncated = patch.len() > 2 * 1024 * 1024;
     if truncated {
@@ -203,10 +203,10 @@ pub(super) fn read_commit_files(path: &Path, commit: &str) -> Result<Vec<CommitF
     let mut fields = output.split_terminator('\0');
     let mut files = Vec::new();
     while let Some(status) = fields.next() {
-        let first = fields.next().ok_or(locale::text("err18"))?;
+        let first = fields.next().ok_or(locale::text("error.file-path"))?;
         let renamed = status.starts_with('R') || status.starts_with('C');
         let file = if renamed {
-            fields.next().ok_or(locale::text("err19"))?
+            fields.next().ok_or(locale::text("error.renamed-path"))?
         } else {
             first
         };
@@ -232,7 +232,7 @@ pub(super) fn read_file_diff(
     let file = read_commit_files(path, commit)?
         .into_iter()
         .find(|file| file.path == file_path)
-        .ok_or(locale::text("err20"))?;
+        .ok_or(locale::text("error.file-not-found"))?;
     let mut args = commit_diff_args(path, commit)?;
     args.extend(
         [
@@ -289,7 +289,7 @@ pub(super) struct CommitDetails {
 pub(super) fn read_commit_details(path: &Path, commit: &str) -> Result<CommitDetails, String> {
     if commit == WORKTREE {
         return Ok(CommitDetails {
-            message: locale::text("err21").into(),
+            message: locale::text("error.worktree-summary").into(),
             files: read_worktree_files(path)?,
         });
     }
@@ -335,7 +335,7 @@ pub(super) async fn get_file_diff(
     tauri::async_runtime::spawn_blocking(move || {
         if scope.is_some() {
             if commit != WORKTREE {
-                return Err(locale::text("stage09").into());
+                return Err(locale::text("stage.invalid-scope").into());
             }
             read_worktree_diff_scoped(Path::new(&path), &file_path, scope)
         } else {

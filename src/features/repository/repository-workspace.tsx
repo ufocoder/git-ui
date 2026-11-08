@@ -74,11 +74,11 @@ export default function RepositoryWorkspace(props: {
   }, state => {
     if (disposed) return;
     setCommitFlowState(state);
-    if (state.kind === "pushFailed") reportTerminalError(t("commit03", { p1: String(state.error) }), t("cmd10"));
+    if (state.kind === "pushFailed") reportTerminalError(t("commit.push-error", { p1: String(state.error) }), t("command.push"));
   });
 
   async function submitCommit(request: CommitRequest) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { return await commitFlow.submit(request); }
     finally { setBusy(false); }
@@ -187,7 +187,7 @@ export default function RepositoryWorkspace(props: {
   }
 
   async function runCommitOperation(head: string, branch: string, operation: CommitOperation) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { setHistory(await git.commitOperation(head, branch, operation)); }
     catch (error) {
@@ -197,7 +197,7 @@ export default function RepositoryWorkspace(props: {
   }
 
   async function runStash(action: StashAction) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try {
       const updated = await git.stash(action);
@@ -219,7 +219,7 @@ export default function RepositoryWorkspace(props: {
   }
 
   async function pushTags(remote: string, tag: string | null) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { setHistory(await git.pushTags(remote, tag)); }
     catch (error) { setTerminalOpen(true); throw error; }
@@ -228,7 +228,7 @@ export default function RepositoryWorkspace(props: {
 
   const [branchAction, setBranchAction] = createSignal<BranchAction>();
   async function executeBranchAction(action: BranchAction, preview: BranchActionPreview, remote: BranchRemoteTarget | null) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { setHistory(await git.executeBranchAction(action.kind, preview, remote)); }
     catch (error) {
@@ -244,7 +244,7 @@ export default function RepositoryWorkspace(props: {
 
   const [referenceAction, setReferenceAction] = createSignal<ReferenceAction>();
   async function changeReference(action: ReferenceAction, name: string | null) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { setHistory(await git.changeReference(action.kind, action.name, name)); }
     catch (error) { setTerminalOpen(true); throw error; }
@@ -252,7 +252,7 @@ export default function RepositoryWorkspace(props: {
   }
 
   async function deleteTag(tag: string, remote: string | null) {
-    if (busy()) throw new Error(t("hist01"));
+    if (busy()) throw new Error(t("history.busy"));
     setBusy(true);
     try { setHistory(await git.deleteTag(tag, remote)); }
     catch (error) {
@@ -272,7 +272,7 @@ export default function RepositoryWorkspace(props: {
     event.preventDefault();
     if (busy() || creatingBranch()) return;
     const name = branchName().trim();
-    if (!name) { setBranchError(t("app03")); return; }
+    if (!name) { setBranchError(t("app.branch-required")); return; }
     setCreatingBranch(true);
     setBusy(true);
     setBranchError("");
@@ -296,20 +296,20 @@ export default function RepositoryWorkspace(props: {
         <RepositoryToolbar onStashActionsMount={setStashActionsMount} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <Show when={failedCommitPush()}>{target =>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
-            <p role="status" class="text-sm font-medium">{t("commit24")}</p>
+            <p role="status" class="text-sm font-medium">{t("commit.push-failed")}</p>
             <div class="flex flex-wrap items-center gap-2">
-              <span title={!matchesPushTarget(history(), target()) ? t("commit26") : undefined}>
-                <Button size="sm" variant="outline" disabled={busy() || !matchesPushTarget(history(), target())} onClick={() => void retryCommitPush()}>{syncAction() === "push" ? t("nav06") : t("commit25")}</Button>
+              <span title={!matchesPushTarget(history(), target()) ? t("commit.target-changed") : undefined}>
+                <Button size="sm" variant="outline" disabled={busy() || !matchesPushTarget(history(), target())} onClick={() => void retryCommitPush()}>{syncAction() === "push" ? t("push.running") : t("commit.retry-push")}</Button>
               </span>
-              <Button size="sm" variant="ghost" onClick={() => setTerminalOpen(true)}>{t("notice03")}</Button>
-              <Button size="icon" variant="ghost" class="size-7" aria-label={t("notice04")} title={t("notice04")} onClick={() => commitFlow.dismiss()}>×</Button>
+              <Button size="sm" variant="ghost" onClick={() => setTerminalOpen(true)}>{t("notice.terminal")}</Button>
+              <Button size="icon" variant="ghost" class="size-7" aria-label={t("notice.dismiss")} title={t("notice.dismiss")} onClick={() => commitFlow.dismiss()}>×</Button>
             </div>
           </div>
         }</Show>
         <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts" || !history().has_changes} fallback={
           <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">
-            <p class="text-xs text-muted-foreground">{t("op21", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
-            <Button size="sm" variant="ghost" disabled={busy()} onClick={() => changeRepositoryMode(operation().conflicts ? "conflicts" : "commit")}>{t("ui02")}</Button>
+            <p class="text-xs text-muted-foreground">{t("operation.status", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
+            <Button size="sm" variant="ghost" disabled={busy()} onClick={() => changeRepositoryMode(operation().conflicts ? "conflicts" : "commit")}>{t("operation.open")}</Button>
           </div>
         }>
           <CommitOperationBar history={history()} disabled={busy()} onShowConflicts={repositoryMode() === "conflicts" ? undefined : () => changeRepositoryMode("conflicts")} onExecute={runCommitOperation} />
@@ -323,8 +323,8 @@ export default function RepositoryWorkspace(props: {
           }}
           onNameChange={value => { setBranchName(value); setBranchError(""); }}
           onSubmit={event => void createBranch(event)} />
-        <Show when={busy()}><p role="status" class="sr-only">{t("app04")}</p></Show>
-        <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
+        <Show when={busy()}><p role="status" class="sr-only">{t("app.refreshing")}</p></Show>
+        <section aria-label={t("app.commits")} class="min-h-0 min-w-0 flex-1">
               <RepositoryContent onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
         </section>
     </main>

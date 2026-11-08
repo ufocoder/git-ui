@@ -53,35 +53,35 @@ export default function UpdateDialog(props: { onClose: () => void; onInstallingC
     <header class="flex items-center gap-3">
       <img src={gitForkIcon} width="48" height="48" class="size-12 shrink-0" alt="" />
       <div>
-        <h1 class="text-xl font-semibold">{t("upd02")}</h1>
-        <Show when={currentVersion()}><p class="mt-1 text-sm text-muted-foreground">{t("upd03", { version: currentVersion() })}</p></Show>
+        <h1 class="text-xl font-semibold">{t("update.title")}</h1>
+        <Show when={currentVersion()}><p class="mt-1 text-sm text-muted-foreground">{t("update.current", { version: currentVersion() })}</p></Show>
       </div>
     </header>
     <section class="space-y-3" aria-live="polite" aria-busy={busy()}>
-      <Show when={checking()}><p class="text-sm text-muted-foreground">{t("upd04")}</p></Show>
+      <Show when={checking()}><p class="text-sm text-muted-foreground">{t("update.checking")}</p></Show>
       <Show when={info()}>{result => <>
         <Badge variant={result().available ? "default" : "secondary"}>
-          {result().available ? t("upd06", { version: result().version ?? "" }) : result().notice || t("upd05")}
+          {result().available ? t("update.available", { version: result().version ?? "" }) : result().notice || t("update.up-to-date")}
         </Badge>
         <Show when={result().available && result().notice}><p class="text-sm leading-relaxed text-muted-foreground">{result().notice}</p></Show>
 
       </>}</Show>
       <Show when={installing()}>
-        <p class="text-sm" role="status">{progress()?.phase === "restarting" ? t("upd14") : progress()?.phase === "installing" ? t("upd13") : t("upd12")}</p>
-        <Progress value={percent()} label={t("upd12")} />
-        <Show when={progress()?.phase === "downloading"}><p class="text-xs text-muted-foreground">{percent() !== undefined ? `${percent()}%` : t("upd30", { size: ((progress()?.downloaded ?? 0) / 1048576).toFixed(1) })}</p></Show>
+        <p class="text-sm" role="status">{progress()?.phase === "restarting" ? t("update.restarting") : progress()?.phase === "installing" ? t("update.installing") : t("update.downloading")}</p>
+        <Progress value={percent()} label={t("update.downloading")} />
+        <Show when={progress()?.phase === "downloading"}><p class="text-xs text-muted-foreground">{percent() !== undefined ? `${percent()}%` : t("update.downloaded", { size: ((progress()?.downloaded ?? 0) / 1048576).toFixed(1) })}</p></Show>
       </Show>
-      <Show when={error()}><Alert variant="destructive"><AlertTitle>{t("upd31")}</AlertTitle><AlertDescription class="break-words">{error()}</AlertDescription></Alert></Show>
+      <Show when={error()}><Alert variant="destructive"><AlertTitle>{t("update.error")}</AlertTitle><AlertDescription class="break-words">{error()}</AlertDescription></Alert></Show>
     </section>
     <footer class="mt-auto space-y-3">
-      <Show when={info()?.installable}><p class="text-sm text-muted-foreground">{t("upd17")}</p></Show>
+      <Show when={info()?.installable}><p class="text-sm text-muted-foreground">{t("update.restart-note")}</p></Show>
       <div class="flex items-center justify-end gap-3">
-        <Button variant="outline" disabled={installing()} onClick={props.onClose}>{t("upd11")}</Button>
+        <Button variant="outline" disabled={installing()} onClick={props.onClose}>{t("update.close")}</Button>
         <Show when={info()?.available}>
           <Button disabled={busy()} onClick={() => {
             if (info()?.installable) void install();
             else { const url = info()?.releaseUrl; if (url) void showRelease(url); }
-          }}>{info()?.installable ? t("upd07") : t("upd16")}</Button>
+          }}>{info()?.installable ? t("update.install") : t("update.download")}</Button>
         </Show>
       </div>
     </footer>

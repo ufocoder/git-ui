@@ -106,7 +106,7 @@ const SheetContent = <T extends ValidComponent = "div">(
             <path d="M18 6l-12 12" />
             <path d="M6 6l12 12" />
           </svg>
-          <span class="sr-only">{t("dlg01")}</span>
+          <span class="sr-only">{t("dialog.close")}</span>
         </SheetPrimitive.CloseButton>
       </SheetPrimitive.Content>
     </SheetPortal>

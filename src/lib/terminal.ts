@@ -7,7 +7,7 @@ const [terminalError, setTerminalError] = createSignal<TerminalError | null>(nul
 let nextId = 0;
 export { terminalError };
 
-export function reportTerminalError(error: unknown, operation = t("term01")) {
+export function reportTerminalError(error: unknown, operation = t("terminal.app-error")) {
   failOperation(error);
   setTerminalError({ id: ++nextId, operation, message: error instanceof Error ? error.message : String(error) });
 }

@@ -20,11 +20,11 @@ export default function ReferenceActionDialog(props: { action: ReferenceAction |
     finally { setPending(false); }
   }
   return <Dialog open={Boolean(props.action)} onOpenChange={open => { if (!open && !pending() && !props.busy) props.onClose(); }}>
-    <DialogContent><DialogHeader><DialogTitle>{props.action?.deleting ? t("refAct03") : t("refAct02")}</DialogTitle><DialogDescription>{props.action?.deleting ? t("refAct06", { name: props.action.name }) : t("refAct05", { name: props.action?.name ?? "" })}</DialogDescription></DialogHeader>
+    <DialogContent><DialogHeader><DialogTitle>{props.action?.deleting ? t("ref-action.delete-branch") : t("ref-action.rename")}</DialogTitle><DialogDescription>{props.action?.deleting ? t("ref-action.delete-description", { name: props.action.name }) : t("ref-action.rename-description", { name: props.action?.name ?? "" })}</DialogDescription></DialogHeader>
       <form onSubmit={submit} class="space-y-4">
-        <Show when={!props.action?.deleting}><TextField value={name()} onChange={setName} disabled={pending() || props.busy} required><TextFieldLabel>{t("refAct04")}</TextFieldLabel><TextFieldInput autocomplete="off" spellcheck={false} /></TextField></Show>
+        <Show when={!props.action?.deleting}><TextField value={name()} onChange={setName} disabled={pending() || props.busy} required><TextFieldLabel>{t("ref-action.new-name")}</TextFieldLabel><TextFieldInput autocomplete="off" spellcheck={false} /></TextField></Show>
         <Show when={error()}><p role="alert" class="break-words text-sm text-destructive">{error()}</p></Show>
-        <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("add09")}</Button><Button type="submit" variant={props.action?.deleting ? "destructive" : "default"} disabled={pending() || props.busy || (!props.action?.deleting && (!name().trim() || name().trim() === props.action?.name))}>{pending() ? t("add10") : props.action?.deleting ? t("refAct03") : t("refAct02")}</Button></DialogFooter>
+        <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={pending() || props.busy} onClick={props.onClose}>{t("common.cancel")}</Button><Button type="submit" variant={props.action?.deleting ? "destructive" : "default"} disabled={pending() || props.busy || (!props.action?.deleting && (!name().trim() || name().trim() === props.action?.name))}>{pending() ? t("common.saving") : props.action?.deleting ? t("ref-action.delete-branch") : t("ref-action.rename")}</Button></DialogFooter>
       </form>
     </DialogContent>
   </Dialog>;

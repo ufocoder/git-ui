@@ -27,7 +27,7 @@ pub(super) fn load_recent(file: &Path) -> Result<Vec<String>, String> {
     match std::fs::read(file) {
         Ok(bytes) => {
             let paths: Vec<String> = serde_json::from_slice(&bytes)
-                .map_err(|e| locale::format("err01", &[("e", e.to_string())]))?;
+                .map_err(|e| locale::format("error.read-recent", &[("e", e.to_string())]))?;
             let mut unique = Vec::new();
             for path in paths {
                 if !unique.contains(&path) {
@@ -38,7 +38,7 @@ pub(super) fn load_recent(file: &Path) -> Result<Vec<String>, String> {
             Ok(unique)
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(vec![]),
-        Err(e) => Err(locale::format("err01", &[("e", e.to_string())])),
+        Err(e) => Err(locale::format("error.read-recent", &[("e", e.to_string())])),
     }
 }
 
@@ -47,7 +47,7 @@ pub(super) fn save_recent(file: &Path, path: String) -> Result<Vec<String>, Stri
     paths.retain(|existing| existing != &path);
     paths.insert(0, path);
     paths.truncate(5);
-    let directory = file.parent().ok_or(locale::text("err09"))?;
+    let directory = file.parent().ok_or(locale::text("error.settings-dir"))?;
     std::fs::create_dir_all(directory).map_err(|e| e.to_string())?;
     let temporary = file.with_extension("tmp");
     let bytes = serde_json::to_vec_pretty(&paths).map_err(|e| e.to_string())?;
@@ -73,20 +73,20 @@ pub(super) fn get_recent_projects(
 pub(super) fn can_initialize_repository(path: &Path) -> Result<bool, String> {
     let path = path
         .canonicalize()
-        .map_err(|_| locale::text("err10").to_string())?;
+        .map_err(|_| locale::text("error.folder-unavailable").to_string())?;
     if !path.is_dir() {
-        return Err(locale::text("err22").into());
+        return Err(locale::text("error.folder-required").into());
     }
     match std::fs::symlink_metadata(path.join(".git")) {
         Ok(_) => Ok(false),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(true),
-        Err(error) => Err(locale::format("err04", &[("error", error.to_string())])),
+        Err(error) => Err(locale::format("error.check-folder", &[("error", error.to_string())])),
     }
 }
 
 pub(super) fn initialize_repository(path: &Path) -> Result<(), String> {
     if !can_initialize_repository(path)? {
-        return Err(locale::text("err23").into());
+        return Err(locale::text("error.already-initialized").into());
     }
     git(path, &["init"])?;
     Ok(())
@@ -152,7 +152,7 @@ pub(super) async fn open_project(
         Err(error) => OpenProjectResult {
             history,
             recent_projects: vec![],
-            warning: Some(locale::format("err07", &[("error", error.to_string())])),
+            warning: Some(locale::format("error.save-recent", &[("error", error.to_string())])),
         },
     })
 }
@@ -187,7 +187,7 @@ pub(super) fn project_path(window: &WebviewWindow, projects: &Projects) -> Resul
         .map_err(|e| e.to_string())?
         .get(window.label())
         .cloned()
-        .ok_or_else(|| locale::text("err24").into())
+        .ok_or_else(|| locale::text("error.no-project").into())
 }
 
 #[tauri::command]

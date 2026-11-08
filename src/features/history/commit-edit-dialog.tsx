@@ -32,7 +32,7 @@ export default function CommitEditDialog(props: {
     }
   });
   onCleanup(() => { generation++; });
-  const title = () => props.action?.kind === "amend" ? t("op03") : props.action?.kind === "revert" ? t("op02") : t("op01");
+  const title = () => props.action?.kind === "amend" ? t("operation.amend") : props.action?.kind === "revert" ? t("operation.revert") : t("operation.cherry-pick");
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     const action = props.action;
@@ -48,26 +48,26 @@ export default function CommitEditDialog(props: {
     <Show when={props.action}>{action => <DialogContent>
       <DialogHeader>
         <DialogTitle>{title()}</DialogTitle>
-        <DialogDescription>{action().kind === "amend" ? t("op06") : action().kind === "revert" ? t("op05", { branch: action().branch }) : t("op04", { branch: action().branch })}</DialogDescription>
+        <DialogDescription>{action().kind === "amend" ? t("operation.amend-description") : action().kind === "revert" ? t("operation.revert-description", { branch: action().branch }) : t("operation.cherry-pick-description", { branch: action().branch })}</DialogDescription>
       </DialogHeader>
       <p class="break-words text-sm"><code>{action().commit.hash.slice(0, 8)}</code> · {action().commit.subject}</p>
       <form onSubmit={submit} class="space-y-4">
         <Show when={action().kind === "amend"} fallback={
           <Show when={action().commit.parents.length > 1}>
-            <SelectField label={t("op07")} value={String(mainline())} disabled={pending()} onChange={value => setMainline(Number(value))}
+            <SelectField label={t("operation.mainline")} value={String(mainline())} disabled={pending()} onChange={value => setMainline(Number(value))}
               options={action().commit.parents.map((hash, index) => ({ value: String(index + 1), label: `${index + 1} · ${hash.slice(0, 8)}` }))} />
-            <p class="text-xs text-muted-foreground">{t("op08")}</p>
+            <p class="text-xs text-muted-foreground">{t("operation.parent-description")}</p>
           </Show>
         }>
           <TextField value={message()} onChange={setMessage} disabled={pending() || loading()} required>
-            <TextFieldLabel>{t("commit13")}</TextFieldLabel>
+            <TextFieldLabel>{t("commit.message")}</TextFieldLabel>
             <TextFieldTextArea class="max-h-56 min-h-28" rows={5} />
           </TextField>
-          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending() || loading()} />{t("op09")}</label>
+          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending() || loading()} />{t("operation.confirm-amend")}</label>
         </Show>
         <DialogFooter class="gap-2">
-          <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("add09")}</Button>
-          <Button type="submit" disabled={pending() || loading() || (action().kind === "amend" && (!confirmed() || !message().trim()))}>{pending() ? t("act16") : action().kind === "amend" ? t("op10") : title()}</Button>
+          <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" disabled={pending() || loading() || (action().kind === "amend" && (!confirmed() || !message().trim()))}>{pending() ? t("common.running") : action().kind === "amend" ? t("operation.amend-commit") : title()}</Button>
         </DialogFooter>
       </form>
     </DialogContent>}</Show>

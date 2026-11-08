@@ -165,7 +165,7 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect(locale::text("appErr"));
+        .expect(locale::text("app.start-error"));
 }
 
 #[cfg(test)]

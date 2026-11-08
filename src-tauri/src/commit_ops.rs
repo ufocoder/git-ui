@@ -93,10 +93,10 @@ fn mainline_args(
     if parents > 1 {
         let selected = mainline
             .filter(|parent| *parent > 0 && *parent <= parents)
-            .ok_or(locale::text("op15"))?;
+            .ok_or(locale::text("operation.invalid-parent"))?;
         Ok(vec!["--mainline".into(), selected.to_string()])
     } else if mainline.is_some() {
-        Err(locale::text("op15").into())
+        Err(locale::text("operation.invalid-parent").into())
     } else {
         Ok(Vec::new())
     }
@@ -131,13 +131,13 @@ pub fn run_with_options(
         Action::Continue | Action::Abort { .. } | Action::Skip { .. }
     ) && read(path)?.is_some_and(|operation| operation.kind == "rebase");
     if current_branch.is_empty() && !rebase_control {
-        return Err(locale::text("err44").into());
+        return Err(locale::text("error.local-branch-required").into());
     }
     let current_head = git(path, &["rev-parse", "--revs-only", "HEAD"])?
         .trim()
         .to_string();
     if current_head != head || current_branch != branch {
-        return Err(locale::text("op16").into());
+        return Err(locale::text("operation.stale-target").into());
     }
     match action {
         Action::CherryPick {
@@ -150,7 +150,7 @@ pub fn run_with_options(
         } => {
             crate::stash::ensure_no_operation(path)?;
             if !read_worktree_files(path)?.is_empty() {
-                return Err(locale::text("op17").into());
+                return Err(locale::text("operation.dirty").into());
             }
             let mut args = if matches!(action, Action::CherryPick { .. }) {
                 vec!["cherry-pick".to_string(), "--allow-empty".into()]
@@ -168,26 +168,26 @@ pub fn run_with_options(
         } => {
             crate::stash::ensure_no_operation(path)?;
             if commit != current_head {
-                return Err(locale::text("op14").into());
+                return Err(locale::text("operation.amend-head-only").into());
             }
             if !confirmed {
-                return Err(locale::text("op18").into());
+                return Err(locale::text("operation.confirm").into());
             }
             if message.trim().is_empty() {
-                return Err(locale::text("err42").into());
+                return Err(locale::text("error.commit-message-required").into());
             }
             if read_worktree_files(path)?
                 .iter()
                 .any(|file| file.status == "U")
             {
-                return Err(locale::text("op19").into());
+                return Err(locale::text("operation.resolve-first").into());
             }
             crate::commit_options::commit(path, message.trim(), true, options)?;
         }
         Action::Continue => {
-            let operation = read(path)?.ok_or(locale::text("op20"))?;
+            let operation = read(path)?.ok_or(locale::text("operation.none"))?;
             if operation.conflicts > 0 {
-                return Err(locale::text("op19").into());
+                return Err(locale::text("operation.resolve-first").into());
             }
             if operation.kind == "merge" {
                 git(path, &["commit", "--no-edit"])?;
@@ -197,11 +197,11 @@ pub fn run_with_options(
         }
         Action::Abort { confirmed } | Action::Skip { confirmed } => {
             if !confirmed {
-                return Err(locale::text("op18").into());
+                return Err(locale::text("operation.confirm").into());
             }
-            let operation = read(path)?.ok_or(locale::text("op20"))?;
+            let operation = read(path)?.ok_or(locale::text("operation.none"))?;
             if operation.kind == "merge" && matches!(action, Action::Skip { .. }) {
-                return Err(locale::text("conf26").into());
+                return Err(locale::text("conflict.cannot-skip-merge").into());
             }
             let flag = if matches!(action, Action::Abort { .. }) {
                 "--abort"

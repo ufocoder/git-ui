@@ -19,27 +19,27 @@ export default function ProjectChooser(props: ProjectChooserProps) {
         <h1 id="welcome-title" class="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
           <span class="mb-3 flex items-center justify-center gap-3">
             <img src={gitForkIcon} width="48" height="48" class="size-10 shrink-0 sm:size-12" alt="" />
-            <span>{t("home01")}</span>
+            <span>{t("home.name")}</span>
           </span>
-          <span class="text-muted-foreground">{t("home02")}</span>
+          <span class="text-muted-foreground">{t("home.tagline")}</span>
         </h1>
         <Show when={props.ready} fallback={props.requirement}>
         <p class="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-          {t("home03")}<br class="hidden sm:block" /> {t("home04")}
+          {t("home.features")}<br class="hidden sm:block" /> {t("home.description")}
         </p>
         <Button size="lg" class="mt-6 h-12 gap-3 rounded-lg px-6" onClick={props.onSelectProject} disabled={props.busy} aria-busy={props.busy}>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 17V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v2" />
             <path d="M5 11h16a1 1 0 0 1 1 1.3l-2 6A2.5 2.5 0 0 1 17.6 20H5a2 2 0 0 1-2-2l1-6a1 1 0 0 1 1-1Z" />
           </svg>
-          {props.choosingProject ? t("init03") : t("home05")}
+          {props.choosingProject ? t("init.opening") : t("home.select")}
         </Button>
         </Show>
       </section>
       <Show when={props.ready && props.recentProjects.length > 0}>
       <section aria-labelledby="recent-projects-title" class="mx-auto w-full max-w-lg">
         <div class="mb-2 flex items-center gap-3 px-3">
-          <h2 id="recent-projects-title" class="shrink-0 text-xs font-medium text-muted-foreground">{t("home07")}</h2>
+          <h2 id="recent-projects-title" class="shrink-0 text-xs font-medium text-muted-foreground">{t("home.recent")}</h2>
           <div class="h-px flex-1 bg-border/60" aria-hidden="true" />
         </div>
           <ul class="max-h-60 space-y-1 overflow-y-auto">

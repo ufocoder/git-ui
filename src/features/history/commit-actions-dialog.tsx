@@ -47,33 +47,33 @@ export default function CommitActionsDialog(props: Props) {
   return <Dialog open={Boolean(props.action)} onOpenChange={open => { if (!open && !pending()) props.onClose(); }}>
     <Show when={props.action}>{action => <DialogContent>
       <DialogHeader>
-        <DialogTitle>{action().kind === "branch" ? t("act01") : action().kind === "tag" ? t("act02") : t("act03")}</DialogTitle>
-        <DialogDescription>{action().kind === "branch" ? t("act04") : action().kind === "tag" ? t("act05") : t("act06", { p1: target().branch })}</DialogDescription>
+        <DialogTitle>{action().kind === "branch" ? t("branch.from-commit") : action().kind === "tag" ? t("tag.from-commit") : t("reset.to-commit")}</DialogTitle>
+        <DialogDescription>{action().kind === "branch" ? t("branch.from-commit-description") : action().kind === "tag" ? t("tag.from-commit-description") : t("reset.target", { p1: target().branch })}</DialogDescription>
       </DialogHeader>
       <p class="break-words text-sm"><code>{action().commit.hash.slice(0, 8)}</code> · {action().commit.subject}</p>
       <Show when={action().kind === "reset"}>
         <div class="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
-          <p class="break-all font-medium">{t("safe01", { branch: target().branch, from: target().head.slice(0, 8), to: action().commit.hash.slice(0, 8) })}</p>
-          <p class="text-muted-foreground">{t("safe02")}</p>
-          <p class="text-muted-foreground">{props.hasChanges ? t("safe03") : t("safe04")}</p>
+          <p class="break-all font-medium">{t("safety.branch-move", { branch: target().branch, from: target().head.slice(0, 8), to: action().commit.hash.slice(0, 8) })}</p>
+          <p class="text-muted-foreground">{t("safety.reset-description")}</p>
+          <p class="text-muted-foreground">{props.hasChanges ? t("safety.dirty") : t("safety.clean")}</p>
         </div>
-        <Show when={stale()}><p role="alert" class="text-sm text-destructive">{t("safe05")}</p></Show>
+        <Show when={stale()}><p role="alert" class="text-sm text-destructive">{t("safety.stale-head")}</p></Show>
       </Show>
       <form onSubmit={submit} class="space-y-4">
         <Show when={action().kind !== "reset"} fallback={<>
-          <ToggleGroup value={mode()} onChange={value => { if (value === "soft" || value === "mixed" || value === "hard") { setMode(value); setConfirmed(false); } }} disabled={pending()} aria-label={t("act07")}>
-            <ToggleGroupItem value="soft">{t("act08")}</ToggleGroupItem><ToggleGroupItem value="mixed">{t("act09")}</ToggleGroupItem><ToggleGroupItem value="hard">{t("act10")}</ToggleGroupItem>
+          <ToggleGroup value={mode()} onChange={value => { if (value === "soft" || value === "mixed" || value === "hard") { setMode(value); setConfirmed(false); } }} disabled={pending()} aria-label={t("reset.mode")}>
+            <ToggleGroupItem value="soft">{t("reset.soft")}</ToggleGroupItem><ToggleGroupItem value="mixed">{t("reset.mixed")}</ToggleGroupItem><ToggleGroupItem value="hard">{t("reset.hard")}</ToggleGroupItem>
           </ToggleGroup>
-          <p class="text-sm text-muted-foreground">{mode() === "soft" ? t("act11") : mode() === "mixed" ? t("act12") : t("act13")}</p>
+          <p class="text-sm text-muted-foreground">{mode() === "soft" ? t("reset.soft-description") : mode() === "mixed" ? t("reset.mixed-description") : t("reset.hard-description")}</p>
           <Show when={mode() === "hard"}>
-            <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{t("act14", { branch: target().branch, sha: action().commit.hash.slice(0, 8) })}</label>
+            <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{t("reset.confirm", { branch: target().branch, sha: action().commit.hash.slice(0, 8) })}</label>
           </Show>
         </>}>
-          <TextField value={name()} onChange={setName} disabled={pending()} required><TextFieldLabel>{action().kind === "branch" ? t("act15") : t("add05")}</TextFieldLabel><TextFieldInput placeholder={action().kind === "branch" ? t("branchEx") : t("tagEx")} autocomplete="off" spellcheck={false} /></TextField>
+          <TextField value={name()} onChange={setName} disabled={pending()} required><TextFieldLabel>{action().kind === "branch" ? t("branch.input-name") : t("tag.name")}</TextFieldLabel><TextFieldInput placeholder={action().kind === "branch" ? t("branch.name-example") : t("tag.example")} autocomplete="off" spellcheck={false} /></TextField>
         </Show>
         <DialogFooter class="gap-2">
-          <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("add09")}</Button>
-          <Button type="submit" variant={action().kind === "reset" && mode() === "hard" ? "destructive" : "default"} disabled={pending() || props.disabled || stale() || (action().kind !== "reset" ? !name().trim() : mode() === "hard" && !confirmed())}>{pending() ? t("act16") : action().kind === "branch" ? t("act17") : action().kind === "tag" ? t("add01") : t("act18")}</Button>
+          <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" variant={action().kind === "reset" && mode() === "hard" ? "destructive" : "default"} disabled={pending() || props.disabled || stale() || (action().kind !== "reset" ? !name().trim() : mode() === "hard" && !confirmed())}>{pending() ? t("common.running") : action().kind === "branch" ? t("branch.create") : action().kind === "tag" ? t("tag.create") : t("reset.apply")}</Button>
         </DialogFooter>
       </form>
     </DialogContent>}</Show>

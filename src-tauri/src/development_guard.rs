@@ -15,7 +15,7 @@ pub(crate) fn is_running_source(path: &Path) -> bool {
 
 pub(crate) fn ensure_safe(path: &Path) -> Result<(), String> {
     if is_running_source(path) {
-        return Err(crate::locale::text("dev01").into());
+        return Err(crate::locale::text("dev.source-checkout").into());
     }
     Ok(())
 }

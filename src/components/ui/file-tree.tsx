@@ -22,7 +22,7 @@ type FileTreeProps<T> = {
 };
 
 export function FileTree<T>(props: FileTreeProps<T>) {
-  return <ul aria-label={props.label ?? t("tree01")} class="min-w-0">
+  return <ul aria-label={props.label ?? t("tree.title")} class="min-w-0">
     <For each={props.nodes}>{(node, index) => <FileTreeItem {...props} node={node} last={index() === props.nodes.length - 1} />}</For>
   </ul>;
 }
@@ -57,7 +57,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
           <span class="min-w-0 truncate">{directory().name}</span>
         </CollapsibleTrigger>
         }>
-          <CollapsibleTrigger as={Button} variant="ghost" size="icon" class="group/folder size-6 shrink-0" disabled={props.disabled} aria-label={t("tree02", { path: directory().path })}>
+          <CollapsibleTrigger as={Button} variant="ghost" size="icon" class="group/folder size-6 shrink-0" disabled={props.disabled} aria-label={t("tree.toggle-folder", { path: directory().path })}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 5 7 7-7 7" /></svg>
           </CollapsibleTrigger>
           <Button variant={props.selectedPath === directory().path ? "secondary" : "ghost"} class="h-6 min-h-6 min-w-0 flex-1 justify-start gap-2 px-1 py-0 text-left text-xs" disabled={props.disabled}

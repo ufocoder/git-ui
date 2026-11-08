@@ -70,7 +70,7 @@ pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
         })
     }
     .map_err(|e| {
-        let message = locale::format("err02", &[("e", e.to_string())]);
+        let message = locale::format("error.start-git", &[("e", e.to_string())]);
         terminal_log::finish(path, log_id, message.clone(), false, None);
         message
     })?;
@@ -94,7 +94,7 @@ pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
         && !(args.contains(&"--no-index") && output.status.code() == Some(1))
     {
         return Err(locale::format(
-            "err03",
+            "error.git",
             &[(
                 "p1",
                 (String::from_utf8_lossy(&output.stderr).trim()).to_string(),

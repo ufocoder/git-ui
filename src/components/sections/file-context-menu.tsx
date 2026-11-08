@@ -9,9 +9,9 @@ export default function FileContextMenu(props: { path: string; commit?: string; 
   return <ContextMenu>
     <ContextMenuTrigger as="div">{props.children}</ContextMenuTrigger>
     <ContextMenuContent>
-      <ContextMenuItem disabled={actions.disabled()} onSelect={() => actions.history(props.path)}>{t("fileAct01")}</ContextMenuItem>
-      <ContextMenuItem disabled={actions.disabled()} onSelect={() => actions.copy(props.path)}>{t("fileAct02")}</ContextMenuItem>
-      <ContextMenuItem disabled={actions.disabled() || !actions.canRestore()} onSelect={() => actions.restore(props.path, props.commit)}>{t("fileAct03")}</ContextMenuItem>
+      <ContextMenuItem disabled={actions.disabled()} onSelect={() => actions.history(props.path)}>{t("file-action.history")}</ContextMenuItem>
+      <ContextMenuItem disabled={actions.disabled()} onSelect={() => actions.copy(props.path)}>{t("file-action.copy-path")}</ContextMenuItem>
+      <ContextMenuItem disabled={actions.disabled() || !actions.canRestore()} onSelect={() => actions.restore(props.path, props.commit)}>{t("file-action.reset")}</ContextMenuItem>
       <ContextMenuItem disabled={actions.disabled()} onSelect={() => actions.reveal(props.path)}>{actions.managerLabel()}</ContextMenuItem>
     </ContextMenuContent>
   </ContextMenu>;

@@ -30,8 +30,8 @@ fn switching_running_sources_is_rejected_before_git_can_modify_files() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let before = git(source, &["rev-parse", "HEAD"]).unwrap();
     // Even invalid targets must be rejected before any checkout is attempted.
-    assert_eq!(switch_branch(source, "invalid-target").unwrap_err(), locale::text("dev01"));
-    assert_eq!(checkout_commit(source, "HEAD").unwrap_err(), locale::text("dev01"));
+    assert_eq!(switch_branch(source, "invalid-target").unwrap_err(), locale::text("dev.source-checkout"));
+    assert_eq!(checkout_commit(source, "HEAD").unwrap_err(), locale::text("dev.source-checkout"));
     assert_eq!(before, git(source, &["rev-parse", "HEAD"]).unwrap());
 }
 

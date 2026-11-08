@@ -48,12 +48,12 @@ pub fn list(path: &Path) -> Result<Vec<StashEntry>, String> {
 }
 fn selected(path: &Path, id: &str) -> Result<StashEntry, String> {
     if ![40, 64].contains(&id.len()) || !id.bytes().all(|ch| ch.is_ascii_hexdigit()) {
-        return Err(locale::text("stash11").into());
+        return Err(locale::text("stash.missing").into());
     }
     list(path)?
         .into_iter()
         .find(|entry| entry.id == id)
-        .ok_or_else(|| locale::text("stash11").into())
+        .ok_or_else(|| locale::text("stash.missing").into())
 }
 pub(crate) fn ensure_no_operation(path: &Path) -> Result<(), String> {
     for name in [
@@ -65,7 +65,7 @@ pub(crate) fn ensure_no_operation(path: &Path) -> Result<(), String> {
     ] {
         let metadata = git(path, &["rev-parse", "--git-path", name])?;
         if path.join(metadata.trim()).exists() {
-            return Err(locale::text("stash12").into());
+            return Err(locale::text("stash.operation-in-progress").into());
         }
     }
     Ok(())
@@ -73,7 +73,7 @@ pub(crate) fn ensure_no_operation(path: &Path) -> Result<(), String> {
 
 fn ensure_source_is_not_running(path: &Path) -> Result<(), String> {
     if crate::development_guard::is_running_source(path) {
-        return Err(locale::text("stash26").into());
+        return Err(locale::text("stash.dev-checkout").into());
     }
     Ok(())
 }
@@ -90,11 +90,11 @@ pub fn run(path: &Path, action: StashAction) -> Result<ProjectHistory, String> {
                 .trim()
                 .is_empty()
             {
-                return Err(locale::text("stash13").into());
+                return Err(locale::text("stash.first-commit").into());
             }
             let files = read_worktree_files(path)?;
             if files.is_empty() {
-                return Err(locale::text("stash14").into());
+                return Err(locale::text("stash.clean").into());
             }
             if !include_untracked
                 && git(
@@ -103,7 +103,7 @@ pub fn run(path: &Path, action: StashAction) -> Result<ProjectHistory, String> {
                 )?
                 .is_empty()
             {
-                return Err(locale::text("stash14").into());
+                return Err(locale::text("stash.clean").into());
             }
             let mut args = vec!["stash", "push"];
             if include_untracked {
@@ -129,11 +129,11 @@ pub fn run(path: &Path, action: StashAction) -> Result<ProjectHistory, String> {
         }
         StashAction::Drop { id, confirmed } => {
             if !confirmed {
-                return Err(locale::text("stash15").into());
+                return Err(locale::text("stash.confirm-delete").into());
             }
             let entry = selected(path, &id)?;
             if git(path, &["rev-parse", "--verify", &entry.reference])?.trim() != entry.id {
-                return Err(locale::text("stash11").into());
+                return Err(locale::text("stash.missing").into());
             }
             git(path, &["stash", "drop", &entry.reference])?;
         }
@@ -196,7 +196,7 @@ pub async fn get_stash_diff(
         {
             id.clone()
         } else {
-            untracked_parent(path, &id)?.ok_or_else(|| locale::text("err20").to_string())?
+            untracked_parent(path, &id)?.ok_or_else(|| locale::text("error.file-not-found").to_string())?
         };
         let mut diff = crate::read_file_diff(path, &source, &file_path)?;
         diff.commit = id;
@@ -223,7 +223,7 @@ mod tests {
                 restore_index: true,
             },
         ] {
-            assert_eq!(run(source, action).unwrap_err(), locale::text("stash26"));
+            assert_eq!(run(source, action).unwrap_err(), locale::text("stash.dev-checkout"));
         }
     }
     #[test]

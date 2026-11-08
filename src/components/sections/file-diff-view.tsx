@@ -44,7 +44,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
   }
   function renderRow(row: DiffRow, side?: "left" | "right") {
     if (row.kind === "header") return <div ref={element => { if (side !== "right") headers.set(row.hunk, element); }} class="h-diff-header min-w-max bg-info px-3 py-1 font-mono text-diff leading-diff text-info-foreground">{row.text}</div>;
-    if (row.kind === "fold") return <button class="block h-diff-header w-full min-w-max bg-muted/50 px-3 text-left text-2xs text-muted-foreground hover:bg-muted" onClick={() => setExpanded(previous => new Set([...previous, row.id]))}>{t("diff12", { count: row.count })}</button>;
+    if (row.kind === "fold") return <button class="block h-diff-header w-full min-w-max bg-muted/50 px-3 text-left text-2xs text-muted-foreground hover:bg-muted" onClick={() => setExpanded(previous => new Set([...previous, row.id]))}>{t("diff.hidden-lines", { count: row.count })}</button>;
     const line = side === "left" ? row.left : side === "right" ? row.right : row.left ?? row.right;
     return <div class={`flex h-diff-row min-w-max font-mono text-diff leading-diff ${lineClass(line)}`}>
       <Show when={side !== "right"}><span class="w-10 shrink-0 border-r px-1 text-right tabular-nums text-muted-foreground" aria-hidden="true">{row.left?.oldLine ?? ""}</span></Show>
@@ -57,47 +57,47 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
       </code>
     </div>;
   }
-  return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff01")}>
+  return <section class={props.inline ? "flex min-w-0 flex-col gap-2" : "flex h-full min-h-0 min-w-0 flex-col gap-2"} aria-label={t("diff.view")}>
     <div class="shrink-0 space-y-2">
       <PanelHeader class="-mx-4 px-4">
         <FileStatus status={props.diff.file.status} />
         <h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.diff.file.path} /></h3>
         <Show when={parsed().hunks.length}>
-          <span class="flex shrink-0 gap-2 text-xs tabular-nums" aria-label={t("diff17", { added: stats().added, removed: stats().removed })}>
+          <span class="flex shrink-0 gap-2 text-xs tabular-nums" aria-label={t("diff.stats", { added: stats().added, removed: stats().removed })}>
             <span class="text-success-foreground">+{stats().added}</span><span class="text-destructive">−{stats().removed}</span>
           </span>
         </Show>
       </PanelHeader>
       <Show when={props.scope || (!props.stash && props.diff.commit !== WORKTREE)}><div class="flex flex-wrap items-center gap-2">
-        <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage01") : t("stage02")}</Badge></Show>
-        <Show when={!props.stash && props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff03", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
+        <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage.staged") : t("stage.unstaged")}</Badge></Show>
+        <Show when={!props.stash && props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff.commit", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
       </div></Show>
-      <Show when={props.diff.file.old_path}><p class="break-all text-xs text-muted-foreground">{t("diff02", { path: props.diff.file.old_path ?? "" })}</p></Show>
+      <Show when={props.diff.file.old_path}><p class="break-all text-xs text-muted-foreground">{t("diff.previous-name", { path: props.diff.file.old_path ?? "" })}</p></Show>
       <Show when={parsed().hunks.length}>
         <div class="flex flex-wrap items-center gap-1">
-          <Button size="sm" class="h-7 px-2 text-xs" variant={!split() ? "secondary" : "ghost"} aria-pressed={!split()} onClick={() => chooseView(false)}>{t("diff07")}</Button>
-          <Button size="sm" class="h-7 px-2 text-xs" variant={split() ? "secondary" : "ghost"} aria-pressed={split()} onClick={() => chooseView(true)}>{t("diff08")}</Button>
-          <Button size="sm" class="h-7 px-2 text-xs" variant="ghost" aria-pressed={collapse()} onClick={() => { setCollapse(value => !value); setExpanded(new Set<string>()); }}>{collapse() ? t("diff14") : t("diff13")}</Button>
+          <Button size="sm" class="h-7 px-2 text-xs" variant={!split() ? "secondary" : "ghost"} aria-pressed={!split()} onClick={() => chooseView(false)}>{t("diff.unified")}</Button>
+          <Button size="sm" class="h-7 px-2 text-xs" variant={split() ? "secondary" : "ghost"} aria-pressed={split()} onClick={() => chooseView(true)}>{t("diff.split")}</Button>
+          <Button size="sm" class="h-7 px-2 text-xs" variant="ghost" aria-pressed={collapse()} onClick={() => { setCollapse(value => !value); setExpanded(new Set<string>()); }}>{collapse() ? t("diff.expand") : t("diff.collapse")}</Button>
           <div class="ml-auto flex items-center gap-1">
             <Show when={parsed().hunks.length > 1}>
-            <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() === 0} aria-label={t("diff09")} title={t("diff09")} onClick={() => navigate(-1)}>↑</Button>
+            <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() === 0} aria-label={t("diff.previous")} title={t("diff.previous")} onClick={() => navigate(-1)}>↑</Button>
             </Show>
             <span class="text-2xs tabular-nums text-muted-foreground">{currentHunk() + 1}/{parsed().hunks.length}</span>
             <Show when={parsed().hunks.length > 1}>
-            <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() >= parsed().hunks.length - 1} aria-label={t("diff10")} title={t("diff10")} onClick={() => navigate(1)}>↓</Button>
+            <Button size="icon" variant="ghost" class="size-7" disabled={currentHunk() >= parsed().hunks.length - 1} aria-label={t("diff.next")} title={t("diff.next")} onClick={() => navigate(1)}>↓</Button>
             </Show>
           </div>
         </div>
       </Show>
     </div>
-    <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff04")}</AlertDescription></Alert></Show>
-    <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff05")}</AlertDescription></Alert></Show>
-    <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto rounded-md border-0 shadow-none" : "min-h-0 flex-1 overflow-auto rounded-md border-0 shadow-none"} aria-label={t("diff06")}>
+    <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff.truncated")}</AlertDescription></Alert></Show>
+    <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff.binary")}</AlertDescription></Alert></Show>
+    <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto rounded-md border-0 shadow-none" : "min-h-0 flex-1 overflow-auto rounded-md border-0 shadow-none"} aria-label={t("diff.title")}>
       <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-diff leading-diff">{props.diff.patch}</pre>}>
         <Show when={split()} fallback={<div class="min-w-max py-2"><For each={rows()}>{row => renderRow(row)}</For></div>}>
           <div class="grid grid-cols-2 divide-x">
-            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff15")}><For each={rows()}>{row => renderRow(row, "left")}</For></div>
-            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff16")}><For each={rows()}>{row => renderRow(row, "right")}</For></div>
+            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.before")}><For each={rows()}>{row => renderRow(row, "left")}</For></div>
+            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.after")}><For each={rows()}>{row => renderRow(row, "right")}</For></div>
           </div>
         </Show>
       </Show>

@@ -68,13 +68,13 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app
         .path()
         .app_data_dir()
-        .map_err(|e| failure("upd26", e))?
+        .map_err(|e| failure("update.settings-error", e))?
         .join("update-settings.json"))
 }
 
 // Only repository roots on GitHub are accepted; API paths are constructed locally.
 fn repository_url(value: &str) -> Result<String, String> {
-    let invalid = || locale::text("upd18").to_string();
+    let invalid = || locale::text("update.invalid-repo").to_string();
     let url = Url::parse(value.trim()).map_err(|_| invalid())?;
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
@@ -109,26 +109,26 @@ fn read_repository(app: &AppHandle) -> Result<String, String> {
     let repository = match std::fs::read(path) {
         Ok(bytes) => {
             serde_json::from_slice::<SavedSettings>(&bytes)
-                .map_err(|e| failure("upd26", e))?
+                .map_err(|e| failure("update.settings-error", e))?
                 .repository
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => defaults().updates.repository,
-        Err(e) => return Err(failure("upd26", e)),
+        Err(e) => return Err(failure("update.settings-error", e)),
     };
     repository_url(&repository)
 }
 fn save_repository(app: &AppHandle, repository: &str) -> Result<(), String> {
     let path = settings_path(app)?;
     std::fs::create_dir_all(path.parent().expect("settings parent"))
-        .map_err(|e| failure("upd20", e))?;
+        .map_err(|e| failure("update.save-error", e))?;
     let bytes = serde_json::to_vec_pretty(&SavedSettings {
         repository: repository.into(),
     })
-    .map_err(|e| failure("upd20", e))?;
-    std::fs::write(path, bytes).map_err(|e| failure("upd20", e))
+    .map_err(|e| failure("update.save-error", e))?;
+    std::fs::write(path, bytes).map_err(|e| failure("update.save-error", e))
 }
 fn release_version(tag: &str) -> Result<Version, String> {
-    Version::parse(tag.strip_prefix('v').unwrap_or(tag)).map_err(|_| locale::text("upd27").into())
+    Version::parse(tag.strip_prefix('v').unwrap_or(tag)).map_err(|_| locale::text("update.invalid-version").into())
 }
 
 #[tauri::command]
@@ -166,7 +166,7 @@ pub async fn check_app_update(
         .user_agent(concat!("git-ui/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(30))
         .build()
-        .map_err(|e| failure("upd19", e))?;
+        .map_err(|e| failure("update.check-error", e))?;
     let response = client
         .get(format!(
             "https://api.github.com/repos/{slug}/releases/latest"
@@ -174,18 +174,18 @@ pub async fn check_app_update(
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|e| failure("upd19", e))?;
+        .map_err(|e| failure("update.check-error", e))?;
     if response.status().as_u16() == 404 {
-        info.notice = Some(locale::text("upd15").into());
+        info.notice = Some(locale::text("update.no-releases").into());
         return Ok(info);
     }
     let bytes = response
         .error_for_status()
-        .map_err(|e| failure("upd19", e))?
+        .map_err(|e| failure("update.check-error", e))?
         .bytes()
         .await
-        .map_err(|e| failure("upd19", e))?;
-    let release: Release = serde_json::from_slice(&bytes).map_err(|e| failure("upd19", e))?;
+        .map_err(|e| failure("update.check-error", e))?;
+    let release: Release = serde_json::from_slice(&bytes).map_err(|e| failure("update.check-error", e))?;
     let latest = release_version(&release.tag_name)?;
     info.version = Some(latest.to_string());
     info.notes = release.body;
@@ -200,32 +200,32 @@ pub async fn check_app_update(
         .iter()
         .find(|asset| asset.name == "latest.json")
     else {
-        info.notice = Some(locale::text("upd23").into());
+        info.notice = Some(locale::text("update.missing-manifest").into());
         return Ok(info);
     };
     let update = app
         .updater_builder()
         .endpoints(vec![
-            Url::parse(&manifest.browser_download_url).map_err(|e| failure("upd19", e))?,
+            Url::parse(&manifest.browser_download_url).map_err(|e| failure("update.check-error", e))?,
         ])
-        .map_err(|e| failure("upd19", e))?
+        .map_err(|e| failure("update.check-error", e))?
         .timeout(Duration::from_secs(60))
         .build()
-        .map_err(|e| failure("upd19", e))?
+        .map_err(|e| failure("update.check-error", e))?
         .check()
         .await
-        .map_err(|e| failure("upd19", e))?;
+        .map_err(|e| failure("update.check-error", e))?;
     match update {
         Some(update) if release_version(&update.version)? == latest => {
             if cfg!(debug_assertions) {
-                info.notice = Some(locale::text("upd24").into());
+                info.notice = Some(locale::text("update.release-only").into());
             } else {
                 info.installable = true;
                 *pending = Some(update);
             }
         }
-        Some(_) => return Err(locale::text("upd25").into()),
-        None => info.notice = Some(locale::text("upd28").into()),
+        Some(_) => return Err(locale::text("update.version-mismatch").into()),
+        None => info.notice = Some(locale::text("update.unavailable").into()),
     }
     Ok(info)
 }
@@ -237,12 +237,12 @@ pub async fn install_app_update(
     on_progress: Channel<UpdateProgress>,
 ) -> Result<(), String> {
     if cfg!(debug_assertions) {
-        return Err(locale::text("upd24").into());
+        return Err(locale::text("update.release-only").into());
     }
     let mut pending = pending.0.lock().await;
     let update = pending
         .as_ref()
-        .ok_or_else(|| locale::text("upd22").to_string())?;
+        .ok_or_else(|| locale::text("update.check-first").to_string())?;
     let mut downloaded = 0_u64;
     update
         .download_and_install(
@@ -263,7 +263,7 @@ pub async fn install_app_update(
             },
         )
         .await
-        .map_err(|e| failure("upd21", e))?;
+        .map_err(|e| failure("update.install-error", e))?;
     *pending = None;
     let _ = on_progress.send(UpdateProgress {
         phase: "restarting",

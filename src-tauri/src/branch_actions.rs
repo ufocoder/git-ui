@@ -24,10 +24,10 @@ pub struct Preview {
 fn branch_ref(path: &Path, name: &str) -> Result<String, String> {
     let reference = format!("refs/heads/{name}");
     if name.is_empty() || name.starts_with('-') {
-        return Err(locale::text("refAct07").into());
+        return Err(locale::text("ref-action.invalid-name").into());
     }
     git(path, &["check-ref-format", &reference])
-        .map_err(|_| locale::text("refAct07").to_owned())?;
+        .map_err(|_| locale::text("ref-action.invalid-name").to_owned())?;
     Ok(reference)
 }
 fn remote_reference(path: &Path, name: &str, remote: &str) -> Result<String, String> {
@@ -91,10 +91,10 @@ fn execute(
     confirmed: bool,
 ) -> Result<ProjectHistory, String> {
     if !confirmed {
-        return Err(locale::text("op18").into());
+        return Err(locale::text("operation.confirm").into());
     }
     if !["delete", "rebase"].contains(&action) {
-        return Err(locale::text("refAct07").into());
+        return Err(locale::text("ref-action.invalid-name").into());
     }
     crate::stash::ensure_no_operation(path)?;
     let current = preview(path, &expected.name, false)?;
@@ -102,15 +102,15 @@ fn execute(
         || current.head != expected.head
         || current.branch != expected.branch
     {
-        return Err(locale::text("safe05").into());
+        return Err(locale::text("safety.stale-head").into());
     }
     if action == "rebase" {
         crate::development_guard::ensure_safe(path)?;
         if current.branch.is_empty() || current.branch == current.name {
-            return Err(locale::text("branchAct08").into());
+            return Err(locale::text("branch-action.invalid-rebase").into());
         }
         if !read_worktree_files(path)?.is_empty() {
-            return Err(locale::text("op17").into());
+            return Err(locale::text("operation.dirty").into());
         }
         // Use the confirmed immutable target, and do not honor an implicit autostash.
         git(
@@ -133,26 +133,26 @@ fn execute(
                 .lines()
                 .any(|line| line == format!("branch {reference}"))
         {
-            return Err(locale::text("branchAct09").into());
+            return Err(locale::text("branch-action.checked-out").into());
         }
         // Validate before touching the remote. Local deletion is never forced.
         git(path, &["merge-base", "--is-ancestor", &current.tip, "HEAD"])
-            .map_err(|_| locale::text("branchAct10").to_owned())?;
+            .map_err(|_| locale::text("branch-action.unmerged").to_owned())?;
         if let Some(remote) = remote {
             if !read_remotes(path)?
                 .iter()
                 .any(|entry| entry.name == remote.remote)
                 || remote.reference != remote_reference(path, &current.name, &remote.remote)?
             {
-                return Err(locale::text("track14").into());
+                return Err(locale::text("upstream.remote-missing").into());
             }
-            let tip = remote.tip.as_deref().ok_or(locale::text("branchAct11"))?;
+            let tip = remote.tip.as_deref().ok_or(locale::text("branch-action.remote-missing"))?;
             if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit()) {
-                return Err(locale::text("err12").into());
+                return Err(locale::text("error.invalid-history").into());
             }
             if let Some(actual) = remote_tip(path, &remote.remote, &remote.reference)? {
                 if actual != tip {
-                    return Err(locale::text("safe05").into());
+                    return Err(locale::text("safety.stale-head").into());
                 }
                 let mirror = format!("remote.{}.mirror=false", remote.remote);
                 let lease = format!("--force-with-lease={}:{}", remote.reference, tip);
@@ -176,7 +176,7 @@ fn execute(
         }
         // Refuse if another process moved or checked out the branch meanwhile.
         if preview(path, &current.name, false)?.tip != expected.tip {
-            return Err(locale::text("safe05").into());
+            return Err(locale::text("safety.stale-head").into());
         }
         git(path, &["branch", "-d", "--", &current.name])?;
     }
