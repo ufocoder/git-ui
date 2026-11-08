@@ -1,3 +1,5 @@
+import * as Popover from "@kobalte/core/popover";
+import ReferenceAutocomplete from "./reference-autocomplete";
 import { createCommitGraph, graphEdgePath } from "~/lib/commit-graph";
 import { preservedSelection, anchoredScroll } from "~/lib/history-view";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
@@ -20,7 +22,7 @@ import { git, createWorktreeCommit, type Commit, type HistoryScope, type History
 
 const ROW_HEIGHT = 34;
 
-export default function CommitTable(props: { branch: string; search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
+export default function CommitTable(props: { branch: string; onBranchChange: (branch: string) => void; search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
   let header!: HTMLTableSectionElement;
   let searchButton!: HTMLButtonElement;
@@ -49,9 +51,43 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
   const [copyStatus, setCopyStatus] = createSignal("");
   const [scrollTop, setScrollTop] = createSignal(0);
   const [height, setHeight] = createSignal(500);
-  const allBranches = () => props.branch === "all";
-  const viewingHead = () => allBranches() || props.branch === "current" || props.branch === `refs/heads/${props.history.current_branch}`;
-  const selectedTip = () => allBranches() || props.branch === "current" ? props.history.tip : props.history.branch_tips?.[props.branch] ?? (viewingHead() ? props.history.tip : "");
+  const [jumpRef, setJumpRef] = search.jumpRef;
+  const [branchPickerOpen, setBranchPickerOpen] = createSignal(false);
+  const branches = createMemo(() => [
+    { value: "all", label: t("history.all-branches") },
+    ...props.history.branches.map(branch => ({ value: `refs/heads/${branch}`, label: branch })),
+  ]);
+  const jumpOptions = createMemo(() => [
+    ...branches().slice(1),
+    ...props.history.remotes.flatMap(remote => remote.branches.map(branch => ({
+      value: `refs/remotes/${remote.name}/${branch}`, label: `${remote.name}/${branch}`,
+    }))),
+    ...props.history.tags.filter(tag => props.history.tag_tips?.[tag]).map(tag => ({ value: `refs/tags/${tag}`, label: t("history.jump-tag", { tag }) })),
+  ]);
+  const referenceTip = (ref: string) => ref.startsWith("refs/tags/") ? props.history.tag_tips?.[ref.slice(10)] : props.history.branch_tips?.[ref];
+  const jumpTip = () => referenceTip(jumpRef());
+  const allBranches = () => props.branch === "all" && !jumpTip();
+  const historyTips = () => props.history.branch_tips
+    ? Object.values(props.history.branch_tips)
+    : undefined;
+  function jumpTo(ref: string) {
+    const hash = referenceTip(ref);
+    if (!hash) return;
+    const rows = displayedCommits();
+    const index = rows.findIndex(commit => commit.hash === hash);
+    if (index >= 0 && !loading() && !debouncing()) {
+      setSelectedCommit(rows[index]);
+      viewport.scrollTop = index * ROW_HEIGHT;
+      setScrollTop(viewport.scrollTop);
+    } else {
+      batch(() => {
+        setFilter({ text: "", sha: "", author: "", file: "" });
+        setJumpRef(ref);
+      });
+    }
+  }
+  const viewingHead = () => !jumpTip() && (allBranches() || props.branch === "current" || props.branch === `refs/heads/${props.history.current_branch}`);
+  const selectedTip = () => jumpTip() ?? (allBranches() || props.branch === "current" ? props.history.tip : props.history.branch_tips?.[props.branch] ?? (viewingHead() ? props.history.tip : ""));
   const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
   const displayedCommits = createMemo(() => props.scope === "all" && viewingHead() && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
   let previousContext = "";
@@ -61,7 +97,8 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
     const tip = selectedTip(), includeBranches = allBranches(), showWorktree = viewingHead();
     const search = appliedFilter();
     const hasFilter = filtered();
-    const context = JSON.stringify([history.path, history.current_branch, props.branch, scope, search]);
+    const tips = historyTips();
+    const context = JSON.stringify([history.path, history.current_branch, props.branch, scope, search, jumpRef()]);
     const preserve = previousContext === context;
     previousContext = context;
     const previous = untrack(selectedCommit);
@@ -78,8 +115,8 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
       setSelectedCommit(undefined);
     }
     const pageAt = (offset: number) => hasFilter
-      ? git.getFilteredCommitPage(tip, history.sync.remote_tip, scope, search, offset, includeBranches, history.branch_tips ? Object.values(history.branch_tips) : undefined)
-      : scope === "all" ? git.getCommitPage(tip, offset, includeBranches, history.branch_tips ? Object.values(history.branch_tips) : undefined)
+      ? git.getFilteredCommitPage(tip, history.sync.remote_tip, scope, search, offset, includeBranches, tips)
+      : scope === "all" ? git.getCommitPage(tip, offset, includeBranches, tips)
       : history.sync.remote_tip ? git.getSyncCommitPage(history.tip, history.sync.remote_tip, scope, offset)
       : Promise.resolve({ commits: [], has_more: false });
     void (async () => {
@@ -129,8 +166,8 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
     try {
       const scope = props.scope;
       const remoteTip = props.history.sync.remote_tip;
-      const page = filtered() ? await git.getFilteredCommitPage(tip, remoteTip, scope, appliedFilter(), commits().length, allBranches(), props.history.branch_tips ? Object.values(props.history.branch_tips) : undefined)
-        : scope === "all" ? await git.getCommitPage(tip, commits().length, allBranches(), props.history.branch_tips ? Object.values(props.history.branch_tips) : undefined)
+      const page = filtered() ? await git.getFilteredCommitPage(tip, remoteTip, scope, appliedFilter(), commits().length, allBranches(), historyTips())
+        : scope === "all" ? await git.getCommitPage(tip, commits().length, allBranches(), historyTips())
         : remoteTip ? await git.getSyncCommitPage(tip, remoteTip, scope, commits().length) : { commits: [], has_more: false };
       if (request !== generation) return;
       batch(() => {
@@ -190,6 +227,41 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
   return (
     <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.55, 0.45]} class="min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <div class="flex shrink-0 flex-wrap items-center gap-1 border-b bg-muted/40 px-4 py-1">
+        <span class="mr-1 text-xs text-muted-foreground">{t("history.branch-filter")}</span>
+        <Popover.Root open={branchPickerOpen()} onOpenChange={setBranchPickerOpen} placement="bottom-start" gutter={4}>
+          <Popover.Trigger as={Button} variant="ghost" class="h-7 max-w-48 gap-1.5 px-2 text-xs" disabled={props.disabled} aria-label={t("history.branch-filter")}>
+            <span class="truncate">{branches().find(option => option.value === props.branch)?.label ?? t("history.all-branches")}</span>
+            <svg aria-hidden="true" class="size-3 shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="z-50 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-md" aria-label={t("history.branch-filter")}>
+              <Show when={branchPickerOpen()}>
+                <ReferenceAutocomplete scopePicker options={branches()} disabled={props.disabled} onSelect={branch => batch(() => {
+                  setJumpRef(""); props.onBranchChange(branch); setBranchPickerOpen(false);
+                })} />
+              </Show>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+        <Show when={jumpTip()}>
+          <Button variant="ghost" class="h-7 px-2 text-xs" disabled={props.disabled} onClick={() => setJumpRef("")}>{t("history.back-to-scope")}</Button>
+        </Show>
+        <div class="ml-auto flex items-center gap-1" onKeyDown={event => {
+          if (!event.defaultPrevented && matchesShortcut("dismiss", event) && searchOpen()) {
+            event.preventDefault(); setSearchOpen(false); searchButton.focus();
+          }
+        }}>
+          <Show when={searchOpen()}>
+            <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={jumpTo} />
+          </Show>
+          <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
+            aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}
+            aria-expanded={searchOpen()} aria-controls={`${searchId}-fields ${searchId}-path`} onClick={() => setSearchOpen(open => !open)}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
+          </Button>
+        </div>
+      </div>
       <Show when={filter().file}>
         <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-3 py-1.5" role="status">
           <p class="min-w-0 break-all text-xs text-muted-foreground">{t("search.file-history", { path: filter().file })}</p>
@@ -209,24 +281,16 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
           "aria-label": t("history.title"),
           "aria-busy": loading() || debouncing(),
         }}>
-        <colgroup><col style={{ width: `${graph().width}px` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
+        <colgroup><col style={{ width: `max(4rem, calc(${graph().width}px + 0.5rem))` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
         <TableHeader ref={element => { header = element; }} class="history-columns sticky top-0 z-10" onKeyDown={event => {
           if (matchesShortcut("dismiss", event) && searchOpen()) {
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
         }}>
           <TableRow class="hover:bg-transparent">
-            <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{(heading, index) =>
-              <TableHead scope="col" class="h-[34px] border-b">
-                <Show when={index() === 1} fallback={heading}>
-                  <div class="flex items-center justify-between gap-2"><span>{heading}</span>
-                    <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
-                      aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}
-                      aria-expanded={searchOpen()} aria-controls={`${searchId}-fields ${searchId}-path`} onClick={() => setSearchOpen(open => !open)}>
-                      <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
-                    </Button>
-                  </div>
-                </Show>
+            <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{heading =>
+              <TableHead scope="col" class="h-[34px] border-b first:pl-4">
+                {heading}
               </TableHead>
             }</For>
           </TableRow>
@@ -243,7 +307,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
                 onClick={() => { if (!props.disabled) setSelectedCommit(commit); }}
                 onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(commit); } }}
                 class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
-                <TableCell class="px-0">
+                <TableCell class="pl-2 pr-0">
                   <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>
                     <For each={graphRow().edges}>{edge =>
                       <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />

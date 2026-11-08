@@ -17,7 +17,7 @@ use diffs::{
 use diffs::{WorktreeDiffScope, read_commit_files, read_worktree_diff_scoped};
 use git_command::{git, git_bytes};
 use history::{
-    BranchComparison, CommitPage, PAGE_SIZE, ProjectHistory, parse_commit_log, read_commit_range,
+    BranchComparison, CommitPage, PAGE_SIZE, ProjectHistory, read_commit_range,
     read_history, read_remotes,
 };
 #[cfg(test)]
@@ -110,6 +110,7 @@ pub fn run() {
             file_actions::preview_restore_path,
             file_actions::restore_project_path,
             file_actions::reveal_project_path,
+            file_actions::open_project_remote,
             git_installation::get_git_installation,
             git_settings::get_git_settings,
             git_settings::save_git_settings,

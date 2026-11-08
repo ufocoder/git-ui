@@ -22,6 +22,7 @@ type RepositoryContentProps = {
   onModeChange: (mode: RepositoryMode) => void;
   scope: HistoryScope;
   historyBranch: string;
+  onHistoryBranchChange: (branch: string) => void;
   history: History;
   disabled: boolean;
   terminalOpen: boolean;
@@ -36,6 +37,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
   const [terminalSizes, setTerminalSizes] = createSignal(readPanelSizes(props.history.path, "workspace.terminal", [0.75, 0.25]));
   const sizes = () => props.terminalOpen ? terminalSizes() : [1, 0];
   return <FileActionsProvider history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onHistoryChange={props.onHistoryChange} onHistory={path => {
+    historySearch.jumpRef[1]("");
     historySearch.filter[1]({ text: "", sha: "", author: "", file: path });
     historySearch.open[1](true); props.onModeChange("history");
   }}><LayoutScope.Provider value={() => props.history.path}><div class="flex h-full min-h-0 flex-col">
@@ -47,7 +49,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
       <Suspense fallback={<p role="status" class="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>}>
         <Switch>
           <Match when={props.mode === "history"}>
-            <CommitTable branch={props.historyBranch} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
+            <CommitTable branch={props.historyBranch} onBranchChange={props.onHistoryBranchChange} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
           </Match>
           <Match when={props.mode === "commit"}>
             <WorktreeCommit onSubmitCommit={props.onSubmitCommit} commitPhase={props.commitPhase} draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />

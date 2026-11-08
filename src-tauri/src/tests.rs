@@ -320,7 +320,7 @@ fn rejects_invalid_duplicate_and_unborn_branch_creation() {
     assert_eq!(after.current_branch, before.current_branch);
     assert_eq!(after.branches, before.branches);
 }
-fn commit_all(repo: &TempRepo, message: &str) {
+pub(super) fn commit_all(repo: &TempRepo, message: &str) {
     git(&repo.0, &["add", "-A"]).unwrap();
     git(
         &repo.0,

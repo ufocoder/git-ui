@@ -293,7 +293,7 @@ export default function RepositoryWorkspace(props: {
     <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />
     <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <RepositoryToolbar onStashActionsMount={setStashActionsMount} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <RepositoryToolbar onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <Show when={failedCommitPush()}>{target =>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
             <p role="status" class="text-sm font-medium">{t("commit.push-failed")}</p>
@@ -325,7 +325,7 @@ export default function RepositoryWorkspace(props: {
           onSubmit={event => void createBranch(event)} />
         <Show when={busy()}><p role="status" class="sr-only">{t("app.refreshing")}</p></Show>
         <section aria-label={t("app.commits")} class="min-h-0 min-w-0 flex-1">
-              <RepositoryContent onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+              <RepositoryContent onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
         </section>
     </main>
     <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} />

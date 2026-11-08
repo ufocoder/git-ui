@@ -139,6 +139,7 @@ pub(super) struct ProjectHistory {
     pub(super) commits: Vec<Commit>,
     pub(super) branches: Vec<String>,
     pub(super) branch_comparisons: HashMap<String, BranchComparison>,
+    pub(super) tag_tips: HashMap<String, String>,
     pub(super) branch_tips: HashMap<String, String>,
     pub(super) tags: Vec<String>,
     pub(super) stashes: Vec<stash::StashEntry>,
@@ -197,6 +198,9 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         path: path.to_string_lossy().into_owned(),
         commits: page.commits,
         branch_comparisons: HashMap::new(),
+        tag_tips: read_commit_references(&path)?.into_iter().flat_map(|(hash, refs)| {
+            refs.into_iter().filter(|reference| reference.kind == "tag").map(move |reference| (reference.name, hash.clone()))
+        }).collect(),
         branch_tips,
         tip,
         has_more: page.has_more,
@@ -254,6 +258,17 @@ pub(super) fn read_branch_commit_page_at_tips(
     all_branches: bool,
     tips: Option<&[String]>,
 ) -> Result<CommitPage, String> {
+    read_branch_page(path, tip, offset, all_branches, tips, false)
+}
+
+fn read_branch_page(
+    path: &Path,
+    tip: &str,
+    offset: usize,
+    all_branches: bool,
+    tips: Option<&[String]>,
+    first_parent: bool,
+) -> Result<CommitPage, String> {
     if tip.is_empty() {
         return Ok(CommitPage {
             commits: vec![],
@@ -263,7 +278,7 @@ pub(super) fn read_branch_commit_page_at_tips(
     if ![40, 64].contains(&tip.len()) || !tip.bytes().all(|c| c.is_ascii_hexdigit()) {
         return Err(locale::text("error.invalid-history").into());
     }
-    read_commit_range_with_refs(path, tip, offset, all_branches, tips)
+    read_commit_range_with_refs(path, tip, offset, all_branches, tips, first_parent)
 }
 
 pub(super) fn read_commit_range(
@@ -271,7 +286,7 @@ pub(super) fn read_commit_range(
     revision: &str,
     offset: usize,
 ) -> Result<CommitPage, String> {
-    read_commit_range_with_refs(path, revision, offset, false, None)
+    read_commit_range_with_refs(path, revision, offset, false, None, false)
 }
 
 fn read_commit_range_with_refs(
@@ -280,6 +295,7 @@ fn read_commit_range_with_refs(
     offset: usize,
     include_refs: bool,
     tips: Option<&[String]>,
+    first_parent: bool,
 ) -> Result<CommitPage, String> {
     let count = format!("--max-count={}", PAGE_SIZE + 1);
     let skip = format!("--skip={offset}");
@@ -293,6 +309,9 @@ fn read_commit_range_with_refs(
         "--format=%H%x00%an%x00%aI%x00%s%x00%P",
         "-z",
     ];
+    if first_parent {
+        args.push("--first-parent");
+    }
     if include_refs {
         if let Some(tips) = tips {
             if tips.iter().any(|tip| {
@@ -340,15 +359,17 @@ pub(super) async fn get_commit_page(
     offset: usize,
     all_branches: Option<bool>,
     tips: Option<Vec<String>>,
+    first_parent: Option<bool>,
 ) -> Result<CommitPage, String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
-        read_branch_commit_page_at_tips(
+        read_branch_page(
             Path::new(&path),
             &tip,
             offset,
             all_branches.unwrap_or(true),
             tips.as_deref(),
+            first_parent.unwrap_or(false),
         )
     })
     .await
@@ -376,4 +397,29 @@ pub(super) async fn get_sync_commit_page(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod view_tests {
+    use super::*;
+    use crate::tests::{commit_all, commit_file, TempRepo};
+
+    #[test]
+    fn first_parent_history_keeps_merge_and_omits_merged_side() {
+        let repo = TempRepo::new();
+        repo.init();
+        commit_file(&repo, "base", "base");
+        let main = git(&repo.0, &["branch", "--show-current"]).unwrap();
+        git(&repo.0, &["checkout", "-b", "side"]).unwrap();
+        commit_file(&repo, "side", "side");
+        git(&repo.0, &["checkout", main.trim()]).unwrap();
+        std::fs::write(repo.0.join("main.txt"), "main").unwrap();
+        commit_all(&repo, "main");
+        git(&repo.0, &["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "merge", "--no-ff", "-m", "merge", "side"]).unwrap();
+        let tip = git(&repo.0, &["rev-parse", "HEAD"]).unwrap();
+        let page = read_branch_page(&repo.0, tip.trim(), 0, false, None, true).unwrap();
+        let subjects: Vec<_> = page.commits.iter().map(|commit| commit.subject.as_str()).collect();
+        assert_eq!(subjects, ["merge", "main", "base"]);
+        assert_eq!(page.commits[0].parents.len(), 2);
+    }
 }

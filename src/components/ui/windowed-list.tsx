@@ -1,37 +1,43 @@
-import { For, createEffect, createMemo, createSignal, on, type JSX } from "solid-js";
+import { For, createMemo, createSignal, onCleanup, onMount, createEffect, type JSX } from "solid-js";
 
-// Sidebar rows have a fixed height. Keep only the viewport and a small buffer mounted.
+// Sidebar lists share one scroll viewport and reserve space for unmounted rows.
 export function WindowedList<T>(props: {
   items: readonly T[];
   children: (item: T) => JSX.Element;
   onVisibleChange?: (items: readonly T[]) => void;
-  resetKey?: string;
 }) {
   const stride = 36;
-  const viewport = 288;
-  const [scrollTop, setScrollTop] = createSignal(0);
-  let container: HTMLDivElement | undefined;
-  createEffect(on(() => props.resetKey, () => {
-    if (container) container.scrollTop = 0;
-    setScrollTop(0);
-  }));
-  createEffect(() => {
-    const maximum = Math.max(0, props.items.length * stride - viewport);
-    if (scrollTop() > maximum) {
-      if (container) container.scrollTop = maximum;
-      setScrollTop(maximum);
-    }
+  const buffer = 3;
+  const [range, setRange] = createSignal({ top: 0, bottom: 288 });
+  let list!: HTMLDivElement;
+
+  onMount(() => {
+    const viewport = list.closest<HTMLElement>("[data-sidebar-scroll]");
+    if (!viewport) return;
+    const update = () => {
+      const top = viewport.getBoundingClientRect().top + viewport.clientTop - list.getBoundingClientRect().top;
+      const bottom = top + viewport.clientHeight;
+      setRange(previous => previous.top === top && previous.bottom === bottom ? previous : { top, bottom });
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    observer.observe(list);
+    if (viewport.firstElementChild) observer.observe(viewport.firstElementChild);
+    viewport.addEventListener("scroll", update, { passive: true });
+    update();
+    onCleanup(() => {
+      viewport.removeEventListener("scroll", update);
+      observer.disconnect();
+    });
   });
-  const start = createMemo(() => Math.max(0, Math.floor(scrollTop() / stride) - 3));
-  const end = createMemo(() => Math.min(props.items.length, start() + 14));
+
+  const start = createMemo(() => Math.min(props.items.length, Math.max(0, Math.floor(range().top / stride) - buffer)));
+  const end = createMemo(() => Math.min(props.items.length, Math.max(start(), Math.ceil(range().bottom / stride) + buffer)));
   const visible = createMemo(() => props.items.slice(start(), end()));
   createEffect(() => props.onVisibleChange?.(visible()));
-  return <div ref={element => { container = element; }} class="min-w-0 overflow-y-auto" style={{ "max-height": `${viewport}px` }}
-    onScroll={event => setScrollTop(event.currentTarget.scrollTop)}>
-    <ul class="m-0 w-full list-none space-y-1" style={{
-      "padding-top": `${start() * stride}px`,
-      "padding-bottom": `${Math.max(0, props.items.length - end()) * stride}px`,
-    }}>
+
+  return <div ref={element => { list = element; }} class="relative min-w-0" style={{ height: `${Math.max(0, props.items.length * stride - 4)}px` }}>
+    <ul class="absolute inset-x-0 m-0 list-none space-y-1" style={{ top: `${Math.min(start(), Math.max(0, props.items.length - 1)) * stride}px` }}>
       <For each={visible()}>{props.children}</For>
     </ul>
   </div>;

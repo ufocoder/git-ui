@@ -1,4 +1,4 @@
-use crate::{CommitPage, PAGE_SIZE, Projects, git, locale, parse_commit_log, project_path};
+use crate::{CommitPage, PAGE_SIZE, Projects, git, locale, history::parse_commit_log, project_path};
 use serde::Deserialize;
 use std::{collections::HashSet, path::Path};
 use tauri::{State, WebviewWindow};
@@ -36,10 +36,10 @@ pub fn page(
 
 #[cfg(test)]
 pub fn page_with_branches(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool) -> Result<CommitPage, String> {
-    page_at_tips(path, local_tip, remote_tip, scope, filter, offset, all_branches, None)
+    page_at_tips(path, local_tip, remote_tip, scope, filter, offset, all_branches, None, false)
 }
 
-pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool, tips: Option<&[String]>) -> Result<CommitPage, String> {
+pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scope: &str, filter: &HistoryFilter, offset: usize, all_branches: bool, tips: Option<&[String]>, first_parent: bool) -> Result<CommitPage, String> {
     if tips.is_some_and(|tips| tips.iter().any(|tip| !valid_tip(tip))) { return Err(locale::text("error.invalid-history").into()); }
     let branch_args: Vec<String> = tips.map(|tips| {
         let mut unique = tips.to_vec();
@@ -101,6 +101,7 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
         "--regexp-ignore-case".into(),
         "--fixed-strings".into(),
     ];
+    if first_parent { args.push("--first-parent".into()); }
     if scope == "all" && all_branches {
         args.extend(branch_args.clone());
     }
@@ -121,6 +122,7 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
             "--regexp-ignore-case".into(),
             "--fixed-strings".into(),
         ];
+        if first_parent { candidates.push("--first-parent".into()); }
         if !author.is_empty() {
             candidates.push(format!("--author={author}"));
         }
@@ -203,6 +205,7 @@ pub async fn get_filtered_commit_page(
     offset: usize,
     all_branches: Option<bool>,
     tips: Option<Vec<String>>,
+    first_parent: Option<bool>,
 ) -> Result<CommitPage, String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
@@ -215,6 +218,7 @@ pub async fn get_filtered_commit_page(
             offset,
             all_branches.unwrap_or(true),
             tips.as_deref(),
+            first_parent.unwrap_or(false),
         )
     })
     .await

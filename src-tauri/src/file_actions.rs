@@ -146,12 +146,15 @@ pub async fn restore_project_path(
 pub async fn reveal_project_path(
     window: WebviewWindow,
     projects: State<'_, Projects>,
-    file: String,
+    file: Option<String>,
 ) -> Result<(), String> {
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
         let root = Path::new(&path);
-        let mut path = target(root, &file)?;
+        let mut path = match file {
+            Some(file) => target(root, &file)?,
+            None => root.to_path_buf(),
+        };
         while std::fs::symlink_metadata(&path).is_err() && path != root {
             path.pop();
         }
@@ -161,10 +164,59 @@ pub async fn reveal_project_path(
     .map_err(|error| error.to_string())?
 }
 
+fn remote_browser_url(value: &str) -> Option<tauri::Url> {
+    let mut url = if value.contains("://") {
+        let url = tauri::Url::parse(value).ok()?;
+        match url.scheme() {
+            "http" | "https" => url,
+            "ssh" | "git" => tauri::Url::parse(&format!("https://{}{}", url.host_str()?, url.path())).ok()?,
+            _ => return None,
+        }
+    } else {
+        let (host, path) = value.split_once(':')?;
+        let (_, host) = host.rsplit_once('@')?;
+        if host.is_empty() || path.is_empty() || host.contains(['/', '\\']) { return None; }
+        tauri::Url::parse(&format!("https://{host}/{}", path.trim_start_matches('/'))).ok()?
+    };
+    url.set_username("").ok()?;
+    url.set_password(None).ok()?;
+    url.set_query(None);
+    url.set_fragment(None);
+    if let Some(path) = url.path().strip_suffix(".git") {
+        let path = path.to_owned();
+        url.set_path(&path);
+    }
+    Some(url)
+}
+
+#[tauri::command]
+pub async fn open_project_remote(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    remote: String,
+) -> Result<(), String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let error = || locale::text("project.remote-unavailable").to_owned();
+        let value = git(Path::new(&path), &["remote", "get-url", "--", &remote]).map_err(|_| error())?;
+        let url = remote_browser_url(value.trim()).ok_or_else(error)?;
+        tauri_plugin_opener::open_url(url.as_str(), None::<&str>).map_err(|error| error.to_string())
+    }).await.map_err(|error| error.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tests::{commit_file, TempRepo};
+    #[test]
+    fn browser_remote_urls_omit_credentials_and_reject_local_paths() {
+        for remote in ["git@example.org:team/repo.git", "ssh://git@example.org/team/repo.git", "https://user:secret@example.org/team/repo.git?token=private"] {
+            assert_eq!(remote_browser_url(remote).unwrap().as_str(), "https://example.org/team/repo");
+        }
+        for remote in ["../repo.git", "C:/repo.git", "file:///tmp/repo.git", "ext::command"] {
+            assert!(remote_browser_url(remote).is_none());
+        }
+    }
     #[test]
     fn restores_directory_and_literal_names_without_touching_siblings() {
         let repo = TempRepo::new();

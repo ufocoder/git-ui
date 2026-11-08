@@ -29,6 +29,7 @@ export type ConflictDraft = ReturnType<typeof createConflictDraft>;
 export function createHistorySearch() {
   return {
     open: createSignal(false),
+    jumpRef: createSignal(""),
     filter: createSignal<HistoryFilter>({ text: "", sha: "", author: "", file: "" }),
   };
 }

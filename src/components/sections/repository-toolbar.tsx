@@ -1,4 +1,3 @@
-import { SelectField } from "~/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { Show, createSignal, onCleanup } from "solid-js";
 import { language, locale, t } from "~/lib/i18n";
@@ -8,8 +7,6 @@ import type { History, PullMode, RepositoryMode, SyncAction } from "~/lib/git";
 type RepositoryToolbarProps = {
   onStashActionsMount: (element: HTMLDivElement) => void;
   mode: RepositoryMode;
-  historyBranch: string;
-  onHistoryBranchChange: (value: string) => void;
   onStashAll: () => void;
   busy: boolean;
   history: History | undefined;
@@ -19,6 +16,13 @@ type RepositoryToolbarProps = {
   onConfigureUpstream: () => void;
   onSync: (action: SyncAction, pullMode?: PullMode) => void;
 };
+function SyncHourglass(props: { active: boolean }) {
+  return <svg aria-hidden="true" class="size-3.5 shrink-0" classList={{ invisible: !props.active }} viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3h12M6 21h12M7 3v4l5 5-5 5v4m10-18v4l-5 5 5 5v4" />
+  </svg>;
+}
+
 export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   const [now, setNow] = createSignal(Date.now());
   const clock = setInterval(() => setNow(Date.now()), 30_000);
@@ -47,8 +51,9 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               onClick={() => void props.onSync("fetch")} title={`${t("sync.fetch-description")}\n${fetchAge()}\n${props.history?.last_fetch ? t("fetch.last", { date: new Date(props.history.last_fetch).toLocaleString(locale()) }) : t("fetch.refresh-hint")}`}>{props.action === "fetch" ? t("sync.fetching") : t("sync.fetch")}</Button>
             <div class="flex items-center">
               <span title={pullBlocked() ?? t("pull.description")}>
-                <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={Boolean(pullBlocked())}
-                  onClick={() => props.onSync("pull")}>{props.action === "pull" ? t("pull.running") : t("pull.action")}</Button>
+                <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" disabled={Boolean(pullBlocked())} aria-busy={props.action === "pull"}
+                  aria-label={props.action === "pull" ? t("pull.running") : undefined}
+                  onClick={() => props.onSync("pull")}>{t("pull.action")}<SyncHourglass active={props.action === "pull"} /></Button>
               </span>
               <DropdownMenu placement="bottom-end" gutter={4}>
                 <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.busy} aria-label={t("pull.options")} title={t("pull.options")}>
@@ -65,9 +70,11 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
             </div>
             <div class="flex min-w-0 items-center">
               <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
+                aria-busy={props.action === "push"} aria-label={props.action === "push" ? t("push.running") : undefined}
                 onClick={() => void props.onSync("push")} title={props.history?.sync.upstream ? `${t("push.description")}\n${t("sync.comparison", { branch: props.history.sync.upstream })}${!props.history.sync.ahead && !props.history.sync.behind ? `\n${t("sync.up-to-date")}` : ""}` : t("push.description")}>
-                {props.action === "push" ? t("push.running") : props.history?.sync.upstream ? t("push.action") : t("toolbar.publish")}
+                {props.history?.sync.upstream ? t("push.action") : t("toolbar.publish")}
                 <Show when={props.history?.sync.upstream}><span class="max-w-40 truncate text-muted-foreground">{props.history?.sync.upstream}</span></Show>
+                <SyncHourglass active={props.action === "push"} />
               </Button>
               <DropdownMenu placement="bottom-end" gutter={4}>
                 <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.busy || !props.history?.current_branch || !props.history.tip} aria-label={t("toolbar.push-settings")}>
@@ -79,8 +86,6 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               </DropdownMenu>
             </div>
           </div>
-          <SelectField class="w-fit max-w-[min(10rem,100%)]" triggerClass="h-control-toolbar gap-1.5 border-transparent bg-transparent px-2 shadow-none hover:bg-accent" aria-label={t("history.branch-filter")} value={props.historyBranch} onChange={props.onHistoryBranchChange} disabled={props.busy}
-            options={[{ value: "all", label: t("history.all-branches") }, ...(props.history?.branches ?? []).map(branch => ({ value: `refs/heads/${branch}`, label: branch })), ...(props.history?.remotes ?? []).flatMap(remote => remote.branches.map(branch => ({ value: `refs/remotes/${remote.name}/${branch}`, label: `${remote.name}/${branch}` }))), ...(!props.history?.current_branch ? [{ value: "current", label: "HEAD" }] : [])]} />
           </Show>
           <Show when={props.mode === "stash"}><div ref={props.onStashActionsMount} class="flex items-center gap-2" /></Show>
           <Show when={props.mode === "commit"}><Button variant="outline" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("history.busy") : !props.history?.tip ? t("stash.first-commit") : props.history.operation ? t("stash.operation-in-progress") : !props.history.has_changes ? t("stash.clean") : t("stash.all-description")}>{t("stash.all")}</Button></Show>

@@ -1,3 +1,4 @@
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { WindowedList } from "~/components/ui/windowed-list";
 import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
@@ -20,6 +21,8 @@ import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
 export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+  const platform = () => navigator.platform.toLowerCase();
+  const revealLabel = () => platform().startsWith("mac") ? t("file-action.finder") : platform().startsWith("win") ? t("file-action.explorer") : t("file-action.reveal");
   const [branchSearch, setBranchSearch] = createSignal("");
   const searchable = () => props.history.branches.length > 10;
   const branches = createMemo(() => {
@@ -63,14 +66,31 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
   }
   return <Sidebar collapsible="none" class="relative h-dvh shrink-0 border-r" aria-label={t("sidebar.navigation")}>
     <SidebarHeader class="border-b p-2">
-      <Button variant="ghost" class="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("project.switch-to", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
-        <img src={gitForkIcon} width="32" height="32" class="size-8 shrink-0" alt="" />
-        <div class="flex h-8 min-w-0 flex-1 flex-col justify-center">
-          <p class="truncate text-sm font-medium leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
-          <p class="truncate text-xs font-normal leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
-        </div>
-        <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
-      </Button>
+      <div class="flex min-w-0 items-center gap-1">
+        <Button variant="ghost" class="h-auto flex-1 min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("project.switch-to", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
+          <img src={gitForkIcon} width="32" height="32" class="size-8 shrink-0" alt="" />
+          <div class="flex h-8 min-w-0 flex-1 flex-col justify-center">
+            <p class="truncate text-sm font-medium leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
+            <p class="truncate text-xs font-normal leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
+          </div>
+          <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
+        </Button>
+        <DropdownMenu placement="bottom-end">
+          <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled} aria-label={t("project.actions")} title={t("project.actions")}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => void git.revealPath().catch(() => {})}>{revealLabel()}</DropdownMenuItem>
+            <Show when={props.history.remotes.length} fallback={<DropdownMenuItem disabled>{t("project.view-remote")}</DropdownMenuItem>}>
+              <For each={props.history.remotes}>{remote =>
+                <DropdownMenuItem onSelect={() => void git.openProjectRemote(remote.name).catch(() => {})}>
+                  {props.history.remotes.length === 1 ? t("project.view-remote") : t("project.view-named-remote", { remote: remote.name })}
+                </DropdownMenuItem>
+              }</For>
+            </Show>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <nav class="mt-3 space-y-1" aria-label={t("toolbar.modes")}>
         <For each={[{ mode: "history" as const, label: t("mode.history"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode.changes"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conflict.title"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash.title"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>
           <SidebarMenuButton disabled={props.disabled || (item.mode !== "history" && item.count === 0)} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground">
@@ -80,7 +100,8 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
         }</For>
       </nav>
     </SidebarHeader>
-    <SidebarContent class="overflow-x-hidden overflow-y-scroll [scrollbar-gutter:stable]">
+    <SidebarContent data-sidebar-scroll class="overflow-x-hidden overflow-y-scroll [scrollbar-gutter:stable]">
+      <div class="flex shrink-0 flex-col gap-2">
       <Show when={props.mode === "conflicts"}>
         <div class="mx-2 mt-2 flex items-center gap-2 rounded-md border px-2 py-2 text-xs text-muted-foreground" title={props.history.current_branch || t("sidebar.detached")}>
           <SectionIcon name="branches" /><span class="truncate">{props.history.current_branch || t("sidebar.detached")}</span>
@@ -103,7 +124,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
             </div>
             <Show when={!branches().length}><p class="px-2 py-2 text-xs text-muted-foreground" role="status">{t("branch-search.empty")}</p></Show>
           </Show>
-          <WindowedList items={branches()} resetKey={branchSearch()} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
+          <WindowedList items={branches()} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
               <ContextMenuTrigger as={SidebarMenuButton} disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
@@ -154,6 +175,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
 
       </Show>
       <Show when={props.mode === "stash"}><div ref={props.onStashListMount} /></Show>
+      </div>
     </SidebarContent>
     <SidebarFooter class="border-t p-2">
       <Button variant="ghost" class="w-full justify-start gap-2 px-2" disabled={props.disabled} onClick={props.onSettings}>
