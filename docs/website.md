@@ -53,11 +53,12 @@ Installer matching is defined in `website/scripts/release.mjs`:
 
 - macOS Apple Silicon: `aarch64` or `arm64` DMG.
 - macOS Intel: `x64` or `x86_64` DMG.
+- Windows x64: NSIS `x64-setup.exe` or `x86_64-setup.exe`.
 
 Signatures and updater archives are excluded. Missing platform installers stay
-unavailable even if other platforms have a download. The site offers downloads only for macOS. The main button opens the architecture
-choices; users explicitly choose Apple Silicon or Intel because browser
-architecture detection is unreliable. Both choices are always available.
+unavailable even if other platforms have a download. When the browser reports a
+supported system and architecture, the main button links directly to the matching
+installer. Otherwise it opens the list of downloads.
 
 The hero includes a responsive HTML/CSS interface illustration, labeled as such.
 No analytics or external font service is required.

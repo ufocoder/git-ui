@@ -1,6 +1,7 @@
 export const platforms = [
   { id: 'mac-arm', name: 'macOS', detail: 'Apple Silicon · .dmg', match: /(?:aarch64|arm64).*\.dmg$/i },
   { id: 'mac-intel', name: 'macOS', detail: 'Intel · .dmg', match: /(?:x64|x86_64).*\.dmg$/i },
+  { id: 'windows-x64', name: 'Windows', detail: 'x64 · .exe', match: /_(?:x64|x86_64)-setup\.exe$/i },
 ];
 
 export function releaseData(repository, release) {

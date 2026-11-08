@@ -51,20 +51,25 @@ try {
 
 async function recommendInstaller(downloads) {
   const client = navigator.userAgentData;
-  if (client?.platform !== 'macOS' || !client.getHighEntropyValues) return;
+  if (!client?.getHighEntropyValues) return;
 
   // The ordinary macOS user agent can report Intel even on Apple Silicon.
   const hints = await client.getHighEntropyValues(['architecture', 'bitness']).catch(() => null);
   if (hints?.bitness !== '64') return;
 
-  const platform = hints.architecture === 'arm' ? 'mac-arm'
-    : hints.architecture === 'x86' ? 'mac-intel'
-    : null;
+  const recommendations = {
+    'macOS:arm': ['mac-arm', 'Download for Apple Silicon'],
+    'macOS:x86': ['mac-intel', 'Download for Intel Mac'],
+    'Windows:x86': ['windows-x64', 'Download for Windows x64'],
+  };
+  const recommendation = recommendations[`${client.platform}:${hints.architecture}`];
+  if (!recommendation) return;
+
+  const [platform, label] = recommendation;
   const installer = downloads.find(item => item.id === platform && item.url);
   if (!installer) return;
 
   primary.href = installer.url;
-  const label = platform === 'mac-arm' ? 'Download for Apple Silicon' : 'Download for Intel Mac';
   const size = formatFileSize(installer.size);
   primary.firstChild.textContent = size ? `${label} · ${size} ` : `${label} `;
 }
