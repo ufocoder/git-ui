@@ -192,6 +192,24 @@ installers for Apple Silicon and Intel, plus an NSIS installer for Windows x64.
 Customize the application in `src/theme.css`. See [Application theme](theming.md)
 for color, typography, control, diff, and graph tokens.
 
+## Architecture
+
+`src/App.tsx` owns application startup, project selection, and global dialogs.
+It mounts `src/features/repository/repository-workspace.tsx` for the open
+repository. The workspace owns the current Git snapshot and operation state.
+Its child modes live in `src/features/history`, `changes`, `conflicts`, and
+`stash`. Drafts and filters that must survive mode changes are owned by the
+repository content component.
+
+`src/lib/git.ts` is the Tauri adapter. Its request and response types are in
+`src/lib/git-types.ts`. Controllers such as the commit flow accept small APIs
+so their behavior can be tested without invoking Tauri or a remote server.
+
+The Rust entry point registers commands and configures Tauri. Project lifetime
+is managed in `projects.rs`. History reads, diffs, and mutations are in
+`history.rs`, `diffs.rs`, and `repository_operations.rs`. Git subprocess
+execution is shared through `git_command.rs`.
+
 ## Implementation guidelines
 
 UI components should call `src/lib/git.ts` rather than invoke Git directly.

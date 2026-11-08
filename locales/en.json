@@ -120,8 +120,6 @@
   "log06": "No Git operations have run yet.",
   "log07": "Waiting for output…",
   "log08": "Operation completed without output.",
-  "commit01": "Commit created, but the file list could not be refreshed: {p1}",
-  "commit02": "Refresh files",
   "commit24": "Commit created · Push failed",
   "commit25": "Retry push",
   "commit26": "The branch, commit, or upstream has changed",

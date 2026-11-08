@@ -1,20 +1,22 @@
-import FileActionsProvider from "./file-actions-provider";
+import type { CommitFlowState, CommitRequest } from "~/features/changes/commit-flow";
+import FileActionsProvider from "~/components/sections/file-actions-provider";
 import { LayoutScope, readPanelSizes, validPanelSizes } from "~/lib/layout-preferences";
 import { t } from "~/lib/i18n";
 import { Match, Show, Suspense, Switch, createSignal, lazy } from "solid-js";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
-import type { CommitPushTarget, History, HistoryScope, RepositoryMode, StashAction } from "~/lib/git";
+import type { History, HistoryScope, RepositoryMode, StashAction } from "~/lib/git";
 import { createCommitDraft, createConflictDraft, createHistorySearch } from "~/lib/repository-drafts";
-const StashWorkspace = lazy(() => import("./stash-workspace"));
-const ConflictResolution = lazy(() => import("./conflict-resolution"));
-const CommitTable = lazy(() => import("./commit-table"));
-import WorktreeCommit from "./worktree-commit";
-import TerminalPanel from "./terminal-panel";
+const StashWorkspace = lazy(() => import("~/features/stash/stash-workspace"));
+const ConflictResolution = lazy(() => import("~/features/conflicts/conflict-resolution"));
+const CommitTable = lazy(() => import("~/features/history/commit-table"));
+import WorktreeCommit from "~/features/changes/worktree-commit";
+import TerminalPanel from "~/components/sections/terminal-panel";
 
 type RepositoryContentProps = {
   stashListMount?: HTMLDivElement;
   stashActionsMount?: HTMLDivElement;
-  onCommitPushFailed: (target: CommitPushTarget) => void;
+  onSubmitCommit: (request: CommitRequest) => Promise<History>;
+  commitPhase: CommitFlowState["kind"];
   onStash: (action: StashAction) => Promise<void>;
   mode: RepositoryMode;
   onModeChange: (mode: RepositoryMode) => void;
@@ -48,7 +50,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
             <CommitTable branch={props.historyBranch} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
           </Match>
           <Match when={props.mode === "commit"}>
-            <WorktreeCommit onCommitPushFailed={props.onCommitPushFailed} draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />
+            <WorktreeCommit onSubmitCommit={props.onSubmitCommit} commitPhase={props.commitPhase} draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />
           </Match>
           <Match when={props.mode === "conflicts"}>
             <ConflictResolution draft={conflictDraft} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} onRefresh={props.onRefresh} onCreateCommit={() => props.onModeChange("commit")} />

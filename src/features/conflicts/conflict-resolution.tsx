@@ -8,7 +8,7 @@ import { git, type ConflictVersion, type History } from "~/lib/git";
 import { Button } from "~/components/ui/button";
 import { Resizable, ResizableHandle, ResizablePanel } from "~/components/ui/resizable";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import ChangedFilesTree from "./changed-files-tree";
+import ChangedFilesTree from "~/components/sections/changed-files-tree";
 
 type Props = {
   draft?: ConflictDraft;

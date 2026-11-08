@@ -3,7 +3,7 @@ import { t } from "~/lib/i18n";
 import type { History, StashAction } from "~/lib/git";
 import { Portal } from "solid-js/web";
 import StashSection from "./stash-section";
-import CommitFiles from "./commit-files";
+import CommitFiles from "~/components/sections/commit-files";
 
 export default function StashWorkspace(props: { listMount?: HTMLDivElement; actionsMount?: HTMLDivElement; history: History; disabled: boolean; onAction: (action: StashAction) => Promise<void> }) {
   const [selected, setSelected] = createSignal("");

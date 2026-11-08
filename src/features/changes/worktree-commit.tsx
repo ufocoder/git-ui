@@ -2,7 +2,7 @@ import { PanelHeader } from "~/components/ui/panel-header";
 import CommitMessageFields from "./commit-message-fields";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { readPanelSizes } from "~/lib/layout-preferences";
-import DirectoryDiffView from "./directory-diff-view";
+import DirectoryDiffView from "~/components/sections/directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
 import { compareChangedFiles } from "~/lib/file-presentation";
 import FileViewControls from "./file-view-controls";
@@ -10,22 +10,22 @@ import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentat
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
-import { pushCommittedBranch, type CommitPushTarget } from "~/lib/git";
+import type { CommitFlowState, CommitRequest } from "./commit-flow";
 import { git, WORKTREE, type CommitFile, type FileDiff, type History, type WorktreeDiffScope } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import { SelectField } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
-import { reportTerminalError } from "~/lib/terminal";
-import ChangedFilesTree from "./changed-files-tree";
-import FileDiffView from "./file-diff-view";
+import ChangedFilesTree from "~/components/sections/changed-files-tree";
+import FileDiffView from "~/components/sections/file-diff-view";
 
 type WorktreeCommitProps = {
   draft?: CommitDraft;
   history?: History;
   onCommitted?: (history: History) => void;
   onCommitCreated?: () => void;
-  onCommitPushFailed?: (target: CommitPushTarget) => void;
+  onSubmitCommit?: (request: CommitRequest) => Promise<History>;
+  commitPhase?: CommitFlowState["kind"];
   disabled: boolean;
   onBusyChange: (busy: boolean) => void;
 };
@@ -41,8 +41,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   let messageRequest = 0;
   const [pushRemote, setPushRemote] = draft.pushRemote;
   const [pushAfterCommit, setPushAfterCommit] = draft.pushAfterCommit;
-  const [committing, setCommitting] = createSignal(false);
-  const [pushing, setPushing] = createSignal(false);
+
   const [message, setMessage] = draft.message;
   const [files, setFiles] = createSignal<CommitFile[]>(props.history?.worktree_files ?? []);
   const [loading, setLoading] = createSignal(props.history?.worktree_files === undefined);
@@ -155,42 +154,21 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   }
   async function submit(event: SubmitEvent) {
     event.preventDefault();
-    if (!props.onCommitted || !canSubmit()) return;
+    if (!props.onCommitted || !props.onSubmitCommit || !canSubmit()) return;
     const target = amendTarget();
-    const options = { sign: sign() };
-    const shouldPush = pushAfterCommit();
-    const remote = pushRemote();
-    setCommitting(true); setPending(true); props.onBusyChange(true);
     try {
-      const history = target
-        ? await git.commitOperation(target.head, target.branch, { kind: "amend", commit: target.head, message: message().trim(), confirmed: amendConfirmed() }, options)
-        : await git.commitChanges(message().trim(), options);
+      const history = await props.onSubmitCommit({
+        message: message().trim(),
+        options: { sign: sign() },
+        amend: target ? { ...target, confirmed: amendConfirmed() } : undefined,
+        push: pushAfterCommit() ? { remote: pushRemote() } : undefined,
+      });
       if (!mounted) return;
       setAmendTarget(undefined); setAmendConfirmed(false); setNewCommitMessage("");
       setSelectedDirectory(""); setMessage(""); setSelectedPath(""); setDiff(undefined); diffRequest++; setDiffLoading(false);
       props.onCommitted(history);
-      try { const details = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(details.files); }
-      catch (error) { reportTerminalError(t("commit01", { p1: String(error) }), t("commit02")); }
-      if (shouldPush) {
-        const pushTarget = {
-          path: history.path,
-          branch: history.current_branch,
-          tip: history.tip,
-          upstream: history.sync.upstream,
-          remote,
-        };
-        setPushing(true);
-        try {
-          const synced = await pushCommittedBranch(pushTarget);
-          if (mounted) props.onCommitted(synced);
-        } catch (error) {
-          if (mounted) props.onCommitPushFailed?.(pushTarget);
-          reportTerminalError(t("commit03", { p1: String(error) }), t("cmd10"));
-        } finally { setPushing(false); }
-      }
       props.onCommitCreated?.();
     } catch { /* Preserve the message and report failures in the terminal. */ }
-    finally { setCommitting(false); setPending(false); props.onBusyChange(false); }
   }
   return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
     <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable]">
@@ -258,7 +236,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                   <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose06")}>{t("commit22")}</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{pushing() ? t("nav06") : committing() ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
+              <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("nav06") : props.commitPhase === "committing" ? t("add10") : amendTarget() ? t("op10") : t("stage08", { action: t("commit15"), count: stagedCount() })}</Button>
             </div>
             <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
               <div class="flex items-center justify-end gap-3 text-sm">

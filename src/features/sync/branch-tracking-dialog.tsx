@@ -1,3 +1,4 @@
+import type { TrackingMode } from "./repository-sync";
 import { Show, createEffect, createSignal, createUniqueId, on } from "solid-js";
 import { t } from "~/lib/i18n";
 import type { History } from "~/lib/git";
@@ -6,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { TextField, TextFieldInput, TextFieldLabel } from "~/components/ui/text-field";
 import { SelectField } from "~/components/ui/select";
 
-export type TrackingMode = "publish" | "upstream";
+
 type Props = {
   mode: TrackingMode | undefined;
   history: History | undefined;

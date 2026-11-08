@@ -13,7 +13,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "~/components/ui/tooltip
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import HistoryFilters from "./history-filters";
-import WorktreeCommit from "./worktree-commit";
+import WorktreeCommit from "~/features/changes/worktree-commit";
 import CommitFiles from "~/components/sections/commit-files";
 import { reportTerminalError } from "~/lib/terminal";
 import { git, createWorktreeCommit, type Commit, type HistoryScope, type HistoryFilter, type History } from "~/lib/git";
