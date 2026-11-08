@@ -164,7 +164,7 @@ pub(crate) fn details(path: &Path, id: &str) -> Result<crate::CommitDetails, Str
     if let Some(parent) = untracked_parent(path, id)? {
         result
             .files
-            .extend(crate::read_commit_files(path, &parent)?);
+            .extend(crate::diffs::read_commit_files(path, &parent)?);
     }
     Ok(result)
 }
@@ -190,7 +190,7 @@ pub async fn get_stash_diff(
     tauri::async_runtime::spawn_blocking(move || {
         let path = Path::new(&path);
         selected(path, &id)?;
-        let source = if crate::read_commit_files(path, &id)?
+        let source = if crate::diffs::read_commit_files(path, &id)?
             .iter()
             .any(|file| file.path == file_path)
         {
