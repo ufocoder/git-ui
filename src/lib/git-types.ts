@@ -23,6 +23,8 @@ export type Commit = {
   refs: CommitReference[];
   uncommitted?: boolean;
 };
+export type HistoryRewriteTarget = { head: string; branch: string; commits: string[] };
+export type HistoryRewritePreview = { count: number; published: boolean; messages: string[]; backup: string };
 export type CommitOperation = { kind: "cherry_pick" | "revert"; commit: string; mainline?: number } | { kind: "amend"; commit: string; message: string; confirmed: boolean } | { kind: "continue" } | { kind: "abort" | "skip"; confirmed: boolean };
 export type RepositoryMode = "history" | "commit" | "conflicts" | "stash";
 export type ConflictVersion = { exists: boolean; text: string | null; binary: boolean; large: boolean; mode: string | null; oid: string | null };

@@ -37,6 +37,7 @@ mod file_actions;
 mod git_installation;
 mod git_settings;
 mod history_search;
+mod history_rewrite;
 mod locale;
 mod process;
 mod reference_actions;
@@ -150,6 +151,8 @@ pub fn run() {
             projects::frontend_ready,
             repository_operations::sync_project,
             commit_ops::run_commit_operation,
+            history_rewrite::preview_history_rewrite,
+            history_rewrite::rewrite_history,
             branch_comparisons::get_branch_comparisons,
             branch_actions::preview_branch_action,
             branch_actions::execute_branch_action,

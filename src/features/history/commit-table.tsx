@@ -1,3 +1,4 @@
+import HistoryRewriteDialog, { type HistoryRewriteAction } from "./history-rewrite-dialog";
 import * as Popover from "@kobalte/core/popover";
 import ReferenceAutocomplete from "./reference-autocomplete";
 import { createCommitGraph, graphEdgePath } from "~/lib/commit-graph";
@@ -43,6 +44,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const [editAction, setEditAction] = createSignal<CommitEditAction>();
   const [dialogAction, setDialogAction] = createSignal<CommitDialogAction>();
   const [selectedCommit, setSelectedCommit] = createSignal<Commit>();
+  const [selectionAnchor, setSelectionAnchor] = createSignal<string>();
+  const [rangeSelection, setRangeSelection] = createSignal<Commit[]>([]);
+  const [rewriteAction, setRewriteAction] = createSignal<HistoryRewriteAction>();
   const [commits, setCommits] = createSignal<Commit[]>([]);
   const [graphRevision, setGraphRevision] = createSignal(0);
   const [hasMore, setHasMore] = createSignal(false);
@@ -76,7 +80,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     const rows = displayedCommits();
     const index = rows.findIndex(commit => commit.hash === hash);
     if (index >= 0 && !loading() && !debouncing()) {
-      setSelectedCommit(rows[index]);
+      selectRow(rows[index], false);
       viewport.scrollTop = index * ROW_HEIGHT;
       setScrollTop(viewport.scrollTop);
     } else {
@@ -90,6 +94,28 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const selectedTip = () => jumpTip() ?? (allBranches() || props.branch === "current" ? props.history.tip : props.history.branch_tips?.[props.branch] ?? (viewingHead() ? props.history.tip : ""));
   const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
   const displayedCommits = createMemo(() => props.scope === "all" && viewingHead() && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
+  const rangeHashes = createMemo(() => new Set(rangeSelection().map(commit => commit.hash)));
+  const canRewrite = () => !props.disabled && Boolean(props.history.current_branch) && !props.history.has_changes && !props.history.operation;
+  const squashRange = (commit: Commit) => rangeHashes().has(commit.hash) ? rangeSelection() : [];
+  const linearRange = (range: Commit[]) => range.length > 1 && range.every((commit, index) =>
+    commit.parents.length <= 1 && (index === 0 || commit.parents[0] === range[index - 1].hash));
+  function selectRow(commit: Commit, extend: boolean) {
+    const rows = displayedCommits();
+    const anchorHash = selectionAnchor() ?? selectedCommit()?.hash;
+    const anchor = rows.findIndex(row => row.hash === anchorHash);
+    const index = rows.indexOf(commit);
+    if (extend && anchor >= 0 && index >= 0 && !commit.uncommitted && !rows[anchor].uncommitted) {
+      setSelectionAnchor(anchorHash);
+      setRangeSelection(rows.slice(Math.min(anchor, index), Math.max(anchor, index) + 1).reverse());
+    } else {
+      setSelectionAnchor(commit.hash);
+      setRangeSelection([]);
+    }
+    setSelectedCommit(commit);
+  }
+  function openRewrite(commits: Commit[]) {
+    setRewriteAction({ head: props.history.tip, branch: props.history.current_branch, commits });
+  }
   let previousContext = "";
   createEffect(() => {
     const history = props.history;
@@ -109,6 +135,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     const anchor = previousRows[anchorIndex]?.hash;
     const offset = top - anchorIndex * ROW_HEIGHT;
     const request = ++generation;
+    setRangeSelection([]); setSelectionAnchor(undefined);
     setError(""); setLoading(true);
     if (!preserve) {
       setScrollTop(0); if (viewport) viewport.scrollTop = 0;
@@ -302,10 +329,10 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
             const graphRow = () => graph().rows[start() + index()];
             return <ContextMenu>
               <ContextMenuTrigger as={TableRow} disabled={props.disabled || commit.uncommitted}
-                data-state={selectedCommit()?.hash === commit.hash ? "selected" : undefined}
-                aria-selected={selectedCommit()?.hash === commit.hash} tabindex={props.disabled ? -1 : 0}
-                onClick={() => { if (!props.disabled) setSelectedCommit(commit); }}
-                onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(commit); } }}
+                data-state={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash) ? "selected" : undefined}
+                aria-selected={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash)} tabindex={props.disabled ? -1 : 0}
+                onClick={event => { if (!props.disabled) selectRow(commit, event.shiftKey); }}
+                onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); selectRow(commit, event.shiftKey); } }}
                 class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
                 <TableCell class="pl-2 pr-0">
                   <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>
@@ -336,8 +363,12 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                 <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("branch.from-commit")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.cherry-pick")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.revert")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || commit.hash !== props.history.tip || Boolean(props.history.operation)} title={t("operation.amend-head-only")}
-                  onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.amend")}</ContextMenuItem>
+                <Show when={commit.hash === props.history.tip && props.history.has_changes}>
+                  <ContextMenuItem disabled={props.disabled || !props.history.current_branch || Boolean(props.history.operation)}
+                    onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.amend")}</ContextMenuItem>
+                </Show>
+                <ContextMenuItem disabled={!canRewrite()} onSelect={() => openRewrite([commit])}>{t("rewrite.reword")}</ContextMenuItem>
+                <ContextMenuItem disabled={!canRewrite() || !linearRange(squashRange(commit))} title={t("rewrite.select-range")} onSelect={() => openRewrite(squashRange(commit))}>{t("rewrite.squash")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("tag.from-commit")}</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>;
@@ -358,6 +389,12 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           <WorktreeCommit history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} />
         </Show>}</Show>
       </ResizablePanel>
+      <HistoryRewriteDialog action={rewriteAction()} onClose={() => setRewriteAction(undefined)}
+        onExecute={(target, message, acceptPublished) => runAction(async () => {
+          const history = await git.rewriteHistory(target, message, acceptPublished);
+          previousContext = "";
+          return history;
+        })} />
       <CommitEditDialog action={editAction()} onClose={() => setEditAction(undefined)} onExecute={(head, branch, operation) => runAction(() => git.commitOperation(head, branch, operation))} />
       <CommitActionsDialog action={dialogAction()} branch={props.history.current_branch} head={props.history.tip} disabled={props.disabled} hasChanges={props.history.has_changes} onClose={() => setDialogAction(undefined)}
         onReset={(commit, mode, confirmed, head, branch) => runAction(() => git.resetToCommit(commit, mode, confirmed, head, branch))}

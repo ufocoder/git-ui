@@ -6,6 +6,25 @@ pub(super) fn git(path: &Path, args: &[&str]) -> Result<String, String> {
 }
 
 pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
+    run(path, args, None, &[])
+}
+
+pub(super) fn git_with_input(
+    path: &Path,
+    args: &[&str],
+    input: &str,
+    env: &[(&str, &str)],
+) -> Result<String, String> {
+    let bytes = run(path, args, Some(input), env)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+fn run(
+    path: &Path,
+    args: &[&str],
+    input: Option<&str>,
+    env: &[(&str, &str)],
+) -> Result<Vec<u8>, String> {
     let log_id = terminal_log::begin(path, args);
     // Large immutable branch snapshots can exceed the OS argument-size limit.
     let mut arguments = args.to_vec();
@@ -35,15 +54,17 @@ pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
         .arg("-C")
         .arg(path)
         .args(&arguments)
+        .envs(env.iter().copied())
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
         .env_remove("GIT_COMMON_DIR")
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_EDITOR", "true");
-    let output = if revisions.is_empty() {
-        command.output()
-    } else {
+    let input = input
+        .map(str::to_owned)
+        .or_else(|| (!revisions.is_empty()).then(|| revisions.join("\n") + "\n"));
+    let output = if let Some(input) = input {
         use std::io::Write;
         use std::process::Stdio;
         command
@@ -51,7 +72,6 @@ pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         command.spawn().and_then(|mut child| {
-            let input = revisions.join("\n") + "\n";
             // Drain output while writing, including when Git exits before reading stdin.
             let writer = child
                 .stdin
@@ -68,6 +88,8 @@ pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
             }
             output
         })
+    } else {
+        command.output()
     }
     .map_err(|e| {
         let message = locale::format("error.start-git", &[("e", e.to_string())]);
