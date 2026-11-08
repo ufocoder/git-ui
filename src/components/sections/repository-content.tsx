@@ -3,7 +3,7 @@ import { LayoutScope, readPanelSizes, validPanelSizes } from "~/lib/layout-prefe
 import { t } from "~/lib/i18n";
 import { Match, Show, Suspense, Switch, createSignal, lazy } from "solid-js";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
-import type { History, HistoryScope, RepositoryMode, StashAction } from "~/lib/git";
+import type { CommitPushTarget, History, HistoryScope, RepositoryMode, StashAction } from "~/lib/git";
 import { createCommitDraft, createConflictDraft, createHistorySearch } from "~/lib/repository-drafts";
 const StashWorkspace = lazy(() => import("./stash-workspace"));
 const ConflictResolution = lazy(() => import("./conflict-resolution"));
@@ -14,6 +14,7 @@ import TerminalPanel from "./terminal-panel";
 type RepositoryContentProps = {
   stashListMount?: HTMLDivElement;
   stashActionsMount?: HTMLDivElement;
+  onCommitPushFailed: (target: CommitPushTarget) => void;
   onStash: (action: StashAction) => Promise<void>;
   mode: RepositoryMode;
   onModeChange: (mode: RepositoryMode) => void;
@@ -47,7 +48,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
             <CommitTable branch={props.historyBranch} search={historySearch} scope={props.scope} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} />
           </Match>
           <Match when={props.mode === "commit"}>
-            <WorktreeCommit draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />
+            <WorktreeCommit onCommitPushFailed={props.onCommitPushFailed} draft={commitDraft} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onCommitted={props.onHistoryChange} onCommitCreated={() => props.onModeChange("history")} />
           </Match>
           <Match when={props.mode === "conflicts"}>
             <ConflictResolution draft={conflictDraft} history={props.history} disabled={props.disabled} onHistoryChange={props.onHistoryChange} onBusyChange={props.onBusyChange} onRefresh={props.onRefresh} onCreateCommit={() => props.onModeChange("commit")} />

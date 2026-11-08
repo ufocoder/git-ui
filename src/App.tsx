@@ -1,3 +1,4 @@
+import OperationStatus from "~/components/sections/operation-status";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import BranchActionDialog, { type BranchAction } from "~/components/sections/branch-action-dialog";
 import type { BranchActionPreview, BranchRemoteTarget } from "~/lib/git";
@@ -11,7 +12,7 @@ import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { t } from "~/lib/i18n";
 import { Show, batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { git, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type PullMode, type SyncAction } from "~/lib/git";
+import { git, pushCommittedBranch, type CommitPushTarget, type History, type RepositoryMode, type CommitOperation, type HistoryScope, type StashAction, type PullMode, type SyncAction } from "~/lib/git";
 import { terminalError, clearTerminalError } from "~/lib/terminal";
 import TerminalPanel from "~/components/sections/terminal-panel";
 import { isTauri } from "@tauri-apps/api/core";
@@ -78,6 +79,7 @@ function App() {
   const [branchError, setBranchError] = createSignal("");
   const [creatingBranch, setCreatingBranch] = createSignal(false);
   const [trackingMode, setTrackingMode] = createSignal<TrackingMode>();
+  const [failedCommitPush, setFailedCommitPush] = createSignal<CommitPushTarget>();
   const [syncAction, setSyncAction] = createSignal<SyncAction | null>(null);
   createEffect(() => {
     if (isHistory() && terminalError()) setTerminalOpen(true);
@@ -198,6 +200,7 @@ function App() {
   }
 
   function clearProjectFeedback() {
+    setFailedCommitPush(undefined);
     clearTerminalError();
     const notice = operationNotice();
     if (notice) dismissOperation(notice.id);
@@ -270,11 +273,39 @@ function App() {
     } finally { setBusy(false); }
   }
 
+  function matchesPushTarget(project: History | undefined, target: CommitPushTarget) {
+    if (!project || project.path !== target.path || project.current_branch !== target.branch || project.tip !== target.tip) return false;
+    if (target.upstream) return project.sync.upstream === target.upstream;
+    return !project.sync.upstream || project.sync.upstream === `${target.remote}/${target.branch}`;
+  }
+
+  async function retryCommitPush() {
+    const target = failedCommitPush();
+    if (!target || busy() || !matchesPushTarget(history(), target)) return;
+    setBusy(true);
+    setSyncAction("push");
+    try {
+      const latest = await git.getHistory();
+      setHistory(latest);
+      if (!matchesPushTarget(latest, target)) return;
+      setHistory(await pushCommittedBranch(target));
+      setFailedCommitPush(undefined);
+    } catch {
+      setTerminalOpen(true);
+    } finally {
+      setSyncAction(null);
+      setBusy(false);
+    }
+  }
+
   async function syncProject(action: SyncAction, pullMode?: PullMode) {
     if (busy()) return;
     setBusy(true); setError(""); setSyncAction(action);
     try {
-      setHistory(await git.sync(action, pullMode));
+      const updated = await git.sync(action, pullMode);
+      setHistory(updated);
+      const failed = failedCommitPush();
+      if (action === "push" && failed && matchesPushTarget(updated, failed)) setFailedCommitPush(undefined);
     } catch (e) {
       setError(String(e));
       try { setHistory(await git.getHistory()); } catch { /* Keep the loaded history. */ }
@@ -425,6 +456,18 @@ function App() {
           onSelectProject={() => void selectProject()} onOpenRecent={path => void openRecentProject(path)} />
       }>
         <RepositoryToolbar onStashActionsMount={setStashActionsMount} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={requestSync} onConfigureUpstream={() => setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <Show when={failedCommitPush()}>{target =>
+          <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
+            <p role="status" class="text-sm font-medium">{t("commit24")}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <span title={!matchesPushTarget(history(), target()) ? t("commit26") : undefined}>
+                <Button size="sm" variant="outline" disabled={busy() || !matchesPushTarget(history(), target())} onClick={() => void retryCommitPush()}>{syncAction() === "push" ? t("nav06") : t("commit25")}</Button>
+              </span>
+              <Button size="sm" variant="ghost" onClick={() => setTerminalOpen(true)}>{t("notice03")}</Button>
+              <Button size="icon" variant="ghost" class="size-7" aria-label={t("notice04")} title={t("notice04")} onClick={() => setFailedCommitPush(undefined)}>×</Button>
+            </div>
+          </div>
+        }</Show>
         <Show when={history()?.operation}>{operation => <Show when={repositoryMode() === "commit" || repositoryMode() === "conflicts" || !history()?.has_changes} fallback={
           <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2" role="status">
             <p class="text-xs text-muted-foreground">{t("op21", { kind: operation().kind, sha: operation().commit.slice(0, 8) })}</p>
@@ -445,13 +488,14 @@ function App() {
         <Show when={busy()}><p role="status" class="sr-only">{t("app04")}</p></Show>
         <Show when={history()} fallback={<Show when={terminalOpen()}><section class="min-h-0 flex-1"><TerminalPanel busy={busy()} /></section></Show>}>{project => { const initial = project(); return <section aria-label={t("app05")} class="min-h-0 min-w-0 flex-1">
               <Show keyed when={(history() ?? initial).path}>
-              <RepositoryContent stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+              <RepositoryContent onCommitPushFailed={setFailedCommitPush} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onStash={runStash} onRefresh={refreshHistory} scope={historyScope()} mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history() ?? initial} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
               </Show>
             </section>;
         }}</Show>
       </Show>
       <Show when={!isHistory() && error() && !/invoke/i.test(error())}><Alert variant="destructive" class="max-w-xl"><AlertTitle>{t("app06")}</AlertTitle><AlertDescription class="break-all">{error()}</AlertDescription></Alert></Show>
     </main>
+    <OperationStatus onOpenTerminal={isHistory() ? () => setTerminalOpen(true) : undefined} />
     <GitSettingsDialog hasProject={isHistory() && Boolean(history())} open={settingsOpen()} onClose={() => setSettingsOpen(false)} />
     <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
       <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">

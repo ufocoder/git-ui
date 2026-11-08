@@ -66,6 +66,14 @@ export type FileDiff = { commit: string; file: CommitFile; patch: string; trunca
 export type OpenProjectResult = { history: History; recent_projects: string[]; warning: string | null };
 export type ResetMode = "soft" | "mixed" | "hard";
 export type TerminalLog = { id: number; command: string; output: string; status: "running" | "success" | "error"; exit_code: number | null };
+export type CommitPushTarget = {
+  path: string;
+  branch: string;
+  tip: string;
+  upstream: string | null;
+  remote: string;
+};
+
 export type PullMode = "fast-forward-only" | "rebase" | "merge";
 export type SyncAction = "fetch" | "pull" | "push";
 
@@ -172,6 +180,12 @@ export const git = {
   commitOperation: (head: string, branch: string, action: CommitOperation, options?: CommitOptions) => request<History>("run_commit_operation", { head, branch, action, options }),
   sync: (action: SyncAction, pullMode?: PullMode) => request<History>("sync_project", { action, pullMode }),
 };
+
+export function pushCommittedBranch(target: CommitPushTarget): Promise<History> {
+  return target.upstream
+    ? git.sync("push")
+    : git.publishBranch(target.branch, target.remote, target.branch);
+}
 
 export function createWorktreeCommit(tip: string): Commit {
   return {

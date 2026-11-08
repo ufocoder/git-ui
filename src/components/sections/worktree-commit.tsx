@@ -10,6 +10,7 @@ import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentat
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
 import { t } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
+import { pushCommittedBranch, type CommitPushTarget } from "~/lib/git";
 import { git, WORKTREE, type CommitFile, type FileDiff, type History, type WorktreeDiffScope } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import { SelectField } from "~/components/ui/select";
@@ -24,6 +25,7 @@ type WorktreeCommitProps = {
   history?: History;
   onCommitted?: (history: History) => void;
   onCommitCreated?: () => void;
+  onCommitPushFailed?: (target: CommitPushTarget) => void;
   disabled: boolean;
   onBusyChange: (busy: boolean) => void;
 };
@@ -170,11 +172,19 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       try { const details = await git.getCommitDetails(WORKTREE); if (mounted) setFiles(details.files); }
       catch (error) { reportTerminalError(t("commit01", { p1: String(error) }), t("commit02")); }
       if (shouldPush) {
+        const pushTarget = {
+          path: history.path,
+          branch: history.current_branch,
+          tip: history.tip,
+          upstream: history.sync.upstream,
+          remote,
+        };
         setPushing(true);
         try {
-          const synced = history.sync.upstream ? await git.sync("push") : await git.publishBranch(history.current_branch, remote, history.current_branch);
+          const synced = await pushCommittedBranch(pushTarget);
           if (mounted) props.onCommitted(synced);
         } catch (error) {
+          if (mounted) props.onCommitPushFailed?.(pushTarget);
           reportTerminalError(t("commit03", { p1: String(error) }), t("cmd10"));
         } finally { setPushing(false); }
       }
