@@ -56,18 +56,17 @@ export default function HistoryRewriteDialog(props: {
     <Show when={props.action}>{action => <DialogContent class="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{title()}</DialogTitle>
-        <DialogDescription>{t("rewrite.description", { branch: action().branch })}</DialogDescription>
+        <Show when={preview()}>{details =>
+          <DialogDescription>{t("rewrite.affected", { count: details().count })}</DialogDescription>
+        }</Show>
       </DialogHeader>
-      <ul class="max-h-24 overflow-auto text-sm">
+      <Show when={squash()}><ul class="max-h-24 overflow-auto text-sm">
         <For each={action().commits}>{commit => <li class="break-words"><code>{commit.hash.slice(0, 8)}</code> · {commit.subject}</li>}</For>
-      </ul>
+      </ul></Show>
       <Show when={!preview() && !error()}><p role="status" class="text-sm text-muted-foreground">{t("common.loading")}</p></Show>
       <Show when={error()}><p role="alert" class="break-words text-sm text-destructive">{error()}</p></Show>
       <form onSubmit={submit} class="space-y-3">
         <Show when={preview()}>{details => <>
-          <p class="text-sm text-muted-foreground">{t("rewrite.affected", { count: details().count })}</p>
-          <p class="select-text break-all text-xs text-muted-foreground">{t("rewrite.backup", { ref: details().backup })}</p>
-          <Show when={details().published}><p class="text-sm text-destructive">{t("rewrite.published-warning")}</p></Show>
           <TextField value={message()} onChange={setMessage} disabled={pending()} required>
             <TextFieldLabel>{t("commit.message")}</TextFieldLabel>
             <TextFieldTextArea class="max-h-56 min-h-24" rows={5} />
@@ -78,11 +77,11 @@ export default function HistoryRewriteDialog(props: {
               setAppended(true);
             }}>{t("rewrite.append-messages")}</Button>
           </Show>
-          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{details().published ? t("rewrite.confirm-published") : t("rewrite.confirm")}</label>
+          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} /><span classList={{ "text-destructive": details().published }}>{details().published ? t("rewrite.confirm-published") : t("rewrite.confirm")}</span></label>
         </>}</Show>
         <DialogFooter class="gap-2">
           <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button>
-          <Button type="submit" disabled={!canSubmit()}>{pending() ? t("common.running") : title()}</Button>
+          <Button type="submit" disabled={!canSubmit()}>{pending() ? t("common.running") : squash() ? t("rewrite.combine") : t("rewrite.save")}</Button>
         </DialogFooter>
       </form>
     </DialogContent>}</Show>
