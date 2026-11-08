@@ -31,6 +31,7 @@ The workflow validates versions, runs checks, creates a draft, and builds:
 | Platform | Architecture | Installers |
 | --- | --- | --- |
 | macOS | Apple Silicon and Intel | `.dmg`, app bundle |
+| Windows | x64 | NSIS `-setup.exe` |
 
 After all builds succeed, it validates updater metadata and publishes the release.
 A failed build leaves the release as a draft; rerunning can reuse it. Versions

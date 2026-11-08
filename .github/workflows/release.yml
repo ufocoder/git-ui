@@ -86,6 +86,10 @@ jobs:
             os: macos-latest
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin --bundles app,dmg
+          - name: Windows x64
+            os: windows-2025
+            target: x86_64-pc-windows-msvc
+            args: --target x86_64-pc-windows-msvc --bundles nsis
     steps:
       - uses: actions/checkout@v7
         with:
@@ -112,12 +116,13 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: '-'
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         with:
           releaseId: ${{ needs.prepare.outputs.release_id }}
           tagName: ${{ needs.prepare.outputs.tag }}
           releaseDraft: true
           uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           uploadUpdaterSignatures: true
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           args: ${{ matrix.args }} -- --locked

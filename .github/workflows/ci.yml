@@ -45,9 +45,17 @@ jobs:
         run: npm run build
 
   tauri:
-    name: Tauri build (macOS)
+    name: Tauri build (${{ matrix.name }})
     needs: checks
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+          - name: Windows x64
+            os: windows-2025
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -73,7 +81,12 @@ jobs:
         run: npm ci
 
       - name: Test Rust backend
+        if: runner.os == 'macOS'
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+
+      - name: Test Windows background processes
+        if: runner.os == 'Windows'
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib process::tests::background_process_has_no_console_and_captures_output
 
       - name: Build Tauri application
         run: npm run tauri -- build --no-bundle -- --locked

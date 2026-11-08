@@ -111,7 +111,15 @@ npm ci
 npm run tauri -- dev
 ```
 
-Build the native Windows application on Windows rather than inside WSL.
+Build the Windows x64 installer from PowerShell on Windows:
+
+```powershell
+npm run tauri -- build --target x86_64-pc-windows-msvc --bundles nsis -- --locked
+```
+
+The installer is written to `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
+For a local executable without an installer or an updater signature, use
+`npm run tauri -- build --no-bundle -- --locked`.
 
 ## Linux
 
@@ -176,8 +184,8 @@ cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
 Use `npm run lint:fix` to apply automatic Oxlint fixes. Rust checks require the
 native dependencies for your operating system. CI runs frontend checks on Linux
-and backend tests plus a native build on macOS. The separate release workflow
-builds installers only for macOS, for both Apple Silicon and Intel.
+and native builds on macOS and Windows. The release workflow packages macOS
+installers for Apple Silicon and Intel, plus an NSIS installer for Windows x64.
 
 ## Styling
 
