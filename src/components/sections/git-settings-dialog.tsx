@@ -2,7 +2,7 @@ import ThemePreview from "./theme-preview";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { themes, theme, saveTheme } from "~/lib/theme-preferences";
 import { SelectField } from "~/components/ui/select";
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { git, type GitSettings } from "~/lib/git";
 import { language, t, type Language } from "~/lib/i18n";
 import { saveLanguage } from "~/lib/language-preferences";
@@ -29,6 +29,7 @@ export default function GitSettingsDialog(props: { hasProject: boolean; open: bo
   const [error, setError] = createSignal("");
   const [saved, setSaved] = createSignal(false);
   let generation = 0;
+  onCleanup(() => { generation++; });
   createEffect(() => {
     const active = props.open, area = scope(), token = ++generation;
     if (!active || !props.hasProject) return;

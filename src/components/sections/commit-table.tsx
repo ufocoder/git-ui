@@ -133,9 +133,11 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
         : scope === "all" ? await git.getCommitPage(tip, commits().length, allBranches(), props.history.branch_tips ? Object.values(props.history.branch_tips) : undefined)
         : remoteTip ? await git.getSyncCommitPage(tip, remoteTip, scope, commits().length) : { commits: [], has_more: false };
       if (request !== generation) return;
-      setCommits(previous => [...previous, ...page.commits]);
-      if (!selectedCommit()) setSelectedCommit(page.commits[0]);
-      setHasMore(page.has_more);
+      batch(() => {
+        setCommits(previous => [...previous, ...page.commits]);
+        if (!selectedCommit()) setSelectedCommit(page.commits[0]);
+        setHasMore(page.has_more);
+      });
     } catch (e) { if (request === generation) setError(String(e)); }
     finally { if (request === generation) setLoading(false); }
   }
@@ -159,7 +161,7 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
   });
   const start = createMemo(() => Math.max(0, Math.floor(Math.max(0, scrollTop() - headerHeight()) / ROW_HEIGHT) - Math.ceil(height() / ROW_HEIGHT)));
   const end = createMemo(() => Math.min(displayedCommits().length, start() + Math.ceil(height() / ROW_HEIGHT) * 3 + 4));
-  const visibleRows = createMemo(() => displayedCommits().slice(start(), end()).map((commit, index) => ({ commit, graph: graph().rows[start() + index] })));
+  const visibleCommits = createMemo(() => displayedCommits().slice(start(), end()));
   const date = (value: string) => new Date(value).toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   async function runAction(operation: () => Promise<History>) {
@@ -232,49 +234,50 @@ export default function CommitTable(props: { branch: string; search?: HistorySea
         </TableHeader>
         <TableBody>
           <Show when={start() > 0}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${start() * ROW_HEIGHT}px` }} /></TableRow></Show>
-          <For each={visibleRows()}>{row =>
-            <ContextMenu>
-            <ContextMenuTrigger as={TableRow} disabled={props.disabled || row.commit.uncommitted}
-              data-state={selectedCommit()?.hash === row.commit.hash ? "selected" : undefined}
-              aria-selected={selectedCommit()?.hash === row.commit.hash} tabindex={props.disabled ? -1 : 0}
-              onClick={() => { if (!props.disabled) setSelectedCommit(row.commit); }}
-              onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(row.commit); } }}
-              class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
-              <TableCell class="px-0">
-                <svg class={row.commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: row.commit.parents.length })}>
-                  <For each={row.graph.edges}>{edge =>
-                    <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
-                  }</For>
-                  <circle cx={12 + row.graph.column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill={`hsl(calc(var(--graph-hue-start) + ${row.graph.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} stroke="hsl(var(--background))" />
-                </svg>
-              </TableCell>
-              <TableCell><CommitDescription subject={row.commit.subject} references={row.commit.refs} currentBranch={props.history.current_branch} bold={row.commit.uncommitted} /></TableCell>
-              <TableCell>
-                <Show when={!row.commit.uncommitted} fallback={<span aria-label={t("cf02")}>*</span>}>
-                <Tooltip openDelay={350}>
-                  <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("hist12", { p1: row.commit.hash })}>
-                    {row.commit.hash.slice(0, 8)}
-                  </TooltipTrigger>
-                  <TooltipContent class="max-w-[90vw] break-all font-mono text-xs">{row.commit.hash}</TooltipContent>
-                </Tooltip>
-                </Show>
-              </TableCell>
-              <TableCell class="text-muted-foreground" title={row.commit.author}>{row.commit.author}</TableCell>
-              <TableCell class="text-muted-foreground tabular-nums"><Show when={row.commit.date} fallback="—"><time dateTime={row.commit.date} title={row.commit.date}>{date(row.commit.date)}</time></Show></TableCell>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(row.commit)}>{t("hist13")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled} onSelect={() => void checkout(row.commit)}>{t("hist14")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit: row.commit })}>{t("act03")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit: row.commit })}>{t("act01")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit: row.commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op01")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "revert", commit: row.commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op02")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled || !props.history.current_branch || row.commit.hash !== props.history.tip || Boolean(props.history.operation)} title={t("op14")}
-                onSelect={() => setEditAction({ kind: "amend", commit: row.commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op03")}</ContextMenuItem>
-              <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit: row.commit })}>{t("act02")}</ContextMenuItem>
-            </ContextMenuContent>
-            </ContextMenu>
-          }</For>
+          <For each={visibleCommits()}>{(commit, index) => {
+            const graphRow = () => graph().rows[start() + index()];
+            return <ContextMenu>
+              <ContextMenuTrigger as={TableRow} disabled={props.disabled || commit.uncommitted}
+                data-state={selectedCommit()?.hash === commit.hash ? "selected" : undefined}
+                aria-selected={selectedCommit()?.hash === commit.hash} tabindex={props.disabled ? -1 : 0}
+                onClick={() => { if (!props.disabled) setSelectedCommit(commit); }}
+                onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); setSelectedCommit(commit); } }}
+                class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
+                <TableCell class="px-0">
+                  <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("hist11", { p1: commit.parents.length })}>
+                    <For each={graphRow().edges}>{edge =>
+                      <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
+                    }</For>
+                    <circle cx={12 + graphRow().column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill={`hsl(calc(var(--graph-hue-start) + ${graphRow().color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} stroke="hsl(var(--background))" />
+                  </svg>
+                </TableCell>
+                <TableCell><CommitDescription subject={commit.subject} references={commit.refs} currentBranch={props.history.current_branch} bold={commit.uncommitted} /></TableCell>
+                <TableCell>
+                  <Show when={!commit.uncommitted} fallback={<span aria-label={t("cf02")}>*</span>}>
+                  <Tooltip openDelay={350}>
+                    <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("hist12", { p1: commit.hash })}>
+                      {commit.hash.slice(0, 8)}
+                    </TooltipTrigger>
+                    <TooltipContent class="max-w-[90vw] break-all font-mono text-xs">{commit.hash}</TooltipContent>
+                  </Tooltip>
+                  </Show>
+                </TableCell>
+                <TableCell class="text-muted-foreground" title={commit.author}>{commit.author}</TableCell>
+                <TableCell class="text-muted-foreground tabular-nums"><Show when={commit.date} fallback="—"><time dateTime={commit.date} title={commit.date}>{date(commit.date)}</time></Show></TableCell>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(commit)}>{t("hist13")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => void checkout(commit)}>{t("hist14")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("act03")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("act01")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op01")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("op17") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op02")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || commit.hash !== props.history.tip || Boolean(props.history.operation)} title={t("op14")}
+                  onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("op03")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("act02")}</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>;
+          }}</For>
           <Show when={end() < displayedCommits().length}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${(displayedCommits().length - end()) * ROW_HEIGHT}px` }} /></TableRow></Show>
           <Show when={!loading() && !debouncing() && !error() && !displayedCommits().length}><TableRow><TableCell colspan="5" class="h-24 text-center text-muted-foreground"><div class="flex flex-col items-center gap-2 py-4"><p>{filtered() ? t("find06") : props.scope === "incoming" ? t("sync10") : props.scope === "outgoing" ? t("sync11") : t("hist15")}</p>
             <Show when={filtered()}><Button size="sm" variant="outline" disabled={props.disabled} onClick={() => setFilter({ text: "", sha: "", author: "", file: "" })}>{t("find05")}</Button></Show>
