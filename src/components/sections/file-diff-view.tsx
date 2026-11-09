@@ -9,10 +9,10 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
-import { WORKTREE, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
+import type { FileDiff, WorktreeDiffScope } from "~/lib/git";
 
 function readView() { try { return localStorage.getItem("git-ui.diff-view") === "split"; } catch { return false; } }
-export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stash?: boolean; stageDisabled?: boolean; onStageHunk?: (index: number) => void }) {
+export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stageDisabled?: boolean; onStageHunk?: (index: number) => void }) {
   const [split, setSplit] = createSignal(readView());
   const [collapse, setCollapse] = createSignal(true);
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set());
@@ -74,9 +74,8 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
           </span>
         </Show>
       </PanelHeader>
-      <Show when={props.scope || (!props.stash && props.diff.commit !== WORKTREE)}><div class="flex flex-wrap items-center gap-2">
+      <Show when={props.scope}><div class="flex flex-wrap items-center gap-2">
         <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage.staged") : t("stage.unstaged")}</Badge></Show>
-        <Show when={!props.stash && props.diff.commit !== WORKTREE}><Badge variant="secondary">{t("diff.commit", { p1: props.diff.commit.slice(0, 8) })}</Badge></Show>
       </div></Show>
       <Show when={props.diff.file.old_path}><p class="break-all text-xs text-muted-foreground">{t("diff.previous-name", { path: props.diff.file.old_path ?? "" })}</p></Show>
       <Show when={parsed().hunks.length}>

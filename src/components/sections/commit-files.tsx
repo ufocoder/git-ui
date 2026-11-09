@@ -68,7 +68,7 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
         <div class="flex h-full min-h-0 flex-col px-4 pb-4" aria-label={t("details.diff")}>
           <Show when={selectedDirectory()} fallback={<>
           <Show when={opening()}><p role="status" class="pt-4 text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
-          <Show when={diff()}>{data => <FileDiffView diff={data()} stash={props.stash} />}</Show>
+          <Show when={diff()}>{data => <FileDiffView diff={data()} />}</Show>
           <Show when={!selectedFile()}><p class="flex min-h-[var(--panel-header-height)] shrink-0 items-center text-xs text-muted-foreground">{t("details.select-file")}</p></Show>
           </>}>
             <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={props.commit.hash} stash={props.stash} />

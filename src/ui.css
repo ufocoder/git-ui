@@ -7,6 +7,11 @@
   * {
     @apply border-border;
   }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   body {
     @apply cursor-default select-none bg-background font-sans text-foreground antialiased;
     font-size: var(--font-body-size);

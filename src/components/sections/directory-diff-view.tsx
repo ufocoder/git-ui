@@ -64,7 +64,7 @@ function DirectoryFileDiff(props: HunkActions & { path: string; commit: string; 
   }
   return <div ref={value => { element = value; }} class="min-w-0 px-4 pb-4" aria-busy={loading()}>
     <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("details.loading-diff")}</p></Show></div>}>{data =>
-      <FileDiffView diff={data()} scope={props.scope} stash={props.stash} inline stageDisabled={props.stageDisabled || loading() || failed()}
+      <FileDiffView diff={data()} scope={props.scope} inline stageDisabled={props.stageDisabled || loading() || failed()}
         onStageHunk={props.canStageHunk?.(data()) && props.onStageHunk ? index => props.onStageHunk?.(data(), index) : undefined} />
     }</Show>
     <Show when={failed()}><p role="alert" class="mt-2 text-xs text-destructive">{t("directory.load-error")}</p><Button variant="link" size="sm" onClick={() => void load()}>{t("history.retry")}</Button></Show>

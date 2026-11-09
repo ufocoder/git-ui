@@ -165,8 +165,9 @@ function App() {
 
   return (
     <SidebarProvider open={true} onOpenChange={() => {}} class={isHistory() ? "" : "contents"}>
+    <div aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-30 h-px bg-[hsl(var(--panel-divider)/0.55)]" />
     <Show keyed when={isHistory() && history()} fallback={
-      <main class="flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-6">
+      <main class="flex h-dvh w-full flex-col items-center gap-6 overflow-y-auto p-6 [justify-content:safe_center]">
         <Show when={!isHistory()} fallback={<p role="status" class="text-sm text-muted-foreground">{error() || t("common.loading")}</p>}>
         <ProjectChooser choosingProject={choosingProject()} busy={busy()} recentProjects={recentProjects()}
           ready={gitCheck() === "ready"} requirement={<GitRequirement state={gitCheck()} platform={gitPlatform()} onRetry={() => void retryGitCheck()} />}

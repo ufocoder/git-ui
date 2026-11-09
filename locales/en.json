@@ -126,7 +126,6 @@
   "diff.before": "Before changes",
   "diff.binary": "Binary file changed. Line-by-line comparison is unavailable.",
   "diff.collapse": "Collapse context",
-  "diff.commit": "Commit {p1}",
   "diff.expand": "Expand context",
   "diff.hidden-lines": "⋯ {count} unchanged lines",
   "diff.next": "Next change",
