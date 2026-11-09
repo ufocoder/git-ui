@@ -470,6 +470,8 @@
   "stage.all": "Stage all",
   "stage.empty": "No files",
   "stage.file": "Stage: {path}",
+  "stage.hunk": "Stage hunk",
+  "stage.hunk-stale": "This diff changed or does not support staging individual hunks. Refresh the diff and try again.",
   "stage.invalid-scope": "Invalid file comparison scope",
   "stage.staged": "Staged",
   "stage.unstage-all": "Unstage all",

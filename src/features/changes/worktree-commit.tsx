@@ -115,6 +115,25 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       finally { if (mounted && request === loadRequest) setLoading(false); }
     })();
   });
+  const canStageHunk = (data: FileDiff) => Boolean(props.onCommitted && !props.history?.operation
+    && selectedGroup() === "unstaged" && data.file.status === "M" && !data.file.old_path && !data.truncated && !data.patch.includes("\uFFFD")
+    && /^diff --git [^\n]+\nindex [^\n]+ 100(?:644|755)\n--- [^\n]+\n\+\+\+ [^\n]+\n@@ /.test(data.patch));
+
+  async function stageHunk(data: FileDiff, index: number) {
+    if (!canStageHunk(data) || disabled()) return;
+    setPending(true); props.onBusyChange(true);
+    try {
+      const { files: updated } = await git.stageWorktreeHunk(data.file.path, data.patch, index);
+      if (!mounted || !props.history) return;
+      const file = updated.find(entry => entry.path === data.file.path);
+      if (!selectedDirectory() && file?.staged && !file.partially_staged) setSelectedGroup("staged");
+      setFiles(updated);
+      props.onCommitted?.({ ...props.history, worktree_files: updated, has_changes: updated.length > 0, conflicts: updated.filter(entry => entry.status === "U") });
+    } catch {
+      try { if (mounted) props.onCommitted?.(await git.getHistory()); } catch { /* The terminal already reports the failure. */ }
+    } finally { setPending(false); props.onBusyChange(false); }
+  }
+
   async function stageFile(file: CommitFile, staged: boolean) {
     await stageFiles([file], staged);
   }
@@ -204,10 +223,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         <div class="min-h-0 flex-1">
           <Show when={selectedDirectory()} fallback={<>
           <Show when={diffLoading()}><p role="status" class="pt-4 text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
-          <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} />}</Show>
+          <Show when={diff()}>{data => <FileDiffView diff={data()} scope={props.onCommitted ? selectedGroup() : undefined} stageDisabled={disabled()}
+            onStageHunk={canStageHunk(data()) ? index => void stageHunk(data(), index) : undefined} />}</Show>
           <Show when={!selectedPath() && (loading() || files().length > 0)}><p class="pt-4 text-sm text-muted-foreground">{t("commit.select-file")}</p></Show>
           </>}>
-            <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined} />
+            <DirectoryDiffView path={selectedDirectory()} files={directoryFiles()} commit={WORKTREE} scope={props.onCommitted ? selectedGroup() : undefined}
+              canStageHunk={canStageHunk} onStageHunk={(data, index) => void stageHunk(data, index)} stageDisabled={disabled()} />
           </Show>
         </div>
       </section>

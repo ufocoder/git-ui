@@ -61,7 +61,12 @@ pub(super) fn read_worktree_files(path: &Path) -> Result<Vec<CommitFile>, String
         }
         let renamed = bytes[..2].iter().any(|b| *b == b'R' || *b == b'C');
         let old_path = if renamed {
-            Some(fields.next().ok_or(locale::text("error.missing-original"))?.to_owned())
+            Some(
+                fields
+                    .next()
+                    .ok_or(locale::text("error.missing-original"))?
+                    .to_owned(),
+            )
         } else {
             None
         };
@@ -344,4 +349,106 @@ pub(super) async fn get_file_diff(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn stage_hunk(
+    path: &Path,
+    file_path: &str,
+    snapshot: &str,
+    index: usize,
+) -> Result<CommitDetails, String> {
+    let stale = || locale::text("stage.hunk-stale").to_owned();
+    crate::stash::ensure_no_operation(path)?;
+    let diff = read_worktree_diff_scoped(path, file_path, Some(WorktreeDiffScope::Unstaged))
+        .map_err(|_| stale())?;
+    if diff.truncated
+        || diff.file.status != "M"
+        || diff.file.old_path.is_some()
+        || snapshot.contains('\u{fffd}')
+        || diff.patch != snapshot
+    {
+        return Err(stale());
+    }
+    let mut offset = 0;
+    let mut hunks = Vec::new();
+    for line in snapshot.split_inclusive('\n') {
+        if line.starts_with("@@ ") {
+            hunks.push(offset);
+        }
+        offset += line.len();
+    }
+    let start = *hunks.get(index).ok_or_else(stale)?;
+    let header = &snapshot[..hunks[0]];
+    if !header.starts_with("diff --git ")
+        || header.lines().count() != 4
+        || !header.lines().nth(1).is_some_and(|line| {
+            line.starts_with("index ") && (line.ends_with(" 100644") || line.ends_with(" 100755"))
+        })
+        || !header
+            .lines()
+            .nth(2)
+            .is_some_and(|line| line.starts_with("--- a/") || line.starts_with("--- \"a/"))
+        || !header
+            .lines()
+            .nth(3)
+            .is_some_and(|line| line.starts_with("+++ b/") || line.starts_with("+++ \"b/"))
+    {
+        return Err(stale());
+    }
+    let end = hunks.get(index + 1).copied().unwrap_or(snapshot.len());
+    let patch = format!("{header}{}", &snapshot[start..end]);
+    crate::git_command::git_with_input(
+        path,
+        &["apply", "--cached", "--whitespace=nowarn", "-"],
+        &patch,
+        &[],
+    )?;
+    read_commit_details(path, WORKTREE)
+}
+
+#[tauri::command]
+pub(super) async fn stage_worktree_hunk(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    file_path: String,
+    snapshot: String,
+    index: usize,
+) -> Result<CommitDetails, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        stage_hunk(Path::new(&path), &file_path, &snapshot, index)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod hunk_tests {
+    use super::*;
+    use crate::tests::{TempRepo, commit_file};
+
+    #[test]
+    fn stages_one_hunk_and_rejects_stale_snapshots() {
+        let repo = TempRepo::new();
+        repo.init();
+        let mut lines: Vec<_> = (0..100).map(|line| format!("line {line}\n")).collect();
+        commit_file(&repo, &lines.concat(), "base");
+        lines[2] = "first edit\n".into();
+        lines[80] = "second edit\n".into();
+        let working = lines.concat();
+        std::fs::write(repo.0.join("file.txt"), &working).unwrap();
+        let snapshot =
+            read_worktree_diff_scoped(&repo.0, "file.txt", Some(WorktreeDiffScope::Unstaged))
+                .unwrap();
+        let updated = stage_hunk(&repo.0, "file.txt", &snapshot.patch, 1).unwrap();
+        assert!(updated.files[0].partially_staged);
+        let cached = git(&repo.0, &["diff", "--cached"]).unwrap();
+        assert!(cached.contains("+second edit"));
+        assert!(!cached.contains("first edit"));
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            working
+        );
+        assert!(stage_hunk(&repo.0, "file.txt", &snapshot.patch, 0).is_err());
+    }
 }

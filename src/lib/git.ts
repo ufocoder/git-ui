@@ -45,6 +45,7 @@ const operationLabels = (): Record<string, string> => ({
   change_project_reference: t("ref-action.update"),
   push_project_tags: t("tag-push.title"), delete_project_tag: t("tag-delete.title"), remote_project_tag_exists: t("tag-delete.checking"),
   publish_project_branch: t("upstream.publish-branch"), set_project_upstream: t("upstream.set"),
+  stage_worktree_hunk: t("stage.hunk"),
   preview_history_rewrite: t("rewrite.preview"), rewrite_history: t("rewrite.title"),
   run_commit_operation: t("operation.title"),
   get_conflict_file: t("conflict.title"), resolve_conflict_file: t("conflict.save"),
@@ -58,7 +59,7 @@ const operationLabels = (): Record<string, string> => ({
   checkout_project_commit: t("command.detach"), reset_project_commit: t("command.reset"), set_project_file_staged: t("git.stage"),
   commit_project_changes: t("command.commit"), initialize_project: t("command.init"), can_initialize_project: t("git.check-folder"),
 });
-const mutations = new Set(["rewrite_history","execute_branch_action","change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+const mutations = new Set(["rewrite_history", "stage_worktree_hunk","execute_branch_action","change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 function operationName(command: string, args?: Record<string, unknown>): string {
   if (command === "execute_branch_action") return args?.action === "delete" ? t("ref-action.delete-branch") : t("branch-action.rebase");
@@ -138,6 +139,7 @@ export const git = {
   stash: (action: StashAction) => request<History>("stash_project", { action }),
   publishBranch: (branch: string, remote: string, remoteBranch: string) => request<History>("publish_project_branch", { branch, remote, remoteBranch }),
   setUpstream: (branch: string, remote: string, remoteBranch: string) => request<History>("set_project_upstream", { branch, remote, remoteBranch }),
+  stageWorktreeHunk: (filePath: string, snapshot: string, index: number) => request<CommitDetails>("stage_worktree_hunk", { filePath, snapshot, index }),
   previewHistoryRewrite: (target: HistoryRewriteTarget) => request<HistoryRewritePreview>("preview_history_rewrite", { target }),
   rewriteHistory: (target: HistoryRewriteTarget, message: string, acceptPublished: boolean) => request<History>("rewrite_history", { target, message, acceptPublished }),
   commitOperation: (head: string, branch: string, action: CommitOperation, options?: CommitOptions) => request<History>("run_commit_operation", { head, branch, action, options }),

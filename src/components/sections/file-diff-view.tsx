@@ -12,7 +12,7 @@ import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
 import { WORKTREE, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
 
 function readView() { try { return localStorage.getItem("git-ui.diff-view") === "split"; } catch { return false; } }
-export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stash?: boolean }) {
+export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stash?: boolean; stageDisabled?: boolean; onStageHunk?: (index: number) => void }) {
   const [split, setSplit] = createSignal(readView());
   const [collapse, setCollapse] = createSignal(true);
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set());
@@ -43,7 +43,13 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     return line?.kind === "add" ? "bg-success text-success-foreground" : line?.kind === "remove" ? "bg-error text-error-foreground" : line?.kind === "meta" ? "text-muted-foreground italic" : "";
   }
   function renderRow(row: DiffRow, side?: "left" | "right") {
-    if (row.kind === "header") return <div ref={element => { if (side !== "right") headers.set(row.hunk, element); }} class="h-diff-header min-w-max bg-info px-3 py-1 font-mono text-diff leading-diff text-info-foreground">{row.text}</div>;
+    if (row.kind === "header") return <div ref={element => { if (side !== "right") headers.set(row.hunk, element); }}
+      class="flex h-diff-header min-w-max items-center justify-between gap-2 bg-info px-3 py-1 font-mono text-diff leading-diff text-info-foreground">
+      <span>{row.text}</span>
+      <Show when={side !== "left" && props.onStageHunk}>
+        <Button variant="ghost" size="sm" class="h-full px-2 font-sans text-2xs" disabled={props.stageDisabled} onClick={() => props.onStageHunk?.(row.hunk)}>{t("stage.hunk")}</Button>
+      </Show>
+    </div>;
     if (row.kind === "fold") return <button class="block h-diff-header w-full min-w-max bg-muted/50 px-3 text-left text-2xs text-muted-foreground hover:bg-muted" onClick={() => setExpanded(previous => new Set([...previous, row.id]))}>{t("diff.hidden-lines", { count: row.count })}</button>;
     const line = side === "left" ? row.left : side === "right" ? row.right : row.left ?? row.right;
     return <div class={`flex h-diff-row min-w-max font-mono text-diff leading-diff ${lineClass(line)}`}>

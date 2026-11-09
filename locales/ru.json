@@ -470,6 +470,8 @@
   "stage.all": "Добавить всё",
   "stage.empty": "Нет файлов",
   "stage.file": "Добавить в staged: {path}",
+  "stage.hunk": "Добавить блок в staged",
+  "stage.hunk-stale": "Изменения обновились или этот diff нельзя добавить по блокам. Обновите просмотр и повторите попытку.",
   "stage.invalid-scope": "Некорректная область сравнения файлов",
   "stage.staged": "Staged",
   "stage.unstage-all": "Убрать всё",

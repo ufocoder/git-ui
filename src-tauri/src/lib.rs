@@ -153,6 +153,7 @@ pub fn run() {
             commit_ops::run_commit_operation,
             history_rewrite::preview_history_rewrite,
             history_rewrite::rewrite_history,
+            diffs::stage_worktree_hunk,
             branch_comparisons::get_branch_comparisons,
             branch_actions::preview_branch_action,
             branch_actions::execute_branch_action,

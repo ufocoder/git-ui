@@ -6,7 +6,9 @@ import { git, type CommitFile, type FileDiff, type WorktreeDiffScope } from "~/l
 import { t } from "~/lib/i18n";
 import FileDiffView from "./file-diff-view";
 
-type Props = { path: string; files: CommitFile[]; commit: string; stash?: boolean; scope?: WorktreeDiffScope };
+type HunkActions = { canStageHunk?: (diff: FileDiff) => boolean; onStageHunk?: (diff: FileDiff, index: number) => void; stageDisabled?: boolean };
+
+type Props = HunkActions & { path: string; files: CommitFile[]; commit: string; stash?: boolean; scope?: WorktreeDiffScope };
 
 export default function DirectoryDiffView(props: Props) {
   let viewport!: HTMLDivElement;
@@ -18,13 +20,14 @@ export default function DirectoryDiffView(props: Props) {
     </PanelHeader>
     <div ref={value => { viewport = value; }} class="-mx-4 min-h-0 flex-1 divide-y overflow-auto">
       <For each={props.files.map(file => file.path)}>{path =>
-        <DirectoryFileDiff path={path} commit={props.commit} stash={props.stash} scope={props.scope} revision={props.files} viewport={() => viewport} />
+        <DirectoryFileDiff path={path} commit={props.commit} stash={props.stash} scope={props.scope} revision={props.files} viewport={() => viewport}
+          canStageHunk={props.canStageHunk} onStageHunk={props.onStageHunk} stageDisabled={props.stageDisabled} />
       }</For>
     </div>
   </section>;
 }
 
-function DirectoryFileDiff(props: { path: string; commit: string; stash?: boolean; scope?: WorktreeDiffScope; revision: CommitFile[]; viewport: () => HTMLElement }) {
+function DirectoryFileDiff(props: HunkActions & { path: string; commit: string; stash?: boolean; scope?: WorktreeDiffScope; revision: CommitFile[]; viewport: () => HTMLElement }) {
   let element!: HTMLDivElement;
   let generation = 0;
   let identity = "";
@@ -61,7 +64,8 @@ function DirectoryFileDiff(props: { path: string; commit: string; stash?: boolea
   }
   return <div ref={value => { element = value; }} class="min-w-0 px-4 pb-4" aria-busy={loading()}>
     <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("details.loading-diff")}</p></Show></div>}>{data =>
-      <FileDiffView diff={data()} scope={props.scope} stash={props.stash} inline />
+      <FileDiffView diff={data()} scope={props.scope} stash={props.stash} inline stageDisabled={props.stageDisabled || loading() || failed()}
+        onStageHunk={props.canStageHunk?.(data()) && props.onStageHunk ? index => props.onStageHunk?.(data(), index) : undefined} />
     }</Show>
     <Show when={failed()}><p role="alert" class="mt-2 text-xs text-destructive">{t("directory.load-error")}</p><Button variant="link" size="sm" onClick={() => void load()}>{t("history.retry")}</Button></Show>
   </div>;
