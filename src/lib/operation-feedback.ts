@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js";
+import type { RewriteRecovery } from "./git-types.ts";
 import { t } from "./i18n.ts";
 
-export type OperationNotice = { id: number; state: "running" | "success" | "error"; message: string };
+export type OperationNotice = { id: number; state: "running" | "success" | "error"; message: string; recovery?: RewriteRecovery };
 export const [operationNotice, setOperationNotice] = createSignal<OperationNotice>();
 let nextId = 0;
 export function startOperation(message: string) {
@@ -11,6 +12,9 @@ export function startOperation(message: string) {
 }
 export function finishOperation(id: number, message: string) {
   if (operationNotice()?.id === id) setOperationNotice({ id, state: "success", message: t("notice.done", { operation: message }) });
+}
+export function offerHistoryRecovery(recovery: RewriteRecovery) {
+  setOperationNotice(notice => notice?.state === "success" ? { ...notice, recovery } : notice);
 }
 export function explainOperationError(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error);

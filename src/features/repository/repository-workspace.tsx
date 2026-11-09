@@ -1,3 +1,5 @@
+import type { RewriteRecovery } from "~/lib/git";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { createRepositorySync } from "~/features/sync/repository-sync";
 import { modeAfterStash } from "~/features/stash/stash-mode";
 import { createCommitFlow, matchesPushTarget, type CommitFlowState, type CommitRequest } from "~/features/changes/commit-flow";
@@ -91,6 +93,16 @@ export default function RepositoryWorkspace(props: {
       if (failed && matchesPushTarget(updated, failed)) commitFlow.dismiss();
     },
   });
+  const canRestore = (target: RewriteRecovery) => !busy() && history().tip === target.head && history().current_branch === target.branch
+    && !history().has_changes && !history().operation;
+  async function restoreHistory(target: RewriteRecovery) {
+    if (!canRestore(target)) return;
+    setBusy(true);
+    try { setHistory(await git.restoreRewrittenHistory(target.head, target.branch)); }
+    catch { /* The terminal reports failures. */ }
+    finally { setBusy(false); }
+  }
+
   const [retryingPush, setRetryingPush] = createSignal(false);
   const syncAction = () => retryingPush() ? "push" : sync.action();
   createEffect(() => {
@@ -328,6 +340,18 @@ export default function RepositoryWorkspace(props: {
               <RepositoryContent onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
         </section>
     </main>
-    <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} />
+    <Dialog open={Boolean(sync.forceTarget())} onOpenChange={open => { if (!open) sync.setForceTarget(undefined); }}>
+      <Show when={sync.forceTarget()}>{target => <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("push.lease-title")}</DialogTitle>
+          <DialogDescription>{t("push.lease-description", { remote: target().remote, branch: target().reference.slice("refs/heads/".length), sha: target().expected.slice(0, 8) })}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => sync.setForceTarget(undefined)}>{t("common.cancel")}</Button>
+          <Button variant="destructive" disabled={busy()} onClick={() => void sync.forcePush()}>{t("push.lease-confirm")}</Button>
+        </DialogFooter>
+      </DialogContent>}</Show>
+    </Dialog>
+    <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} canRestore={canRestore} onRestore={target => void restoreHistory(target)} />
   </>;
 }

@@ -98,7 +98,8 @@ fn run(
     })?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    let combined = if stdout.is_empty() {
+    // Remote URLs can contain credentials. Keep their stdout out of the terminal log.
+    let combined = if args.starts_with(&["remote", "get-url"]) || stdout.is_empty() {
         stderr.to_string()
     } else if stderr.is_empty() {
         stdout.to_string()

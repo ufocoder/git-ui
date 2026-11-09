@@ -112,7 +112,12 @@ pub fn push_current(path: &Path) -> Result<(), String> {
     let branch = current_branch(path, None)?;
     let (remote, target) = destination(path, &branch)?;
     let refspec = format!("refs/heads/{branch}:{target}");
-    git(path, &["push", "--no-force", "--", &remote, &refspec])?;
+    crate::git_command::git_with_input(
+        path,
+        &["push", "--no-force", "--", &remote, &refspec],
+        "",
+        &[("LC_ALL", "C")],
+    )?;
     Ok(())
 }
 #[derive(Clone, Copy, Default, serde::Deserialize)]
@@ -230,5 +235,175 @@ mod pull_tests {
                 "true"
             );
         }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+pub struct ForcePushTarget {
+    branch: String,
+    head: String,
+    remote: String,
+    reference: String,
+    expected: String,
+    endpoint: String,
+}
+
+fn force_target(
+    path: &Path,
+    branch: &str,
+    head: &str,
+    expected: &str,
+) -> Result<ForcePushTarget, String> {
+    let stale = || locale::text("push.lease-unavailable").to_owned();
+    current_branch(path, Some(branch))?;
+    crate::stash::ensure_no_operation(path)?;
+    if git(path, &["rev-parse", "--verify", "HEAD"])?.trim() != head {
+        return Err(stale());
+    }
+    let original = crate::history_rewrite::original_head(path, head, branch)?;
+    crate::commit_diff_args(path, expected)?;
+    let (remote, reference) = destination(path, branch)?;
+    if git(path, &["rev-parse", "--verify", "@{upstream}"])?.trim() != expected {
+        return Err(stale());
+    }
+    git(path, &["merge-base", "--is-ancestor", expected, &original]).map_err(|_| stale())?;
+    let urls = git(
+        path,
+        &["remote", "get-url", "--push", "--all", "--", &remote],
+    )?;
+    if urls.lines().count() != 1 {
+        return Err(stale());
+    }
+    let endpoint =
+        crate::git_command::git_with_input(path, &["hash-object", "--stdin"], &urls, &[])?
+            .trim()
+            .to_owned();
+    Ok(ForcePushTarget {
+        branch: branch.into(),
+        head: head.into(),
+        remote,
+        reference,
+        expected: expected.into(),
+        endpoint,
+    })
+}
+
+#[tauri::command]
+pub async fn preview_force_push(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    branch: String,
+    head: String,
+    expected: String,
+) -> Result<ForcePushTarget, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        force_target(Path::new(&path), &branch, &head, &expected)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn push_with_lease(path: &Path, target: &ForcePushTarget) -> Result<ProjectHistory, String> {
+    if force_target(path, &target.branch, &target.head, &target.expected)? != *target {
+        return Err(locale::text("push.lease-unavailable").into());
+    }
+    let lease = format!(
+        "--force-with-lease={}:{}",
+        target.reference, target.expected
+    );
+    let refspec = format!("{}:{}", target.head, target.reference);
+    git(
+        path,
+        &[
+            "push",
+            "--no-follow-tags",
+            &lease,
+            "--",
+            &target.remote,
+            &refspec,
+        ],
+    )?;
+    read_history(path)
+}
+
+#[tauri::command]
+pub async fn force_push_with_lease(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    target: ForcePushTarget,
+) -> Result<ProjectHistory, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || push_with_lease(Path::new(&path), &target))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod lease_tests {
+    use super::*;
+    use crate::tests::{TempRepo, commit_file};
+
+    #[test]
+    fn force_push_rejects_a_remote_tip_changed_after_preview() {
+        let repo = TempRepo::new();
+        let remote = TempRepo::new();
+        repo.init();
+        git(&remote.0, &["init", "--bare"]).unwrap();
+        commit_file(&repo, "same tree", "old");
+        let branch = current_branch(&repo.0, None).unwrap();
+        let old = git(&repo.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_owned();
+        git(
+            &repo.0,
+            &["remote", "add", "origin", remote.0.to_str().unwrap()],
+        )
+        .unwrap();
+        git(&repo.0, &["push", "-u", "origin", "HEAD:refs/heads/main"]).unwrap();
+        git(
+            &repo.0,
+            &[
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--amend",
+                "-m",
+                "rewritten",
+            ],
+        )
+        .unwrap();
+        let head = git(&repo.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_owned();
+        git(
+            &repo.0,
+            &[
+                "update-ref",
+                &format!("refs/git-ui/rewrite-results/{head}/{branch}"),
+                &old,
+            ],
+        )
+        .unwrap();
+        let target = force_target(&repo.0, &branch, &head, &old).unwrap();
+
+        // Update the remote directly so the local tracking reference remains stale.
+        git(&remote.0, &["update-ref", "-d", "refs/heads/main", &old]).unwrap();
+        assert!(push_with_lease(&repo.0, &target).is_err());
+        assert!(git(&remote.0, &["rev-parse", "--verify", "refs/heads/main"]).is_err());
+        git(&remote.0, &["update-ref", "refs/heads/main", &old]).unwrap();
+        push_with_lease(&repo.0, &target).unwrap();
+        assert_eq!(
+            git(&remote.0, &["rev-parse", "refs/heads/main"])
+                .unwrap()
+                .trim(),
+            head
+        );
     }
 }

@@ -1,3 +1,4 @@
+import { offerHistoryRecovery } from "~/lib/operation-feedback";
 import HistoryRewriteDialog, { type HistoryRewriteAction } from "./history-rewrite-dialog";
 import * as Popover from "@kobalte/core/popover";
 import ReferenceAutocomplete from "./reference-autocomplete";
@@ -289,6 +290,14 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           </Button>
         </div>
       </div>
+      <Show when={rangeSelection().length > 1}>
+        <div class="flex shrink-0 items-center gap-2 border-b bg-muted/40 px-4 py-1">
+          <span role="status" class="mr-auto text-xs text-muted-foreground">{t("rewrite.selected", { count: rangeSelection().length })}</span>
+          <Button size="sm" variant="ghost" class="h-7 text-xs" disabled={!canRewrite() || !linearRange(rangeSelection())}
+            onClick={() => openRewrite(rangeSelection())}>{t("rewrite.combine")}</Button>
+          <Button size="sm" variant="ghost" class="h-7 text-xs" onClick={() => { setRangeSelection([]); setSelectionAnchor(selectedCommit()?.hash); }}>{t("search.clear")}</Button>
+        </div>
+      </Show>
       <Show when={filter().file}>
         <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-3 py-1.5" role="status">
           <p class="min-w-0 break-all text-xs text-muted-foreground">{t("search.file-history", { path: filter().file })}</p>
@@ -393,6 +402,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         onExecute={(target, message, acceptPublished) => runAction(async () => {
           const history = await git.rewriteHistory(target, message, acceptPublished);
           previousContext = "";
+          if (history.tip !== target.head) offerHistoryRecovery({ head: history.tip, branch: target.branch });
           return history;
         })} />
       <CommitEditDialog action={editAction()} onClose={() => setEditAction(undefined)} onExecute={(head, branch, operation) => runAction(() => git.commitOperation(head, branch, operation))} />

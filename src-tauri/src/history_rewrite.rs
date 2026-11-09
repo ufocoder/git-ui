@@ -246,8 +246,15 @@ fn rewrite(
             return Err(locale::text("rewrite.invalid-range").into());
         }
         let transaction = format!(
-            "option no-deref\nupdate {} {}\noption no-deref\nupdate refs/heads/{} {} {}\n",
-            plan.preview.backup, target.head, target.branch, rewritten, target.head,
+            "option no-deref\nupdate {} {}\noption no-deref\nupdate refs/heads/{} {} {}\noption no-deref\nupdate refs/git-ui/rewrite-results/{}/{} {}\n",
+            plan.preview.backup,
+            target.head,
+            target.branch,
+            rewritten,
+            target.head,
+            rewritten,
+            target.branch,
+            target.head,
         );
         git_with_input(
             path,
@@ -355,6 +362,22 @@ mod tests {
     }
 
     #[test]
+    fn restores_only_when_branch_still_has_the_rewritten_tip() {
+        let (repo, commits, branch) = fixture();
+        let target = Target {
+            head: commits[2].clone(),
+            branch: branch.clone(),
+            commits: vec![commits[2].clone()],
+        };
+        let updated = rewrite(&repo.0, &target, "rewritten", false).unwrap();
+        let restored = restore(&repo.0, updated.tip.clone(), branch.clone()).unwrap();
+        assert_eq!(restored.tip, target.head);
+        assert!(!restored.has_changes);
+        commit_file(&repo, "new", "new");
+        assert!(restore(&repo.0, updated.tip, branch).is_err());
+    }
+
+    #[test]
     fn reword_across_merge_preserves_unrelated_parent_and_rejects_squash() {
         let (repo, commits, branch) = fixture();
         git(&repo.0, &["checkout", "-b", "side", &commits[0]]).unwrap();
@@ -431,4 +454,54 @@ mod tests {
             commits[1]
         );
     }
+}
+
+pub(super) fn original_head(path: &Path, head: &str, branch: &str) -> Result<String, String> {
+    crate::commit_diff_args(path, head)?;
+    let reference = format!("refs/git-ui/rewrite-results/{head}/{branch}");
+    git(path, &["rev-parse", "--verify", &reference])
+        .map(|value| value.trim().to_owned())
+        .map_err(|_| locale::text("operation.stale-target").into())
+}
+
+fn restore(path: &Path, head: String, branch: String) -> Result<ProjectHistory, String> {
+    let target = Target {
+        head,
+        branch,
+        commits: Vec::new(),
+    };
+    ensure_target(path, &target)?;
+    let old = original_head(path, &target.head, &target.branch)?;
+    let before = format!("{}^{{tree}}", target.head);
+    let after = format!("{old}^{{tree}}");
+    let trees = git(path, &["rev-parse", &before, &after])?;
+    if !matches!(trees.lines().collect::<Vec<_>>().as_slice(), [before, after] if before == after) {
+        return Err(locale::text("operation.stale-target").into());
+    }
+    git(
+        path,
+        &[
+            "update-ref",
+            "--no-deref",
+            "-m",
+            "Git UI: restore history",
+            &format!("refs/heads/{}", target.branch),
+            &old,
+            &target.head,
+        ],
+    )?;
+    read_history(path)
+}
+
+#[tauri::command]
+pub async fn restore_rewritten_history(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    head: String,
+    branch: String,
+) -> Result<ProjectHistory, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || restore(Path::new(&path), head, branch))
+        .await
+        .map_err(|error| error.to_string())?
 }
