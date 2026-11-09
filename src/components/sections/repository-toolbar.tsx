@@ -52,7 +52,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
     return undefined;
   };
   return (
-        <nav aria-label={t("toolbar.navigation")} class="flex shrink-0 flex-wrap items-center justify-start gap-2 border-b px-4 py-2 min-h-12">
+        <nav aria-label={t("toolbar.navigation")} class="flex shrink-0 flex-wrap items-center justify-start gap-2 border-b px-4 py-2 min-h-16">
           <Show when={props.mode === "history"} fallback={<Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conflict.title") : t("stash.title")}</h1></Show>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.remotes.length}

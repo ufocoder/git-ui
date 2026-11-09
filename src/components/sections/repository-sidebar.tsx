@@ -66,9 +66,9 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
       <div class="flex min-w-0 items-center gap-1">
         <Button variant="ghost" class="h-auto flex-1 min-w-0 justify-start gap-2 px-2 py-2 text-left" disabled={props.disabled} onClick={props.onChangeProject} aria-label={t("project.switch-to", { name: props.history.path.split(/[\\/]/).filter(Boolean).pop() ?? props.history.path })} aria-haspopup="dialog" aria-expanded={props.projectMenuOpen}>
           <img src={gitForkIcon} width="32" height="32" class="size-8 shrink-0" alt="" />
-          <div class="flex h-8 min-w-0 flex-1 flex-col justify-center">
-            <p class="truncate text-sm font-medium leading-4">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
-            <p class="truncate text-xs font-normal leading-4 text-muted-foreground" title={props.history.path}>{props.history.path}</p>
+          <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+            <p class="truncate text-base font-medium leading-5">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
+            <p class="truncate text-xs font-normal leading-4 text-muted-foreground">{props.history.path}</p>
           </div>
           <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
         </Button>
