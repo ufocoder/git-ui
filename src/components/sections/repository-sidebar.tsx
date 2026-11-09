@@ -1,4 +1,3 @@
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { WindowedList } from "~/components/ui/windowed-list";
 import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
@@ -21,8 +20,6 @@ import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
 export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
-  const platform = () => navigator.platform.toLowerCase();
-  const revealLabel = () => platform().startsWith("mac") ? t("file-action.finder") : platform().startsWith("win") ? t("file-action.explorer") : t("file-action.reveal");
   const [branchSearch, setBranchSearch] = createSignal("");
   const searchable = () => props.history.branches.length > 10;
   const branches = createMemo(() => {
@@ -75,21 +72,6 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
           </div>
           <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
         </Button>
-        <DropdownMenu placement="bottom-end">
-          <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled} aria-label={t("project.actions")} title={t("project.actions")}>
-            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onSelect={() => void git.revealPath().catch(() => {})}>{revealLabel()}</DropdownMenuItem>
-            <Show when={props.history.remotes.length} fallback={<DropdownMenuItem disabled>{t("project.view-remote")}</DropdownMenuItem>}>
-              <For each={props.history.remotes}>{remote =>
-                <DropdownMenuItem onSelect={() => void git.openProjectRemote(remote.name).catch(() => {})}>
-                  {props.history.remotes.length === 1 ? t("project.view-remote") : t("project.view-named-remote", { remote: remote.name })}
-                </DropdownMenuItem>
-              }</For>
-            </Show>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
       <nav class="mt-3 space-y-1" aria-label={t("toolbar.modes")}>
         <For each={[{ mode: "history" as const, label: t("mode.history"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode.changes"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conflict.title"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash.title"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>

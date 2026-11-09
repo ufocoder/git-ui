@@ -229,6 +229,32 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const visibleCommits = createMemo(() => displayedCommits().slice(start(), end()));
   const date = (value: string) => new Date(value).toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
+  async function navigateCommits(event: KeyboardEvent, from?: Commit) {
+    if (props.disabled || event.altKey || event.ctrlKey || event.metaKey
+      || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+    event.preventDefault();
+    const rows = displayedCommits();
+    const current = from ?? selectedCommit();
+    const currentIndex = rows.findIndex(commit => commit.hash === current?.hash);
+    const nextIndex = currentIndex < 0 ? 0 : currentIndex + (event.key === "ArrowDown" ? 1 : -1);
+    if (nextIndex < 0) return;
+    if (nextIndex === rows.length && hasMore()) {
+      const request = generation;
+      const focused = document.activeElement;
+      await loadMore();
+      if (request !== generation || document.activeElement !== focused || props.disabled) return;
+    }
+    const next = displayedCommits()[nextIndex];
+    if (!next) return;
+    selectRow(next, event.shiftKey);
+    const top = nextIndex * ROW_HEIGHT;
+    const bottom = top + headerHeight() + ROW_HEIGHT;
+    if (top < viewport.scrollTop) viewport.scrollTop = top;
+    else if (bottom > viewport.scrollTop + viewport.clientHeight) viewport.scrollTop = bottom - viewport.clientHeight;
+    setScrollTop(viewport.scrollTop);
+    viewport.querySelector<HTMLElement>(`[data-commit-index="${nextIndex}"]`)?.focus({ preventScroll: true });
+  }
+
   async function runAction(operation: () => Promise<History>) {
     if (props.disabled) throw new Error(t("history.busy"));
     props.onBusyChange(true); setError("");
@@ -312,6 +338,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         containerProps={{
           ref: element => { viewport = element; },
           onScroll: () => setScrollTop(viewport.scrollTop),
+          onKeyDown: event => { if (event.target === viewport) void navigateCommits(event); },
           class: "min-h-0 flex-1 bg-background [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           tabindex: 0,
           "aria-label": t("history.title"),
@@ -338,10 +365,19 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
             const graphRow = () => graph().rows[start() + index()];
             return <ContextMenu>
               <ContextMenuTrigger as={TableRow} disabled={props.disabled || commit.uncommitted}
+                data-commit-index={start() + index()}
                 data-state={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash) ? "selected" : undefined}
                 aria-selected={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash)} tabindex={props.disabled ? -1 : 0}
-                onClick={event => { if (!props.disabled) selectRow(commit, event.shiftKey); }}
-                onKeyDown={event => { if (!props.disabled && event.target === event.currentTarget && matchesShortcut("selectCommit", event)) { event.preventDefault(); selectRow(commit, event.shiftKey); } }}
+                onClick={event => {
+                  if (props.disabled) return;
+                  if (event.target instanceof Element && !event.target.closest("button, a, input")) event.currentTarget.focus({ preventScroll: true });
+                  selectRow(commit, event.shiftKey);
+                }}
+                onKeyDown={event => {
+                  if (props.disabled || event.target !== event.currentTarget) return;
+                  if (matchesShortcut("selectCommit", event)) { event.preventDefault(); selectRow(commit, event.shiftKey); }
+                  else void navigateCommits(event, commit);
+                }}
                 class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
                 <TableCell class="pl-2 pr-0">
                   <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>

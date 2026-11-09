@@ -191,7 +191,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   }
   return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
     <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto" classList={{ "[scrollbar-gutter:stable]": !props.onCommitted }}>
-      <section class="px-4 pb-4 pt-4" aria-label={t("commit.files")}>
+      <section class="px-4 pb-4 pt-4" data-file-navigation aria-label={t("commit.files")}>
         <Show when={props.onCommitted}>
           <div class="-mx-4 border-b px-4">
             <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
