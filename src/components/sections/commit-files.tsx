@@ -19,9 +19,11 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   const directoryFiles = createMemo(() => filesInDirectory(files(), selectedDirectory()));
   const [selectedFile, setSelectedFile] = createSignal("");
   const [diff, setDiff] = createSignal<FileDiff>();
+  let messageViewport: HTMLParagraphElement | undefined;
   let diffRequest = 0;
   let generation = 0;
   createEffect(on(createMemo(() => `${props.commit.hash}:${Boolean(props.stash)}`), () => {
+    if (messageViewport) messageViewport.scrollTop = 0;
     const hash = props.commit.hash;
     const request = ++generation;
     diffRequest++; setDiff(undefined); setOpening(false);
@@ -45,23 +47,30 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   return (
     <Resizable layoutId={props.stash ? "stash.details" : "history.details"} orientation="horizontal" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0">
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-hidden">
-        <section class="panel-surface flex h-full min-h-0 flex-col gap-4 px-4" aria-label={t("details.title")}>
-          <PanelHeader class="-mx-4 px-4"><h2>{props.stash ? t("stash.entry") : props.commit.uncommitted ? t("details.uncommitted") : t("details.selected")}</h2></PanelHeader>
-          <dl class="grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
-            <dt class="text-muted-foreground">{t("details.hash")}</dt><dd class="break-all font-mono">{props.commit.uncommitted ? "*" : props.commit.hash}</dd>
-            <dt class="text-muted-foreground">{props.stash ? t("stash.reference") : t("details.author")}</dt><dd class="break-words">{props.commit.author}</dd>
-            <dt class="text-muted-foreground">{t("details.date")}</dt><dd><Show when={props.commit.date} fallback="—"><time dateTime={props.commit.date}>{new Date(props.commit.date).toLocaleString(locale())}</time></Show></dd>
-          </dl>
-          <p class="line-clamp-3 shrink-0 cursor-text select-text whitespace-pre-wrap break-words text-sm" title={message()}>{message()}</p>
-          <Show when={props.commit.parents.length > 1}><p class="text-xs text-muted-foreground">{t("details.first-parent")}</p></Show>
-          <PanelHeader class="-mx-4 px-4"><h3>{t("details.files", { count: files().length })}</h3></PanelHeader>
-          <div class="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 [scrollbar-gutter:stable]">
+        <Resizable layoutId={props.stash ? "stash.details.files" : "history.details.files"} orientation="vertical" initialSizes={[0.6, 0.4]} class="panel-surface min-h-0">
+          <ResizablePanel minSize={0.25} class="flex min-h-0 flex-col overflow-hidden" aria-label={t("details.title")}>
+          <PanelHeader class="px-4"><h2>{props.stash ? t("stash.entry") : props.commit.uncommitted ? t("details.uncommitted") : t("details.selected")}</h2></PanelHeader>
+          <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4">
+            <dl class="grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
+              <dt class="text-muted-foreground">{t("details.hash")}</dt><dd class="break-all font-mono">{props.commit.uncommitted ? "*" : props.commit.hash}</dd>
+              <dt class="text-muted-foreground">{props.stash ? t("stash.reference") : t("details.author")}</dt><dd class="break-words">{props.commit.author}</dd>
+              <dt class="text-muted-foreground">{t("details.date")}</dt><dd><Show when={props.commit.date} fallback="—"><time dateTime={props.commit.date}>{new Date(props.commit.date).toLocaleString(locale())}</time></Show></dd>
+            </dl>
+            <p ref={element => { messageViewport = element; }} tabindex={0} aria-label={t("commit.message")} class="min-h-8 cursor-text select-text overflow-y-auto whitespace-pre-wrap break-words text-sm">{message()}</p>
+            <Show when={props.commit.parents.length > 1}><p class="text-xs text-muted-foreground">{t("details.first-parent")}</p></Show>
+          </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle aria-label={t("details.resize-files")} />
+          <ResizablePanel minSize={0.2} class="flex min-h-0 flex-col overflow-hidden">
+          <PanelHeader class="px-4"><h3>{t("details.files", { count: files().length })}</h3></PanelHeader>
+          <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]">
             <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("details.loading")}</p></Show>
             <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("details.no-files")}</p></Show>
             <ChangedFilesTree commit={props.commit.hash} files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
               onSelectDirectory={path => { if (!props.disabled) { diffRequest++; setOpening(false); setDiff(undefined); setSelectedFile(""); setSelectedDirectory(path); } }} />
           </div>
-        </section>
+          </ResizablePanel>
+        </Resizable>
       </ResizablePanel>
       <ResizableHandle withHandle aria-label={t("details.resize")} />
       <ResizablePanel minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">

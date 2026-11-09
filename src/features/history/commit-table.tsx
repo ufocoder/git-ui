@@ -279,7 +279,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   }
 
   return (
-    <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.55, 0.45]} class="min-h-0 min-w-0 overflow-hidden">
+    <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div class="flex shrink-0 flex-wrap items-center gap-1 border-b bg-muted/40 px-4 py-1">
         <span class="mr-1 text-xs text-muted-foreground">{t("history.branch-filter")}</span>

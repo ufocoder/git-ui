@@ -116,6 +116,7 @@
   "details.loading-diff": "Loading changes…",
   "details.no-files": "This commit has no file changes.",
   "details.resize": "Resize commit details and diff panels",
+  "details.resize-files": "Resize commit file list vertically",
   "details.select-file": "Select a file on the left to view changes.",
   "details.selected": "Selected commit",
   "details.title": "Selected commit details",
