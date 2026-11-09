@@ -38,6 +38,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
   };
   const pullBlocked = () => {
     if (props.busy) return t("history.busy");
+    if (props.history?.git_lfs_missing) return t("setup.lfs-warning");
     if (!props.history?.current_branch) return t("sidebar.detached");
     if (props.history.operation) return t("stash.operation-in-progress");
     if (!props.history.sync.upstream) return t(props.history.remotes.length ? "sync.no-upstream" : "error.remote-required");
@@ -69,7 +70,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               </DropdownMenu>
             </div>
             <div class="flex min-w-0 items-center">
-              <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" disabled={props.busy || !props.history?.current_branch || !props.history?.tip}
+              <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" disabled={props.busy || props.history?.git_lfs_missing || !props.history?.current_branch || !props.history?.tip}
                 aria-busy={props.action === "push"} aria-label={props.action === "push" ? t("push.running") : undefined}
                 onClick={() => void props.onSync("push")} title={props.history?.sync.upstream ? `${t("push.description")}\n${t("sync.comparison", { branch: props.history.sync.upstream })}${!props.history.sync.ahead && !props.history.sync.behind ? `\n${t("sync.up-to-date")}` : ""}` : t("push.description")}>
                 {props.history?.sync.upstream ? t("push.action") : t("toolbar.publish")}

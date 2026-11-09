@@ -61,6 +61,21 @@ fn run(
         .env_remove("GIT_COMMON_DIR")
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_EDITOR", "true");
+    #[cfg(target_os = "macos")]
+    {
+        // Finder launches with a shorter PATH than a login shell.
+        let inherited = std::env::var_os("PATH").unwrap_or_default();
+        let mut paths: Vec<_> = std::env::split_paths(&inherited).collect();
+        for directory in ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"] {
+            let directory = std::path::PathBuf::from(directory);
+            if !paths.contains(&directory) {
+                paths.push(directory);
+            }
+        }
+        if let Ok(path) = std::env::join_paths(paths) {
+            command.env("PATH", path);
+        }
+    }
     let input = input
         .map(str::to_owned)
         .or_else(|| (!revisions.is_empty()).then(|| revisions.join("\n") + "\n"));
@@ -116,6 +131,15 @@ fn run(
     if !output.status.success()
         && !(args.contains(&"--no-index") && output.status.code() == Some(1))
     {
+        if stderr.lines().any(|line| {
+            line.contains("git-lfs")
+                && (line.contains("command not found")
+                    || line.contains("not a git command")
+                    || line.contains("not found in PATH")
+                    || line.contains("not recognized as an internal or external command"))
+        }) {
+            return Err(locale::text("error.git-lfs-missing").into());
+        }
         return Err(locale::format(
             "error.git",
             &[(

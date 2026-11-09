@@ -45,6 +45,7 @@ export function createRepositorySync(api: SyncPort, session: {
   function request(next: SyncAction, pullMode?: PullMode) {
     if (session.busy()) return;
     const project = session.history();
+    if (project.git_lfs_missing && next !== "fetch") return;
     if (next === "push" && (!project.remotes.length || !project.sync.upstream)) {
       setTrackingMode("publish");
     } else if (next === "pull" && !project.sync.upstream) {

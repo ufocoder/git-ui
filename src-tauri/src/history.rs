@@ -152,6 +152,7 @@ pub(super) struct ProjectHistory {
     pub(super) tip: String,
     pub(super) has_more: bool,
     pub(super) has_changes: bool,
+    pub(super) git_lfs_missing: bool,
     pub(super) worktree_files: Vec<CommitFile>,
 }
 pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
@@ -183,7 +184,11 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
     tips.sort();
     tips.dedup();
     let page = read_branch_commit_page_at_tips(&path, &tip, 0, true, Some(&tips))?;
-    let working_files = read_worktree_files(&path)?;
+    let (working_files, git_lfs_missing) = match read_worktree_files(&path) {
+        Ok(files) => (files, false),
+        Err(error) if locale::matches_text("error.git-lfs-missing", &error) => (Vec::new(), true),
+        Err(error) => return Err(error),
+    };
     let current_branch = git(&path, &["branch", "--show-current"])?.trim().to_owned();
     Ok(ProjectHistory {
         conflicts: working_files
@@ -191,7 +196,7 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
             .filter(|file| file.status == "U")
             .cloned()
             .collect(),
-        operation: commit_ops::read(&path)?,
+        operation: if git_lfs_missing { None } else { commit_ops::read(&path)? },
         stashes: stash::list(&path)?,
         sync: sync_status::read(&path, &tip, &current_branch)?,
         last_fetch: fetch_status::read(&path),
@@ -205,6 +210,7 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         tip,
         has_more: page.has_more,
         has_changes: !working_files.is_empty(),
+        git_lfs_missing,
         worktree_files: working_files,
         tags: git(
             &path,

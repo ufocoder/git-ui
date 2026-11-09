@@ -6,10 +6,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 static ENGLISH: AtomicBool = AtomicBool::new(false);
 static SAVE_LOCK: Mutex<()> = Mutex::new(());
-fn messages() -> &'static serde_json::Value {
+fn messages(english: bool) -> &'static serde_json::Value {
     static RU: OnceLock<serde_json::Value> = OnceLock::new();
     static EN: OnceLock<serde_json::Value> = OnceLock::new();
-    if ENGLISH.load(Ordering::Relaxed) {
+    if english {
         EN.get_or_init(|| {
             serde_json::from_str(include_str!("../../locales/en.json"))
                 .expect("invalid locale dictionary")
@@ -22,7 +22,10 @@ fn messages() -> &'static serde_json::Value {
     }
 }
 pub fn text(key: &str) -> &'static str {
-    messages()[key].as_str().expect("unknown translation key")
+    messages(ENGLISH.load(Ordering::Relaxed))[key].as_str().expect("unknown translation key")
+}
+pub(crate) fn matches_text(key: &str, message: &str) -> bool {
+    [false, true].into_iter().any(|english| messages(english)[key].as_str() == Some(message))
 }
 fn settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(app

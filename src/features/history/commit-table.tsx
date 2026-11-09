@@ -96,7 +96,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
   const displayedCommits = createMemo(() => props.scope === "all" && viewingHead() && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
   const rangeHashes = createMemo(() => new Set(rangeSelection().map(commit => commit.hash)));
-  const canRewrite = () => !props.disabled && Boolean(props.history.current_branch) && !props.history.has_changes && !props.history.operation;
+  const canRewrite = () => !props.disabled && !props.history.git_lfs_missing && Boolean(props.history.current_branch) && !props.history.has_changes && !props.history.operation;
   const squashRange = (commit: Commit) => rangeHashes().has(commit.hash) ? rangeSelection() : [];
   const linearRange = (range: Commit[]) => range.length > 1 && range.every((commit, index) =>
     commit.parents.length <= 1 && (index === 0 || commit.parents[0] === range[index - 1].hash));
@@ -367,11 +367,11 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(commit)}>{t("history.copy-sha")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => void checkout(commit)}>{t("history.checkout")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("reset.to-commit")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing} onSelect={() => void checkout(commit)}>{t("history.checkout")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("reset.to-commit")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("branch.from-commit")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.cherry-pick")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.revert")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.cherry-pick")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.revert")}</ContextMenuItem>
                 <Show when={commit.hash === props.history.tip && props.history.has_changes}>
                   <ContextMenuItem disabled={props.disabled || !props.history.current_branch || Boolean(props.history.operation)}
                     onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.amend")}</ContextMenuItem>

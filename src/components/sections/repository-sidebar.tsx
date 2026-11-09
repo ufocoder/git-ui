@@ -56,10 +56,10 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
   onCleanup(() => { comparisonGeneration++; clearTimeout(comparisonTimer); });
   function branchActions(branch: string) {
     return <>
-      <ContextMenuItem disabled={props.disabled || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("ref-action.switch")}</ContextMenuItem>
-      <ContextMenuItem title={branch !== props.history.current_branch ? t("ref-action.switch-before-push") : undefined} disabled={props.disabled || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("push.action")}</ContextMenuItem>
+      <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("ref-action.switch")}</ContextMenuItem>
+      <ContextMenuItem title={branch !== props.history.current_branch ? t("ref-action.switch-before-push") : undefined} disabled={props.disabled || props.history.git_lfs_missing || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("push.action")}</ContextMenuItem>
       <ContextMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("ref-action.rename")}</ContextMenuItem>
-      <ContextMenuItem disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branch-action.rebase")}</ContextMenuItem>
+      <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branch-action.rebase")}</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem class="text-destructive data-[highlighted]:text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("ref-action.delete-branch")}</ContextMenuItem>
     </>;
@@ -93,7 +93,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
       </div>
       <nav class="mt-3 space-y-1" aria-label={t("toolbar.modes")}>
         <For each={[{ mode: "history" as const, label: t("mode.history"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode.changes"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conflict.title"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash.title"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>
-          <SidebarMenuButton disabled={props.disabled || (item.mode !== "history" && item.count === 0)} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground">
+          <SidebarMenuButton disabled={props.disabled || (item.mode !== "history" && (props.history.git_lfs_missing || item.count === 0))} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground">
             <SectionIcon name={item.icon} /><span class="min-w-0 flex-1 truncate">{item.label}</span>
             <Show when={item.count > 0}><span class="rounded bg-muted px-1.5 text-xs tabular-nums">{item.mode === "commit" ? "•" : item.count}</span></Show>
           </SidebarMenuButton>
@@ -108,7 +108,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
         </div>
       </Show>
       <Show when={props.mode === "history"}>
-      <SidebarSection title={t("sidebar.branches")} icon={<SectionIcon name="branches" />} action={<Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled || !props.history.tip} onClick={props.onCreateBranch} aria-label={t("branch.create")} title={t("branch.create")}>+</Button>}>
+      <SidebarSection title={t("sidebar.branches")} icon={<SectionIcon name="branches" />} action={<Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled || props.history.git_lfs_missing || !props.history.tip} onClick={props.onCreateBranch} aria-label={t("branch.create")} title={t("branch.create")}>+</Button>}>
         <SidebarGroupContent>
           <Show when={!props.history.current_branch}><p class="px-2 py-2 text-xs text-muted-foreground">{t("sidebar.detached")}</p></Show>
           <Show when={props.history.current_branch && !props.history.branches.includes(props.history.current_branch)}>
@@ -132,11 +132,11 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
                 <span class="min-w-0 flex-1 truncate">{branch}</span>
                 <Show when={comparisons()[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
-                  <span class="flex shrink-0 gap-1 text-2xs font-normal tabular-nums text-muted-foreground group-data-[active=true]/branch:text-branch-counter-foreground"
+                  <span class="inline-flex shrink-0 items-center gap-1 rounded bg-muted-foreground px-1.5 text-2xs font-medium leading-4 tabular-nums text-background"
                     title={t("sidebar.comparison", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}
                     aria-label={t("sidebar.comparison", { p1: comparison().base, p2: comparison().ahead, p3: comparison().behind })}>
-                    <Show when={comparison().ahead > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-branch-counter group-data-[active=true]/branch:bg-branch-counter group-data-[active=true]/branch:text-branch-counter-foreground px-1 leading-4"><span aria-hidden="true">↑</span><span>{comparison().ahead}</span></span></Show>
-                    <Show when={comparison().behind > 0}><span class="inline-flex items-center gap-1 rounded border border-sidebar-border group-data-[active=true]/branch:border-branch-counter group-data-[active=true]/branch:bg-branch-counter group-data-[active=true]/branch:text-branch-counter-foreground px-1 leading-4"><span aria-hidden="true">↓</span><span>{comparison().behind}</span></span></Show>
+                    <Show when={comparison().ahead > 0}><span aria-hidden="true">{comparison().ahead}↑</span></Show>
+                    <Show when={comparison().behind > 0}><span aria-hidden="true">{comparison().behind}↓</span></Show>
                   </span>
                   </Show>
                 }</Show>

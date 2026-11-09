@@ -22,7 +22,7 @@ export default function FileActionsProvider(props: { history: History; disabled:
   onCleanup(() => { mounted = false; });
   onMount(() => { if (isTauri()) void git.fileActionsPlatform().then(value => { if (mounted) setPlatform(value); }).catch(() => {}); });
   const stale = () => Boolean(preview() && (preview()!.head !== props.history.tip || preview()!.branch !== props.history.current_branch));
-  const canRestore = () => Boolean(props.history.tip && !props.history.operation && !props.history.conflicts.length);
+  const canRestore = () => Boolean(props.history.tip && !props.history.git_lfs_missing && !props.history.operation && !props.history.conflicts.length);
   async function prepare() {
     if (pending() || props.disabled) return;
     setPending(true); setError(""); setPreview(undefined); setConfirmed(false);

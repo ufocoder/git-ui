@@ -93,7 +93,7 @@ export default function RepositoryWorkspace(props: {
       if (failed && matchesPushTarget(updated, failed)) commitFlow.dismiss();
     },
   });
-  const canRestore = (target: RewriteRecovery) => !busy() && history().tip === target.head && history().current_branch === target.branch
+  const canRestore = (target: RewriteRecovery) => !busy() && !history().git_lfs_missing && history().tip === target.head && history().current_branch === target.branch
     && !history().has_changes && !history().operation;
   async function restoreHistory(target: RewriteRecovery) {
     if (!canRestore(target)) return;
@@ -117,9 +117,10 @@ export default function RepositoryWorkspace(props: {
   });
   createEffect(() => {
     const project = history();
-    if (project && !project.has_changes && repositoryMode() === "commit") setRepositoryMode("history");
+    if (project.git_lfs_missing || (!project.has_changes && repositoryMode() === "commit")) setRepositoryMode("history");
   });
   function changeRepositoryMode(mode: RepositoryMode) {
+    if (history().git_lfs_missing && mode !== "history") return;
     if (mode === "commit" && !history().has_changes) return;
     if (mode === "conflicts" && !history().conflicts.length) return;
     if (mode === "stash" && !history().stashes.length) return;
@@ -299,13 +300,19 @@ export default function RepositoryWorkspace(props: {
   }
 
   return <>
-    <RepositorySidebar onStashListMount={setStashListMount} onSettings={props.onSettings} history={history()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={props.onChangeProject} projectMenuOpen={props.projectMenuOpen} disabled={busy()} onSwitchBranch={branch => void switchBranch(branch)}
+    <RepositorySidebar onStashListMount={setStashListMount} onSettings={props.onSettings} history={history()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={props.onChangeProject} projectMenuOpen={props.projectMenuOpen} disabled={busy()} onSwitchBranch={branch => history().git_lfs_missing ? setHistoryBranch(`refs/heads/${branch}`) : void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
       onRebaseBranch={name => setBranchAction({ name, kind: "rebase" })} onReferenceAction={action => action.kind === "branch" && action.deleting ? setBranchAction({ name: action.name, kind: "delete" }) : setReferenceAction(action)} onPushBranch={() => sync.request("push")} onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />
     <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />
     <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <RepositoryToolbar onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <Show when={history().git_lfs_missing}>
+          <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
+            <p role="status" class="text-xs">{t("setup.lfs-warning")}</p>
+            <Button size="sm" variant="outline" disabled={busy()} onClick={() => void refreshHistory()}>{t("setup.retry")}</Button>
+          </div>
+        </Show>
         <Show when={failedCommitPush()}>{target =>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
             <p role="status" class="text-sm font-medium">{t("commit.push-failed")}</p>

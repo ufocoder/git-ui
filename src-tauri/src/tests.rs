@@ -2315,3 +2315,25 @@ fn terminal_log_preserves_last_operation_and_reports_failures() {
         failed.id
     );
 }
+
+#[test]
+fn missing_git_lfs_keeps_history_available() {
+    let repo = TempRepo::new();
+    repo.init();
+    commit_file(&repo, "base", "base");
+    std::fs::write(repo.0.join(".gitattributes"), "file.txt filter=lfs\n").unwrap();
+    git(&repo.0, &["config", "filter.lfs.process", "echo 'git-lfs: command not found' >&2; exit 127"]).unwrap();
+    git(&repo.0, &["config", "filter.lfs.required", "true"]).unwrap();
+    let file = repo.0.join("file.txt");
+    std::fs::write(&file, "edit").unwrap();
+    std::fs::File::options().write(true).open(&file).unwrap()
+        .set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_600_000_000)).unwrap();
+    let history = read_history(&repo.0).unwrap();
+    assert!(history.git_lfs_missing);
+    assert_eq!(history.commits[0].subject, "base");
+    git(&repo.0, &["config", "--unset", "filter.lfs.required"]).unwrap();
+    git(&repo.0, &["config", "--unset", "filter.lfs.process"]).unwrap();
+    let history = read_history(&repo.0).unwrap();
+    assert!(!history.git_lfs_missing);
+    assert!(history.has_changes);
+}

@@ -41,6 +41,7 @@ export type SyncStatus = { upstream: string | null; remote_tip: string | null; a
 export type HistoryScope = "all" | "incoming" | "outgoing";
 export type History = {
   worktree_files?: CommitFile[];
+  git_lfs_missing?: boolean;
   tag_tips: Record<string, string>;
   branch_tips?: Record<string, string>;
   last_fetch?: number | null;
