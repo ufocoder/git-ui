@@ -345,7 +345,7 @@ const SidebarResizeHandle = () => {
     <div role="separator" aria-label={t("sidebar.width")} aria-orientation="vertical"
       aria-valuemin={180} aria-valuemax={maxWidth()} aria-valuenow={Math.round(width())}
       tabindex={0} title={t("sidebar.resize")}
-      class="absolute inset-y-0 -right-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none before:absolute before:inset-y-0 before:w-px before:bg-sidebar-border hover:before:bg-sidebar-ring focus-visible:before:w-0.5 focus-visible:before:bg-sidebar-ring"
+      class="absolute inset-y-0 -right-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none group/resize-handle"
       onPointerDown={event => {
         if (event.button !== 0 || drag) return
         event.preventDefault()
@@ -375,7 +375,7 @@ const SidebarResizeHandle = () => {
         else return
         event.preventDefault()
       }}>
-      <span aria-hidden="true" class="relative h-8 w-1 rounded-full bg-sidebar-border" />
+      <span aria-hidden="true" class="relative h-8 w-1 rounded-full bg-sidebar-border group-hover/resize-handle:bg-sidebar-ring group-focus-visible/resize-handle:bg-sidebar-ring" />
     </div>
   </Show>
 }
