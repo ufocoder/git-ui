@@ -562,7 +562,7 @@
   "theme.title": "Цветовая тема",
   "toolbar.modes": "Режим просмотра",
   "toolbar.navigation": "Навигация проекта",
-  "toolbar.publish": "↑ Опубликовать ветку",
+  "toolbar.publish": "Опубликовать ветку",
   "toolbar.push-settings": "Настройки отправки",
   "tree.title": "Дерево изменённых файлов",
   "tree.toggle-folder": "Свернуть или развернуть папку {path}",

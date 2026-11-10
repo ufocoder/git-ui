@@ -562,7 +562,7 @@
   "theme.title": "Color theme",
   "toolbar.modes": "View mode",
   "toolbar.navigation": "Project navigation",
-  "toolbar.publish": "↑ Publish branch",
+  "toolbar.publish": "Publish branch",
   "toolbar.push-settings": "Push settings",
   "tree.title": "Changed file tree",
   "tree.toggle-folder": "Collapse or expand folder {path}",
