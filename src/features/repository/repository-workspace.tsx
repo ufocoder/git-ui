@@ -88,8 +88,10 @@ export default function RepositoryWorkspace(props: {
     finally { setBusy(false); }
   }
 
+  const [tagFetchRevision, setTagFetchRevision] = createSignal(0);
   const sync = createRepositorySync(git, {
     history, busy, setBusy, setHistory,
+    onFetchCompleted: () => setTagFetchRevision(revision => revision + 1),
     onPushCompleted(updated) {
       const failed = failedCommitPush();
       if (failed && matchesPushTarget(updated, failed)) commitFlow.dismiss();
@@ -266,7 +268,7 @@ export default function RepositoryWorkspace(props: {
   }
 
   return <>
-    <RepositorySidebar onStashListMount={setStashListMount} onSettings={props.onSettings} onRepositorySettings={props.onRepositorySettings} history={history()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={props.onChangeProject} projectMenuOpen={props.projectMenuOpen} disabled={busy()} onSwitchBranch={branch => history().git_lfs_missing ? setHistoryBranch(`refs/heads/${branch}`) : void switchBranch(branch)}
+    <RepositorySidebar tagFetchRevision={tagFetchRevision()} onStashListMount={setStashListMount} onSettings={props.onSettings} onRepositorySettings={props.onRepositorySettings} history={history()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={props.onChangeProject} projectMenuOpen={props.projectMenuOpen} disabled={busy()} onSwitchBranch={branch => history().git_lfs_missing ? setHistoryBranch(`refs/heads/${branch}`) : void switchBranch(branch)}
       onCreateBranch={() => { setBranchName(""); setBranchError(""); setBranchDialogOpen(true); }}
       onRebaseBranch={name => setBranchAction({ name, kind: "rebase" })} onReferenceAction={action => action.kind === "branch" && action.deleting ? setBranchAction({ name: action.name, kind: "delete" }) : setReferenceAction(action)} onPushBranch={() => sync.request("push")} onCreateTag={createTag} onPushTags={pushTags} onDeleteTag={deleteTag} onAddRemote={addRemote} />
     <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />

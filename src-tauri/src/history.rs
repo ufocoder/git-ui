@@ -80,6 +80,7 @@ pub(super) struct Commit {
 pub(super) struct Remote {
     pub(super) name: String,
     pub(super) branches: Vec<String>,
+    pub(super) branch_dates: HashMap<String, i64>,
 }
 
 pub(super) fn read_remotes(path: &Path) -> Result<Vec<Remote>, String> {
@@ -90,21 +91,24 @@ pub(super) fn read_remotes(path: &Path) -> Result<Vec<Remote>, String> {
             let prefix = format!("refs/remotes/{name}/");
             let refs = git(
                 path,
-                &["for-each-ref", "--format=%(refname)%00%(symref)", &prefix],
+                &["for-each-ref", "--format=%(refname)%00%(symref)%00%(committerdate:unix)", &prefix],
             )?;
-            let branches = refs
+            let (branches, branch_dates) = refs
                 .lines()
                 .filter_map(|line| {
-                    let (reference, symbolic) = line.split_once('\0')?;
+                    let mut fields = line.split('\0');
+                    let (reference, symbolic, date) = (fields.next()?, fields.next()?, fields.next()?);
                     if !symbolic.is_empty() {
                         return None;
                     }
-                    reference.strip_prefix(&prefix).map(str::to_owned)
+                    let name = reference.strip_prefix(&prefix)?.to_owned();
+                    Some((name.clone(), (name, date.parse().unwrap_or_default())))
                 })
-                .collect();
+                .unzip();
             Ok(Remote {
                 name: name.into(),
                 branches,
+                branch_dates,
             })
         })
         .collect()
@@ -138,10 +142,12 @@ pub(super) struct ProjectHistory {
     pub(super) path: String,
     pub(super) commits: Vec<Commit>,
     pub(super) branches: Vec<String>,
+    pub(super) branch_dates: HashMap<String, i64>,
     pub(super) branch_comparisons: HashMap<String, BranchComparison>,
     pub(super) tag_tips: HashMap<String, String>,
     pub(super) branch_tips: HashMap<String, String>,
     pub(super) tags: Vec<String>,
+    pub(super) tag_objects: HashMap<String, String>,
     pub(super) stashes: Vec<stash::StashEntry>,
     pub(super) remotes: Vec<Remote>,
     pub(super) current_branch: String,
@@ -190,6 +196,15 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         Err(error) => return Err(error),
     };
     let current_branch = git(&path, &["branch", "--show-current"])?.trim().to_owned();
+    let (tags, tag_objects) = crate::tags::local_tags(&path)?;
+    let branch_refs = git(
+        &path,
+        &["for-each-ref", "--format=%(refname:short)%09%(committerdate:unix)", "refs/heads/"],
+    )?;
+    let (branches, branch_dates) = branch_refs.lines()
+        .filter_map(|line| line.split_once('\t'))
+        .map(|(name, date)| (name.to_owned(), (name.to_owned(), date.parse().unwrap_or_default())))
+        .unzip();
     Ok(ProjectHistory {
         conflicts: working_files
             .iter()
@@ -212,21 +227,11 @@ pub(super) fn read_history(path: &Path) -> Result<ProjectHistory, String> {
         has_changes: !working_files.is_empty(),
         git_lfs_missing,
         worktree_files: working_files,
-        tags: git(
-            &path,
-            &["for-each-ref", "--format=%(refname:strip=2)", "refs/tags/"],
-        )?
-        .lines()
-        .map(str::to_owned)
-        .collect(),
+        tags,
+        tag_objects,
         remotes: read_remotes(&path)?,
-        branches: git(
-            &path,
-            &["for-each-ref", "--format=%(refname:short)", "refs/heads/"],
-        )?
-        .lines()
-        .map(str::to_owned)
-        .collect(),
+        branches,
+        branch_dates,
         current_branch,
     })
 }

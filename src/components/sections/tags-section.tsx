@@ -1,6 +1,6 @@
 import SearchableReferenceList from "./searchable-reference-list";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
-import { Show, createSignal, createEffect, onCleanup } from "solid-js";
+import { Show, createSignal, createEffect, createMemo, onCleanup, on } from "solid-js";
 import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
 import { SidebarSection } from "~/components/ui/sidebar-section";
@@ -14,6 +14,7 @@ import AddSidebarItem from "./add-sidebar-item";
 
 export default function TagsSection(props: {
   history: History;
+  fetchRevision: number;
   disabled: boolean;
   onRename: (name: string) => void;
   onCreate: (name: string) => Promise<void>;
@@ -38,6 +39,43 @@ export default function TagsSection(props: {
       if (request === checkRequest) setRemoteTag(exists ? "present" : "absent");
     }).catch(() => { if (request === checkRequest) setRemoteTag("error"); });
   });
+  const [originTags, setOriginTags] = createSignal<Record<string, string>>();
+  const hasOrigin = createMemo(() => props.history.remotes.some(entry => entry.name === "origin"));
+  const repositoryPath = createMemo(() => props.history.path);
+  let originRequest = 0;
+  let lastCheck = -Infinity;
+  let checking = false;
+  function refreshOriginTags(force = false) {
+    if (!hasOrigin() || !props.history.tags.length) return;
+    if (!force && (checking || Date.now() - lastCheck < 60_000)) return;
+    const request = ++originRequest;
+    lastCheck = Date.now();
+    checking = true;
+    void git.getOriginTags().then(tags => {
+      if (request === originRequest) setOriginTags(tags);
+    }).catch(() => {
+      if (request === originRequest) setOriginTags(undefined);
+    }).finally(() => {
+      if (request === originRequest) checking = false;
+    });
+  }
+  createEffect(on([repositoryPath, hasOrigin], () => {
+    originRequest++;
+    checking = false;
+    lastCheck = -Infinity;
+    setOriginTags(undefined);
+  }));
+  createEffect(on(() => props.fetchRevision, () => refreshOriginTags(true), { defer: true }));
+  onCleanup(() => { originRequest++; });
+
+  function publicationStatus(tag: string) {
+    const snapshot = originTags();
+    const local = props.history.tag_objects?.[tag];
+    if (!snapshot || !local) return;
+    if (!Object.prototype.hasOwnProperty.call(snapshot, tag)) return "unpublished";
+    if (snapshot[tag] !== local) return "different";
+  }
+
   function open(tag: string | null, deleting = false) {
     setRemote(props.history.remotes.find(entry => entry.name === "origin")?.name ?? props.history.remotes[0]?.name ?? "");
     setError(""); setDeleteRemote(false); setSelection({ tag, deleting });
@@ -47,6 +85,8 @@ export default function TagsSection(props: {
     const chosen = selection();
     if (deleteRemote() && remoteTag() !== "present") return;
     if (!chosen || ((!chosen.deleting || deleteRemote()) && !remote()) || pending() || props.disabled) return;
+    const destination = remote();
+    const changesOrigin = destination === "origin" && (!chosen.deleting || deleteRemote());
     setPending(true); setError("");
     try {
       if (chosen.deleting && chosen.tag) await props.onDelete(chosen.tag, deleteRemote() ? remote() : null);
@@ -54,20 +94,30 @@ export default function TagsSection(props: {
       setSelection(undefined);
     }
     catch (reason) { setError(String(reason)); }
-    finally { setPending(false); }
+    finally {
+      setPending(false);
+      if (changesOrigin) refreshOriginTags(true);
+    }
   }
   const disabled = () => props.disabled || pending();
   return <>
     <SidebarSection title={t("sidebar.tags")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     }>
-      <SidebarGroupContent><SearchableReferenceList items={props.history.tags} disabled={disabled()} label={t("tag-search.search")} clearLabel={t("tag-search.clear")} emptyLabel={t("tag-search.empty")}>{tag => <SidebarMenuItem>
-          <ContextMenu>
+      <SidebarGroupContent><SearchableReferenceList sort={{ initial: "newest" }} items={props.history.tags} disabled={disabled()} label={t("tag-search.search")} clearLabel={t("tag-search.clear")} emptyLabel={t("tag-search.empty")}>{tag => <SidebarMenuItem>
+          <ContextMenu onOpenChange={open => { if (open) refreshOriginTags(); }}>
             <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
-              <span class="truncate" title={tag}>{tag}</span>
+              <span class="min-w-0 flex-1 truncate" title={tag}>{tag}</span>
+              <Show when={publicationStatus(tag)}>{status => {
+                const label = () => status() === "unpublished" ? t("tag-status.unpublished") : t("tag-status.different");
+                return <span class="ml-2 shrink-0 text-xs text-muted-foreground" title={label()}>
+                  <span aria-hidden="true">{status() === "unpublished" ? "↑" : "≠"}</span>
+                  <span class="sr-only">{label()}</span>
+                </span>;
+              }}</Show>
             </ContextMenuTrigger>
             <ContextMenuContent>
-              <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{t("tag-push.selected", { tag })}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{publicationStatus(tag) === "unpublished" ? t("tag-status.publish") : t("tag-push.selected", { tag })}</ContextMenuItem>
               <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tag-push.all")}</ContextMenuItem>
               <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("ref-action.rename")}</ContextMenuItem>
               <ContextMenuSeparator />

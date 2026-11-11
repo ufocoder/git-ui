@@ -129,6 +129,7 @@ export const git = {
   checkoutCommit: (commit: string) => request<History>("checkout_project_commit", { commit }),
   resetToCommit: (commit: string, mode: ResetMode, discardConfirmed: boolean, expectedHead: string, expectedBranch: string) => request<History>("reset_project_commit", { commit, mode, discardConfirmed, expectedHead, expectedBranch }),
   createTagAtCommit: (name: string, commit: string) => request<History>("create_project_tag_at_commit", { name, commit }),
+  getOriginTags: () => invoke<Record<string, string>>("get_origin_tags"),
   remoteTagExists: (remote: string, tag: string) => request<boolean>("remote_project_tag_exists", { remote, tag }),
   previewBranchAction: (name: string, checkRemotes: boolean) => request<BranchActionPreview>("preview_branch_action", { name, checkRemotes }),
   executeBranchAction: (action: "delete" | "rebase", preview: BranchActionPreview, remote: BranchRemoteTarget | null) => request<History>("execute_branch_action", { action, preview, remote, confirmed: true }),

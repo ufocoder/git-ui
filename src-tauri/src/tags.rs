@@ -1,6 +1,57 @@
 use crate::{git, locale, project_path, read_history, read_remotes, ProjectHistory, Projects};
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 use tauri::{State, WebviewWindow};
+
+pub(super) fn local_tags(path: &Path) -> Result<(Vec<String>, HashMap<String, String>), String> {
+    let refs = git(
+        path,
+        &[
+            "for-each-ref",
+            "--sort=refname",
+            "--sort=-creatordate",
+            "--format=%(refname:strip=2)%09%(objectname)",
+            "refs/tags/",
+        ],
+    )?;
+    let mut names = Vec::new();
+    let mut objects = HashMap::new();
+    for (name, object) in refs.lines().filter_map(|line| line.split_once('\t')) {
+        names.push(name.to_owned());
+        objects.insert(name.to_owned(), object.to_owned());
+    }
+    Ok((names, objects))
+}
+
+fn origin_tags(path: &Path) -> Result<HashMap<String, String>, String> {
+    if !read_remotes(path)?
+        .iter()
+        .any(|entry| entry.name == "origin")
+    {
+        return Err(locale::text("upstream.remote-missing").into());
+    }
+    let refs = git(path, &["ls-remote", "--refs", "--tags", "--", "origin"])?;
+    Ok(refs
+        .lines()
+        .filter_map(|line| {
+            let (object, reference) = line.split_once('\t')?;
+            Some((
+                reference.strip_prefix("refs/tags/")?.to_owned(),
+                object.to_owned(),
+            ))
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn get_origin_tags(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+) -> Result<HashMap<String, String>, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || origin_tags(Path::new(&path)))
+        .await
+        .map_err(|error| error.to_string())?
+}
 
 fn push(path: &Path, remote: &str, tag: Option<&str>) -> Result<ProjectHistory, String> {
     if remote.starts_with('-') || !read_remotes(path)?.iter().any(|entry| entry.name == remote) {
@@ -174,6 +225,43 @@ mod tests {
         )
         .unwrap();
         (local, remote)
+    }
+
+    #[test]
+    fn lists_tags_by_date_and_compares_raw_annotated_objects() {
+        let (local, _remote) = repos();
+        git(&local.0, &["tag", "a-lightweight"]).unwrap();
+        crate::git_command::git_with_input(
+            &local.0,
+            &[
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "tag.gpgsign=false",
+                "tag",
+                "-a",
+                "z-annotated",
+                "-m",
+                "Release",
+            ],
+            "",
+            &[("GIT_COMMITTER_DATE", "2099-01-01T00:00:00Z")],
+        )
+        .unwrap();
+
+        let (names, local_objects) = local_tags(&local.0).unwrap();
+        assert_eq!(names, ["z-annotated", "a-lightweight"]);
+        push(&local.0, "origin", Some("z-annotated")).unwrap();
+
+        let published = origin_tags(&local.0).unwrap();
+        assert_eq!(published.len(), 1);
+        assert_eq!(published["z-annotated"], local_objects["z-annotated"]);
+        assert!(!published.contains_key("a-lightweight"));
+        git(&local.0, &["tag", "-f", "z-annotated"]).unwrap();
+        let (_, changed_objects) = local_tags(&local.0).unwrap();
+        assert_ne!(published["z-annotated"], changed_objects["z-annotated"]);
     }
 
     #[test]

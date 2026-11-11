@@ -111,9 +111,17 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     const observer = new ResizeObserver(() => { setHeight(viewport.clientHeight); setHeaderHeight(header.clientHeight); });
     observer.observe(viewport);
     observer.observe(header);
+    const labels = Array.from(header.rows[0].querySelectorAll<HTMLElement>("[data-column-label]"));
+    const measureLabels = () => setLabelWidths(labels.map(label => {
+      const cell = getComputedStyle(label.closest("th")!);
+      return Math.ceil(label.getBoundingClientRect().width + parseFloat(cell.paddingLeft) + parseFloat(cell.paddingRight) + 4);
+    }));
+    const labelObserver = new ResizeObserver(measureLabels);
+    labels.forEach(label => labelObserver.observe(label));
+    measureLabels();
     setHeaderHeight(header.clientHeight);
     setHeight(viewport.clientHeight);
-    onCleanup(() => observer.disconnect());
+    onCleanup(() => { observer.disconnect(); labelObserver.disconnect(); });
   });
   let graphBuilder = createCommitGraph();
   let builtRevision = -1;
@@ -182,6 +190,33 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     } catch (e) { reportTerminalError(t("history.copy-failed", { p1: String(e) }), t("history.copy-hash")); }
   }
 
+  const [columnWidths, setColumnWidths] = createSignal<number[]>();
+  const [labelWidths, setLabelWidths] = createSignal<number[]>([]);
+  const minimumWidths = createMemo(() => [Math.max(64, graph().width + 8), 100, 80, 90, 100]
+    .map((width, index) => Math.max(width, labelWidths()[index] ?? 0)));
+  const defaultWidths = createMemo(() => minimumWidths().map((width, index) =>
+    Math.max(width, [64, 100, 110, 160, 150][index])));
+  const widths = createMemo(() => columnWidths()?.map((width, index) => Math.max(width, minimumWidths()[index])));
+  const tableMinWidth = () => {
+    const customized = widths();
+    const total = (customized ?? defaultWidths()).reduce((sum, width) => sum + width, 0);
+    return `${customized ? total : Math.max(850, total)}px`;
+  };
+  let columnDrag: { index: number; pointer: number; x: number; widths: number[] } | undefined;
+
+  function measuredColumns() {
+    return Array.from(header.rows[0].cells, cell => cell.getBoundingClientRect().width);
+  }
+
+  function resizeColumns(index: number, start: number[], delta: number) {
+    const minimum = minimumWidths();
+    const applied = Math.max(minimum[index] - start[index], Math.min(start[index + 1] - minimum[index + 1], delta));
+    const next = [...start];
+    next[index] += applied;
+    next[index + 1] -= applied;
+    setColumnWidths(next);
+  }
+
   return (
     <Resizable layoutId="history.table" orientation="vertical" initialSizes={[0.5, 0.5]} class="min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -238,7 +273,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         </div>
       </Show>
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("search.searching")}</span></Show>
-      <Table class="min-w-[850px] table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
+      <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
         containerProps={{
           ref: element => { viewport = element; },
           onScroll: () => setScrollTop(viewport.scrollTop),
@@ -248,16 +283,40 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           "aria-label": t("history.title"),
           "aria-busy": loading() || debouncing(),
         }}>
-        <colgroup><col style={{ width: `max(4rem, calc(${graph().width}px + 0.5rem))` }} /><col /><col class="w-[110px]" /><col class="w-40" /><col class="w-[150px]" /></colgroup>
+        <colgroup>
+          <For each={[0, 1, 2, 3, 4]}>{index =>
+            <col style={{ width: !widths() && index === 1 ? undefined : `${(widths() ?? defaultWidths())[index]}px` }} />
+          }</For>
+        </colgroup>
         <TableHeader ref={element => { header = element; }} class="history-columns sticky top-0 z-10" onKeyDown={event => {
           if (matchesShortcut("dismiss", event) && searchOpen()) {
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
         }}>
           <TableRow class="hover:bg-transparent">
-            <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{heading =>
-              <TableHead scope="col" class="h-[34px] border-b first:pl-4">
-                {heading}
+            <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{(heading, index) =>
+              <TableHead scope="col" class="relative h-[34px] border-b first:pl-4">
+                <span class="block truncate pr-1"><span data-column-label class="inline-block w-max whitespace-nowrap">{heading}</span></span>
+                <Show when={index() < 4}>
+                  <span role="separator" tabindex={0} aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })}
+                    class="absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize after:pointer-events-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border/50 hover:after:bg-primary focus-visible:after:bg-primary focus-visible:outline-none"
+                    onPointerDown={event => {
+                      if (event.button !== 0) return;
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      columnDrag = { index: index(), pointer: event.pointerId, x: event.clientX, widths: measuredColumns() };
+                    }}
+                    onPointerMove={event => {
+                      const drag = columnDrag;
+                      if (drag?.pointer === event.pointerId) resizeColumns(drag.index, drag.widths, event.clientX - drag.x);
+                    }}
+                    onLostPointerCapture={() => { columnDrag = undefined; }}
+                    onKeyDown={event => {
+                      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                      event.preventDefault();
+                      resizeColumns(index(), measuredColumns(), event.key === "ArrowRight" ? 8 : -8);
+                    }} />
+                </Show>
               </TableHead>
             }</For>
           </TableRow>

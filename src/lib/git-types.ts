@@ -36,13 +36,15 @@ export type OperationState = { kind: "cherry-pick" | "revert" | "merge" | "rebas
 export type BranchComparison = { base: string; ahead: number; behind: number };
 export type StashEntry = { id: string; reference: string; message: string; date: string };
 export type StashAction = { kind: "save"; message: string; include_untracked: boolean } | { kind: "apply"; id: string; restore_index: boolean } | { kind: "drop"; id: string; confirmed: boolean };
-export type Remote = { name: string; branches: string[] };
+export type Remote = { name: string; branches: string[]; branch_dates?: Record<string, number> };
 export type SyncStatus = { upstream: string | null; remote_tip: string | null; ahead: number; behind: number };
 export type HistoryScope = "all" | "incoming" | "outgoing";
 export type History = {
   worktree_files?: CommitFile[];
   git_lfs_missing?: boolean;
   tag_tips: Record<string, string>;
+  tag_objects?: Record<string, string>;
+  branch_dates?: Record<string, number>;
   branch_tips?: Record<string, string>;
   last_fetch?: number | null;
   path: string;

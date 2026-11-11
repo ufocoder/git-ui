@@ -18,7 +18,7 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; onRepositorySettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { tagFetchRevision: number; onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; onRepositorySettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   const [visibleBranches, setVisibleBranches] = createSignal<readonly string[]>([]);
   const [comparisons, setComparisons] = createSignal<History["branch_comparisons"]>({});
   const comparisonSnapshot = createMemo(() => JSON.stringify([props.history.path, props.history.tip, props.history.current_branch, props.history.sync.upstream, props.history.branch_tips]));
@@ -92,7 +92,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
           <Show when={props.history.current_branch && !props.history.branches.includes(props.history.current_branch)}>
             <p class="break-all px-2 py-2 text-xs text-muted-foreground">{props.history.current_branch}</p>
           </Show>
-          <SearchableReferenceList items={props.history.branches} disabled={props.disabled} label={t("branch-search.search")}
+          <SearchableReferenceList sort={{ initial: "name-ascending", dates: props.history.branch_dates ?? {} }} items={props.history.branches} disabled={props.disabled} label={t("branch-search.search")}
             clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
               <ContextMenuTrigger as={SidebarMenuButton} disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
@@ -118,7 +118,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
         </SidebarGroupContent>
       </SidebarSection>
       <SidebarSeparator />
-      <TagsSection history={props.history} disabled={props.disabled} onCreate={props.onCreateTag} onPush={props.onPushTags} onDelete={props.onDeleteTag} onRename={name => props.onReferenceAction({ kind: "tag", name })} />
+      <TagsSection fetchRevision={props.tagFetchRevision} history={props.history} disabled={props.disabled} onCreate={props.onCreateTag} onPush={props.onPushTags} onDelete={props.onDeleteTag} onRename={name => props.onReferenceAction({ kind: "tag", name })} />
       <SidebarSeparator />
       <SidebarSection title={t("sidebar.remotes")} icon={<SectionIcon name="remotes" />} action={<AddSidebarItem kind="remote" disabled={props.disabled} onCreate={props.onAddRemote} />}>
         <SidebarGroupContent>
@@ -130,7 +130,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               </SidebarMenuButton>
               <CollapsibleContent class="ml-8 pl-3">
                 <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("sidebar.unfetched")}</p>}>
-                  <SearchableReferenceList flushSearch items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
+                  <SearchableReferenceList flushSearch sort={{ initial: "name-ascending", dates: remote.branch_dates ?? {} }} items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
                     clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")}>{branch => <SidebarMenuSubItem>
                     <p class="h-8 truncate pr-2 text-xs leading-8 text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
                   </SidebarMenuSubItem>}</SearchableReferenceList>

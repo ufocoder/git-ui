@@ -165,6 +165,7 @@ pub fn run() {
             tags::push_project_tags,
             tags::delete_project_tag,
             tags::remote_project_tag_exists,
+            tags::get_origin_tags,
             tracking::publish_project_branch,
             tracking::set_project_upstream,
         ])

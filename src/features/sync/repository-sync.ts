@@ -11,6 +11,7 @@ export function createRepositorySync(api: SyncPort, session: {
   busy: () => boolean;
   setBusy: (busy: boolean) => void;
   setHistory: (history: History) => void;
+  onFetchCompleted: () => void;
   onPushCompleted: (history: History) => void;
 }) {
   const [action, setAction] = createSignal<SyncAction | null>(null);
@@ -29,6 +30,7 @@ export function createRepositorySync(api: SyncPort, session: {
     try {
       const updated = await api.sync(next, pullMode);
       session.setHistory(updated);
+      if (next === "fetch") session.onFetchCompleted();
       if (next === "push") session.onPushCompleted(updated);
     } catch (error) {
       await refreshAfterFailure();
