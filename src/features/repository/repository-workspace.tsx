@@ -1,3 +1,4 @@
+import { createRepositoryOperation } from "./repository-operation";
 import type { RewriteRecovery } from "~/lib/git";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { createRepositorySync } from "~/features/sync/repository-sync";
@@ -166,14 +167,18 @@ export default function RepositoryWorkspace(props: {
     });
   });
 
+  const runRepositoryOperation = createRepositoryOperation({
+    busy, setBusy, setHistory,
+    readHistory: git.getHistory,
+    openTerminal: () => setTerminalOpen(true),
+    busyError: () => new Error(t("history.busy")),
+  });
+
   async function switchBranch(branch: string) {
     if (busy() || branch === history().current_branch) return;
-    setBusy(true);
-    try { setHistory(await git.switchBranch(branch)); }
-    catch {
-      setTerminalOpen(true);
-      try { setHistory(await git.getHistory()); } catch { /* Keep the last loaded history. */ }
-    } finally { setBusy(false); }
+    try {
+      await runRepositoryOperation(() => git.switchBranch(branch), { refreshOnError: true, openTerminalOnError: true });
+    } catch { /* The terminal reports failures. */ }
   }
 
   async function retryCommitPush() {
@@ -194,92 +199,52 @@ export default function RepositoryWorkspace(props: {
 
   async function refreshHistory() {
     if (busy()) return;
-    setBusy(true);
-    try { setHistory(await git.getHistory()); }
+    try { await runRepositoryOperation(git.getHistory); }
     catch { /* The terminal displays refresh errors. */ }
-    finally { setBusy(false); }
   }
 
-  async function runCommitOperation(head: string, branch: string, operation: CommitOperation) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try { setHistory(await git.commitOperation(head, branch, operation)); }
-    catch (error) {
-      try { setHistory(await git.getHistory()); } catch { /* Preserve the last available state. */ }
-      throw error;
-    } finally { setBusy(false); }
+  function runCommitOperation(head: string, branch: string, operation: CommitOperation) {
+    return runRepositoryOperation(() => git.commitOperation(head, branch, operation), { refreshOnError: true });
   }
 
-  async function runStash(action: StashAction) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try {
-      const updated = await git.stash(action);
-      batch(() => {
+  function runStash(action: StashAction) {
+    return runRepositoryOperation(() => git.stash(action), {
+      refreshOnError: true,
+      onSuccess: updated => batch(() => {
         setHistory(updated);
         setRepositoryMode(mode => modeAfterStash(action, updated, mode));
-      });
-    }
-    catch (error) {
-      try { setHistory(await git.getHistory()); } catch { /* Preserve the last available state. */ }
-      throw error;
-    } finally { setBusy(false); }
+      }),
+    });
   }
 
-  async function createTag(name: string) {
-    setBusy(true);
-    try { setHistory(await git.createTag(name)); }
-    finally { setBusy(false); }
+  function createTag(name: string) {
+    return runRepositoryOperation(() => git.createTag(name));
   }
 
-  async function pushTags(remote: string, tag: string | null) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try { setHistory(await git.pushTags(remote, tag)); }
-    catch (error) { setTerminalOpen(true); throw error; }
-    finally { setBusy(false); }
+  function pushTags(remote: string, tag: string | null) {
+    return runRepositoryOperation(() => git.pushTags(remote, tag), { openTerminalOnError: true });
   }
 
   const [branchAction, setBranchAction] = createSignal<BranchAction>();
-  async function executeBranchAction(action: BranchAction, preview: BranchActionPreview, remote: BranchRemoteTarget | null) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try { setHistory(await git.executeBranchAction(action.kind, preview, remote)); }
-    catch (error) {
-      setTerminalOpen(true);
-      try {
-        const latest = await git.getHistory();
-        setHistory(latest);
-        if (action.kind === "rebase" && latest.operation?.kind === "rebase") return;
-      } catch { /* Keep the last loaded history. */ }
-      throw error;
-    } finally { setBusy(false); }
+  function executeBranchAction(action: BranchAction, preview: BranchActionPreview, remote: BranchRemoteTarget | null) {
+    return runRepositoryOperation(() => git.executeBranchAction(action.kind, preview, remote), {
+      openTerminalOnError: true,
+      refreshOnError: true,
+      acceptRecovered: latest => action.kind === "rebase" && latest.operation?.kind === "rebase",
+    });
   }
 
   const [referenceAction, setReferenceAction] = createSignal<ReferenceAction>();
-  async function changeReference(action: ReferenceAction, name: string | null) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try { setHistory(await git.changeReference(action.kind, action.name, name)); }
-    catch (error) { setTerminalOpen(true); throw error; }
-    finally { setBusy(false); }
+  function changeReference(action: ReferenceAction, name: string | null) {
+    return runRepositoryOperation(() => git.changeReference(action.kind, action.name, name), { openTerminalOnError: true });
   }
 
-  async function deleteTag(tag: string, remote: string | null) {
-    if (busy()) throw new Error(t("history.busy"));
-    setBusy(true);
-    try { setHistory(await git.deleteTag(tag, remote)); }
-    catch (error) {
-      setTerminalOpen(true);
-      try { setHistory(await git.getHistory()); } catch { /* Keep the last loaded history. */ }
-      throw error;
-    } finally { setBusy(false); }
+  function deleteTag(tag: string, remote: string | null) {
+    return runRepositoryOperation(() => git.deleteTag(tag, remote), { openTerminalOnError: true, refreshOnError: true });
   }
 
-  async function addRemote(name: string, url: string) {
-    setBusy(true);
-    try { setHistory(await git.addRemote(name, url)); }
-    finally { setBusy(false); }
+  function addRemote(name: string, url: string) {
+    return runRepositoryOperation(() => git.addRemote(name, url));
   }
 
   async function createBranch(event: SubmitEvent) {
