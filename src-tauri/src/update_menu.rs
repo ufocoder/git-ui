@@ -50,6 +50,14 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
         help.append(&shortcuts)?;
     }
     app.set_menu(menu)?;
+    #[cfg(windows)]
+    if let Some(window) = app.get_webview_window("main") {
+        let has_project = app.try_state::<crate::Projects>()
+            .is_some_and(|projects| crate::project_path(&window, &projects).is_ok());
+        if !has_project {
+            window.hide_menu()?;
+        }
+    }
     Ok(())
 }
 

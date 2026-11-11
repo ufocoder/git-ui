@@ -133,6 +133,8 @@ pub(super) async fn open_project(
         .lock()
         .map_err(|e| e.to_string())?
         .insert(window.label().to_owned(), canonical_path.clone());
+    #[cfg(windows)]
+    window.show_menu().map_err(|e| e.to_string())?;
     let saved = (|| {
         let recent = app.state::<RecentProjects>();
         let _guard = recent.0.lock().map_err(|e| e.to_string())?;
@@ -162,6 +164,8 @@ pub(super) fn frontend_ready(window: WebviewWindow) -> Result<(), String> {
     let url = window.url().map_err(|e| e.to_string())?;
     if !url.query_pairs().any(|(key, _)| key == "view") {
         window.set_title("").map_err(|e| e.to_string())?;
+        #[cfg(windows)]
+        window.hide_menu().map_err(|e| e.to_string())?;
     }
     window.show().map_err(|e| e.to_string())
 }
@@ -172,6 +176,8 @@ pub(super) fn show_project_chooser(
     projects: State<'_, Projects>,
 ) -> Result<(), String> {
     window.set_title("").map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    window.hide_menu().map_err(|e| e.to_string())?;
     projects
         .0
         .lock()
