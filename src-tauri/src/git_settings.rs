@@ -6,6 +6,9 @@ use tauri::{State, WebviewWindow};
 const KEYS: &[&str] = &[
     "user.name",
     "user.email",
+    "user.signingkey",
+    "gpg.format",
+    "commit.gpgsign",
     "init.defaultbranch",
     "pull.rebase",
     "fetch.prune",
@@ -83,9 +86,10 @@ fn validate(change: &Change) -> Result<(), String> {
                 "pull.rebase" => {
                     ["true", "false", "merges", "interactive"].contains(&value.as_str())
                 }
-                "fetch.prune" | "push.autosetupremote" => {
+                "fetch.prune" | "push.autosetupremote" | "commit.gpgsign" => {
                     ["true", "false"].contains(&value.as_str())
                 }
+                "gpg.format" => ["openpgp", "ssh", "x509"].contains(&value.as_str()),
                 "core.autocrlf" => ["true", "false", "input"].contains(&value.as_str()),
                 "init.defaultbranch" => !value.starts_with('-') && !value.contains(' '),
                 _ => true,

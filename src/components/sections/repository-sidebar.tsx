@@ -19,7 +19,7 @@ import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
-export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; onRepositorySettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
   const [visibleBranches, setVisibleBranches] = createSignal<readonly string[]>([]);
   const [comparisons, setComparisons] = createSignal<History["branch_comparisons"]>({});
   const comparisonSnapshot = createMemo(() => JSON.stringify([props.history.path, props.history.tip, props.history.current_branch, props.history.sync.upstream, props.history.branch_tips]));
@@ -62,6 +62,12 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
             <p class="truncate text-base font-medium leading-5">{props.history.path.split(/[\\/]/).filter(Boolean).pop()}</p>
           </div>
           <svg aria-hidden="true" class="size-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 9 4-4 4 4M8 15l4 4 4-4" /></svg>
+        </Button>
+        <Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled} onClick={props.onRepositorySettings}
+          aria-label={t("git-settings.repository")} title={t("git-settings.repository")}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="2" fill="hsl(var(--sidebar-background))" /><circle cx="15" cy="12" r="2" fill="hsl(var(--sidebar-background))" /><circle cx="10" cy="18" r="2" fill="hsl(var(--sidebar-background))" />
+          </svg>
         </Button>
       </div>
       <nav class="mt-3 space-y-1" aria-label={t("toolbar.modes")}>

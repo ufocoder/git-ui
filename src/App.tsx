@@ -27,6 +27,7 @@ function App() {
   const [updatesOpen, setUpdatesOpen] = createSignal(new URLSearchParams(window.location.search).get("view") === "updates");
   const [installingUpdate, setInstallingUpdate] = createSignal(false);
   const [projectSwitcherOpen, setProjectSwitcherOpen] = createSignal(false);
+  const [repositorySettingsOpen, setRepositorySettingsOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   let unlistenUpdates: UnlistenFn | undefined;
@@ -135,7 +136,7 @@ function App() {
     const result = await git.openProject(path);
     clearProjectFeedback();
     batch(() => {
-      setProjectSwitcherOpen(false); setSettingsOpen(false);
+      setProjectSwitcherOpen(false); setSettingsOpen(false); setRepositorySettingsOpen(false);
       setHistory(result.history);
       setIsHistory(true);
       if (!result.warning) setRecentProjects(result.recent_projects);
@@ -178,8 +179,9 @@ function App() {
       </main>
     }>{project =>
       <RepositoryWorkspace initialHistory={project} busy={busy()} onBusyChange={setBusy} installingUpdate={installingUpdate()}
-        projectMenuOpen={projectSwitcherOpen()} onChangeProject={changeProject} onSettings={() => setSettingsOpen(true)} />
+        projectMenuOpen={projectSwitcherOpen()} onChangeProject={changeProject} onSettings={() => setSettingsOpen(true)} onRepositorySettings={() => setRepositorySettingsOpen(true)} />
     }</Show>
+    <GitSettingsDialog repositoryOnly hasProject={isHistory() && Boolean(history())} open={repositorySettingsOpen()} onClose={() => setRepositorySettingsOpen(false)} />
     <GitSettingsDialog hasProject={isHistory() && Boolean(history())} open={settingsOpen()} onClose={() => setSettingsOpen(false)} />
     <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
       <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">
