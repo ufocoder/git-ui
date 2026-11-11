@@ -46,9 +46,11 @@ fn read(path: &Path, scope: &str) -> Result<Settings, String> {
     let mut selected = String::new();
     let mut all = String::new();
     let mut entries = output.split('\0');
-    while let (Some(_level), Some(entry)) = (entries.next(), entries.next()) {
-        all.push_str(entry);
-        all.push('\0');
+    while let (Some(level), Some(entry)) = (entries.next(), entries.next()) {
+        if scope == "local" || matches!(level, "system" | "global") {
+            all.push_str(entry);
+            all.push('\0');
+        }
     }
     // Included files still contribute to effective settings, but edits target only
     // the selected config file, leaving shared include files untouched.
@@ -100,14 +102,69 @@ fn validate(change: &Change) -> Result<(), String> {
     }
     Ok(())
 }
+fn settings_directory(
+    window: &WebviewWindow,
+    projects: &Projects,
+    scope: &str,
+) -> Result<std::path::PathBuf, String> {
+    match scope_flag(scope)? {
+        "--global" => Ok(std::env::temp_dir()),
+        _ => project_path(window, projects).map(Into::into),
+    }
+}
+#[derive(Serialize)]
+pub struct RepositoryTools {
+    lfs_available: bool,
+    hooks_path: String,
+    hooks: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn get_repository_tools(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+) -> Result<RepositoryTools, String> {
+    let path = std::path::PathBuf::from(project_path(&window, &projects)?);
+    tauri::async_runtime::spawn_blocking(move || {
+        let lfs_available = git(&path, &["lfs", "version"]).is_ok();
+        let hooks_path = git(
+            &path,
+            &["rev-parse", "--path-format=absolute", "--git-path", "hooks"],
+        )?;
+        let hooks_path = hooks_path.trim_end_matches(['\r', '\n']).to_owned();
+        let mut hooks = Vec::new();
+        match std::fs::read_dir(&hooks_path) {
+            Ok(entries) => {
+                for entry in entries {
+                    let entry = entry.map_err(|error| error.to_string())?;
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    if !name.ends_with(".sample") && entry.path().is_file() {
+                        hooks.push(name);
+                    }
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
+        }
+        hooks.sort();
+        Ok(RepositoryTools {
+            lfs_available,
+            hooks_path,
+            hooks,
+        })
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 #[tauri::command]
 pub fn get_git_settings(
     window: WebviewWindow,
     projects: State<'_, Projects>,
     scope: String,
 ) -> Result<Settings, String> {
-    let path = project_path(&window, &projects)?;
-    read(Path::new(&path), &scope)
+    let path = settings_directory(&window, &projects, &scope)?;
+    read(&path, &scope)
 }
 #[tauri::command]
 pub fn save_git_settings(
@@ -116,9 +173,8 @@ pub fn save_git_settings(
     scope: String,
     changes: Vec<Change>,
 ) -> Result<Settings, String> {
-    let path = project_path(&window, &projects)?;
-    let path = Path::new(&path);
-    save(path, &scope, changes)
+    let path = settings_directory(&window, &projects, &scope)?;
+    save(&path, &scope, changes)
 }
 fn save(path: &Path, scope: &str, changes: Vec<Change>) -> Result<Settings, String> {
     let flag = scope_flag(scope)?;

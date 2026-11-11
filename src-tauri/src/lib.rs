@@ -114,6 +114,7 @@ pub fn run() {
             file_actions::open_project_remote,
             git_installation::get_git_installation,
             git_settings::get_git_settings,
+            git_settings::get_repository_tools,
             git_settings::save_git_settings,
             locale::get_app_language,
             locale::set_app_language,

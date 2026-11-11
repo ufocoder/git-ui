@@ -102,6 +102,7 @@ export const git = {
   openProjectRemote: (remote: string) => request<void>("open_project_remote", { remote }),
   revealPath: (file?: string) => request<void>("reveal_project_path", { file }),
   checkInstallation: () => invoke<{ available: boolean; platform: string }>("get_git_installation"),
+  getRepositoryTools: () => request<{ lfs_available: boolean; hooks_path: string; hooks: string[] }>("get_repository_tools"),
   getSettings: (scope: string) => request<GitSettings>("get_git_settings", { scope }),
   saveSettings: (scope: string, changes: GitSettingChange[]) => request<GitSettings>("save_git_settings", { scope, changes }),
   showProjectChooser: () => request<void>("show_project_chooser"),
