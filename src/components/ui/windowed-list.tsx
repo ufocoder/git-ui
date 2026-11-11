@@ -1,12 +1,14 @@
 import { For, createMemo, createSignal, onCleanup, onMount, createEffect, type JSX } from "solid-js";
 
+export const SIDEBAR_ROW_STRIDE = 36;
+
 // Sidebar lists share one scroll viewport and reserve space for unmounted rows.
 export function WindowedList<T>(props: {
   items: readonly T[];
   children: (item: T) => JSX.Element;
   onVisibleChange?: (items: readonly T[]) => void;
 }) {
-  const stride = 36;
+  const stride = SIDEBAR_ROW_STRIDE;
   const buffer = 3;
   const [range, setRange] = createSignal({ top: 0, bottom: 288 });
   let list!: HTMLDivElement;

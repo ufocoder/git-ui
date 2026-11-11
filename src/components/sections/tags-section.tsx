@@ -1,4 +1,4 @@
-import { WindowedList } from "~/components/ui/windowed-list";
+import SearchableReferenceList from "./searchable-reference-list";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
 import { Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { t } from "~/lib/i18n";
@@ -61,7 +61,7 @@ export default function TagsSection(props: {
     <SidebarSection title={t("sidebar.tags")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     }>
-      <SidebarGroupContent><WindowedList items={props.history.tags}>{tag => <SidebarMenuItem>
+      <SidebarGroupContent><SearchableReferenceList items={props.history.tags} disabled={disabled()} label={t("tag-search.search")} clearLabel={t("tag-search.clear")} emptyLabel={t("tag-search.empty")}>{tag => <SidebarMenuItem>
           <ContextMenu>
             <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span class="truncate" title={tag}>{tag}</span>
@@ -74,7 +74,7 @@ export default function TagsSection(props: {
               <ContextMenuItem class="text-destructive" title={t("tag-delete.selected", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tag-delete.title")}</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-        </SidebarMenuItem>}</WindowedList><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("sidebar.no-tags")}</p></Show></SidebarGroupContent>
+        </SidebarMenuItem>}</SearchableReferenceList><Show when={!props.history.tags.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("sidebar.no-tags")}</p></Show></SidebarGroupContent>
     </SidebarSection>
     <Dialog open={Boolean(selection())} onOpenChange={value => { if (!value && !disabled()) setSelection(undefined); }}>
       <DialogContent>

@@ -23,7 +23,9 @@ export default function ReferenceAutocomplete(props: {
   return <Combobox.Root<SelectOption> options={matches()} optionValue="value" optionTextValue="label" optionLabel="label"
     triggerMode="focus" allowsEmptyCollection allowDuplicateSelectionEvents defaultFilter={() => true}
     open={props.scopePicker ? true : undefined} closeOnSelection={!props.scopePicker}
-    disabled={props.disabled} onOpenChange={(open, mode) => { if (!open || mode !== "input") setInput(""); }} onInputChange={setInput} onChange={option => { if (option) props.onSelect(option.value); }}
+    disabled={props.disabled}
+    onOpenChange={(open, mode) => { if (!open || mode !== "input") setInput(""); }}
+    onInputChange={setInput} onChange={option => { if (option) props.onSelect(option.value); }}
     itemComponent={item => <Combobox.Item item={item.item} class="cursor-default truncate rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground">
       <Combobox.ItemLabel>{item.item.rawValue.label}</Combobox.ItemLabel>
     </Combobox.Item>}>

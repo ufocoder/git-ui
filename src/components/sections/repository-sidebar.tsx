@@ -1,3 +1,4 @@
+import SearchableReferenceList from "./searchable-reference-list";
 import { WindowedList } from "~/components/ui/windowed-list";
 import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
@@ -13,21 +14,12 @@ import {
 } from "~/components/ui/sidebar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/components/ui/collapsible";
 import { Button } from "~/components/ui/button";
-import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import AddSidebarItem from "~/components/sections/add-sidebar-item";
 import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
 export default function RepositorySidebar(props: { onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
-  const [branchSearch, setBranchSearch] = createSignal("");
-  const searchable = () => props.history.branches.length > 10;
-  const branches = createMemo(() => {
-    const query = searchable() ? branchSearch().trim().toLowerCase() : "";
-    return props.history.branches.filter(branch => branch.toLowerCase().includes(query));
-  });
-  createEffect(on(() => props.history.path, () => setBranchSearch("")));
-  createEffect(() => { if (!searchable()) setBranchSearch(""); });
   const [visibleBranches, setVisibleBranches] = createSignal<readonly string[]>([]);
   const [comparisons, setComparisons] = createSignal<History["branch_comparisons"]>({});
   const comparisonSnapshot = createMemo(() => JSON.stringify([props.history.path, props.history.tip, props.history.current_branch, props.history.sync.upstream, props.history.branch_tips]));
@@ -95,17 +87,8 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
           <Show when={props.history.current_branch && !props.history.branches.includes(props.history.current_branch)}>
             <p class="break-all px-2 py-2 text-xs text-muted-foreground">{props.history.current_branch}</p>
           </Show>
-          <Show when={searchable()}>
-            <div class="relative mb-2 px-2">
-              <TextField value={branchSearch()} onChange={setBranchSearch} disabled={props.disabled}>
-                <TextFieldInput class="h-8 pr-8 text-xs" placeholder={t("branch-search.search")} aria-label={t("branch-search.search")}
-                  onKeyDown={event => { if (event.key === "Escape" && branchSearch()) { event.preventDefault(); event.stopPropagation(); setBranchSearch(""); } }} />
-              </TextField>
-              <Show when={branchSearch()}><Button variant="ghost" size="icon" class="absolute right-3 top-1 size-6" disabled={props.disabled} aria-label={t("branch-search.clear")} onClick={() => setBranchSearch("")}>×</Button></Show>
-            </div>
-            <Show when={!branches().length}><p class="px-2 py-2 text-xs text-muted-foreground" role="status">{t("branch-search.empty")}</p></Show>
-          </Show>
-          <WindowedList items={branches()} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
+          <SearchableReferenceList items={props.history.branches} disabled={props.disabled} label={t("branch-search.search")}
+            clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
               <ContextMenuTrigger as={SidebarMenuButton} disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
@@ -125,7 +108,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               <ContextMenuContent>
                 {branchActions(branch)}
               </ContextMenuContent></ContextMenu>
-            </SidebarMenuItem>}</WindowedList>
+            </SidebarMenuItem>}</SearchableReferenceList>
           <Show when={!props.history.branches.length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("sidebar.no-branches")}</p></Show>
         </SidebarGroupContent>
       </SidebarSection>
