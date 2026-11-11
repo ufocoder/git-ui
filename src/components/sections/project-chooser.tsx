@@ -1,3 +1,4 @@
+import { displayProjectPath } from "~/lib/project-path";
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
 import { For, Show, type JSX } from "solid-js";
@@ -50,7 +51,7 @@ export default function ProjectChooser(props: ProjectChooserProps) {
                   <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FolderIcon /></span>
                   <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span class="truncate text-sm font-medium">{path.split(/[\\/]/).filter(Boolean).pop() ?? path}</span>
-                    <span class="truncate text-xs font-normal text-muted-foreground">{path}</span>
+                    <span class="truncate text-xs font-normal text-muted-foreground">{displayProjectPath(path)}</span>
                   </span>
                   <span aria-hidden="true" class="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">→</span>
                 </Button>

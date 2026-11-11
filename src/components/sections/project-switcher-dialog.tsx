@@ -1,3 +1,4 @@
+import { displayProjectPath } from "~/lib/project-path";
 import { For, Show, createMemo } from "solid-js";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
@@ -31,7 +32,7 @@ export default function ProjectSwitcherDialog(props: Props) {
             <svg aria-hidden="true" class="size-5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" /></svg>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium">{path.split(/[\\/]/).filter(Boolean).pop() ?? path}</span>
-              <span class="block break-all text-xs font-normal text-muted-foreground">{path}</span>
+              <span class="block break-all text-xs font-normal text-muted-foreground">{displayProjectPath(path)}</span>
             </span>
             <Show when={path === props.currentPath}><span class="shrink-0" aria-label={t("project.current")}>✓</span></Show>
           </Button>
