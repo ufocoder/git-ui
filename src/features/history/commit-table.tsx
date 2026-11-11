@@ -3,11 +3,11 @@ import HistoryRewriteDialog, { type HistoryRewriteAction } from "./history-rewri
 import * as Popover from "@kobalte/core/popover";
 import ReferenceAutocomplete from "./reference-autocomplete";
 import { createCommitGraph, graphEdgePath } from "~/lib/commit-graph";
-import { preservedSelection, anchoredScroll } from "~/lib/history-view";
+import { createCommitHistory } from "./create-commit-history";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
 import { locale, t } from "~/lib/i18n";
-import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount, on, untrack, batch } from "solid-js";
+import { For, Show, createMemo, createSignal, createUniqueId, onCleanup, onMount, batch } from "solid-js";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
 import CommitEditDialog, { type CommitEditAction } from "./commit-edit-dialog";
 import CommitActionsDialog, { type CommitDialogAction } from "./commit-actions-dialog";
@@ -20,7 +20,7 @@ import HistoryFilters from "./history-filters";
 import WorktreeCommit from "~/features/changes/worktree-commit";
 import CommitFiles from "~/components/sections/commit-files";
 import { reportTerminalError } from "~/lib/terminal";
-import { git, createWorktreeCommit, type Commit, type HistoryScope, type HistoryFilter, type History } from "~/lib/git";
+import { git, type Commit, type HistoryScope, type History } from "~/lib/git";
 
 const ROW_HEIGHT = 34;
 
@@ -32,27 +32,12 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const search = props.search ?? createHistorySearch();
   const [searchOpen, setSearchOpen] = search.open;
   const [headerHeight, setHeaderHeight] = createSignal(ROW_HEIGHT);
-  let generation = 0;
-  const [filter, setFilter] = search.filter;
-  const [appliedFilter, setAppliedFilter] = createSignal<HistoryFilter>(untrack(filter));
-  const [debouncing, setDebouncing] = createSignal(false);
-  const filtered = createMemo(() => Boolean(appliedFilter().text.trim() || appliedFilter().sha.trim() || appliedFilter().author.trim() || appliedFilter().file));
-  createEffect(on(filter, value => {
-    generation++; setDebouncing(true); setLoading(false);
-    const timer = window.setTimeout(() => { setAppliedFilter({ text: value.text.trim(), sha: value.sha.trim(), author: value.author.trim(), file: value.file }); setDebouncing(false); }, 250);
-    onCleanup(() => window.clearTimeout(timer));
-  }, { defer: true }));
   const [editAction, setEditAction] = createSignal<CommitEditAction>();
   const [dialogAction, setDialogAction] = createSignal<CommitDialogAction>();
   const [selectedCommit, setSelectedCommit] = createSignal<Commit>();
   const [selectionAnchor, setSelectionAnchor] = createSignal<string>();
   const [rangeSelection, setRangeSelection] = createSignal<Commit[]>([]);
   const [rewriteAction, setRewriteAction] = createSignal<HistoryRewriteAction>();
-  const [commits, setCommits] = createSignal<Commit[]>([]);
-  const [graphRevision, setGraphRevision] = createSignal(0);
-  const [hasMore, setHasMore] = createSignal(false);
-  const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal("");
   const [copyStatus, setCopyStatus] = createSignal("");
   const [scrollTop, setScrollTop] = createSignal(0);
   const [height, setHeight] = createSignal(500);
@@ -69,12 +54,21 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     }))),
     ...props.history.tags.filter(tag => props.history.tag_tips?.[tag]).map(tag => ({ value: `refs/tags/${tag}`, label: t("history.jump-tag", { tag }) })),
   ]);
-  const referenceTip = (ref: string) => ref.startsWith("refs/tags/") ? props.history.tag_tips?.[ref.slice(10)] : props.history.branch_tips?.[ref];
-  const jumpTip = () => referenceTip(jumpRef());
-  const allBranches = () => props.branch === "all" && !jumpTip();
-  const historyTips = () => props.history.branch_tips
-    ? Object.values(props.history.branch_tips)
-    : undefined;
+  const [filter, setFilter] = search.filter;
+  const { referenceTip, jumpTip, filtered, debouncing, loading, error, setError, hasMore, displayedCommits, graphRevision, loadMore, retry, generation, resetContext } = createCommitHistory({
+    history: () => props.history,
+    branch: () => props.branch,
+    scope: () => props.scope,
+    disabled: () => props.disabled,
+    filter, jumpRef, rowHeight: ROW_HEIGHT, headerHeight, height, scrollTop,
+    readScrollPosition: () => viewport?.scrollTop ?? scrollTop(),
+    setScrollPosition(top) {
+      if (viewport) viewport.scrollTop = top;
+      setScrollTop(viewport?.scrollTop ?? top);
+    },
+    selectedCommit, setSelectedCommit,
+    resetRange() { setRangeSelection([]); setSelectionAnchor(undefined); },
+  });
   function jumpTo(ref: string) {
     const hash = referenceTip(ref);
     if (!hash) return;
@@ -91,10 +85,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
       });
     }
   }
-  const viewingHead = () => !jumpTip() && (allBranches() || props.branch === "current" || props.branch === `refs/heads/${props.history.current_branch}`);
-  const selectedTip = () => jumpTip() ?? (allBranches() || props.branch === "current" ? props.history.tip : props.history.branch_tips?.[props.branch] ?? (viewingHead() ? props.history.tip : ""));
-  const worktreeCommit = createMemo(() => createWorktreeCommit(props.history.tip));
-  const displayedCommits = createMemo(() => props.scope === "all" && viewingHead() && !filtered() && props.history.has_changes ? [worktreeCommit(), ...commits()] : commits());
   const rangeHashes = createMemo(() => new Set(rangeSelection().map(commit => commit.hash)));
   const canRewrite = () => !props.disabled && !props.history.git_lfs_missing && Boolean(props.history.current_branch) && !props.history.has_changes && !props.history.operation;
   const squashRange = (commit: Commit) => rangeHashes().has(commit.hash) ? rangeSelection() : [];
@@ -117,64 +107,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   function openRewrite(commits: Commit[]) {
     setRewriteAction({ head: props.history.tip, branch: props.history.current_branch, commits });
   }
-  let previousContext = "";
-  createEffect(() => {
-    const history = props.history;
-    const scope = props.scope;
-    const tip = selectedTip(), includeBranches = allBranches(), showWorktree = viewingHead();
-    const search = appliedFilter();
-    const hasFilter = filtered();
-    const tips = historyTips();
-    const context = JSON.stringify([history.path, history.current_branch, props.branch, scope, search, jumpRef()]);
-    const preserve = previousContext === context;
-    previousContext = context;
-    const previous = untrack(selectedCommit);
-    const previousRows = untrack(displayedCommits);
-    const previousCount = untrack(commits).length;
-    const top = viewport?.scrollTop ?? untrack(scrollTop);
-    const anchorIndex = Math.floor(Math.max(0, top - untrack(headerHeight)) / ROW_HEIGHT);
-    const anchor = previousRows[anchorIndex]?.hash;
-    const offset = top - anchorIndex * ROW_HEIGHT;
-    const request = ++generation;
-    setRangeSelection([]); setSelectionAnchor(undefined);
-    setError(""); setLoading(true);
-    if (!preserve) {
-      setScrollTop(0); if (viewport) viewport.scrollTop = 0;
-      setSelectedCommit(undefined);
-    }
-    const pageAt = (offset: number) => hasFilter
-      ? git.getFilteredCommitPage(tip, history.sync.remote_tip, scope, search, offset, includeBranches, tips)
-      : scope === "all" ? git.getCommitPage(tip, offset, includeBranches, tips)
-      : history.sync.remote_tip ? git.getSyncCommitPage(history.tip, history.sync.remote_tip, scope, offset)
-      : Promise.resolve({ commits: [], has_more: false });
-    void (async () => {
-      try {
-        let page = scope === "all" && includeBranches && !hasFilter
-          ? { commits: history.commits, has_more: history.has_more }
-          : await pageAt(0);
-        let updated = [...page.commits];
-        while (preserve && page.has_more && (updated.length < previousCount || (previous && !previous.uncommitted && !updated.some(commit => commit.hash === previous.hash)))) {
-          page = await pageAt(updated.length);
-          if (request !== generation) return;
-          if (!page.commits.length) break;
-          updated.push(...page.commits);
-        }
-        if (request !== generation) return;
-        const rows = scope === "all" && showWorktree && !hasFilter && history.has_changes ? [createWorktreeCommit(history.tip), ...updated] : updated;
-        batch(() => {
-          setGraphRevision(revision => revision + 1);
-          setCommits(updated); setHasMore(page.has_more);
-          setSelectedCommit(preserve ? preservedSelection(previous, rows) : rows[0]);
-        });
-        const restored = preserve ? anchoredScroll(rows, anchor, offset, top, ROW_HEIGHT) : 0;
-        queueMicrotask(() => {
-          if (request !== generation || !viewport) return;
-          viewport.scrollTop = restored; setScrollTop(viewport.scrollTop);
-        });
-      } catch (failure) { if (request === generation) setError(String(failure)); }
-      finally { if (request === generation) setLoading(false); }
-    })();
-  });
   onMount(() => {
     const observer = new ResizeObserver(() => { setHeight(viewport.clientHeight); setHeaderHeight(header.clientHeight); });
     observer.observe(viewport);
@@ -183,34 +115,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     setHeight(viewport.clientHeight);
     onCleanup(() => observer.disconnect());
   });
-  onCleanup(() => { generation++; });
-
-  async function loadMore() {
-    if (debouncing() || loading() || !hasMore() || props.disabled) return;
-    const request = generation;
-    const tip = selectedTip();
-    setLoading(true);
-    setError("");
-    try {
-      const scope = props.scope;
-      const remoteTip = props.history.sync.remote_tip;
-      const page = filtered() ? await git.getFilteredCommitPage(tip, remoteTip, scope, appliedFilter(), commits().length, allBranches(), historyTips())
-        : scope === "all" ? await git.getCommitPage(tip, commits().length, allBranches(), historyTips())
-        : remoteTip ? await git.getSyncCommitPage(tip, remoteTip, scope, commits().length) : { commits: [], has_more: false };
-      if (request !== generation) return;
-      batch(() => {
-        setCommits(previous => [...previous, ...page.commits]);
-        if (!selectedCommit()) setSelectedCommit(page.commits[0]);
-        setHasMore(page.has_more);
-      });
-    } catch (e) { if (request === generation) setError(String(e)); }
-    finally { if (request === generation) setLoading(false); }
-  }
-  createEffect(() => {
-    const nearBottom = scrollTop() + height() >= headerHeight() + displayedCommits().length * ROW_HEIGHT - height();
-    if (!debouncing() && nearBottom && hasMore() && !loading() && !error() && !props.disabled) untrack(() => void loadMore());
-  });
-
   let graphBuilder = createCommitGraph();
   let builtRevision = -1;
   let firstGraphCommit: Commit | undefined;
@@ -239,10 +143,10 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     const nextIndex = currentIndex < 0 ? 0 : currentIndex + (event.key === "ArrowDown" ? 1 : -1);
     if (nextIndex < 0) return;
     if (nextIndex === rows.length && hasMore()) {
-      const request = generation;
+      const request = generation();
       const focused = document.activeElement;
       await loadMore();
-      if (request !== generation || document.activeElement !== focused || props.disabled) return;
+      if (request !== generation() || document.activeElement !== focused || props.disabled) return;
     }
     const next = displayedCommits()[nextIndex];
     if (!next) return;
@@ -426,7 +330,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
       </Table>
       <span role="status" class="sr-only">{copyStatus()}</span>
       <Show when={loading()}><span role="status" class="sr-only">{t("history.loading")}</span></Show>
-      <Show when={error()}><Button variant="link" size="sm" class="shrink-0 self-start" onClick={() => { setHasMore(true); void loadMore(); }} disabled={props.disabled}>{t("history.retry")}</Button></Show>
+      <Show when={error()}><Button variant="link" size="sm" class="shrink-0 self-start" onClick={retry} disabled={props.disabled}>{t("history.retry")}</Button></Show>
       </ResizablePanel>
       <ResizableHandle withHandle aria-label={t("history.resize")} />
       <ResizablePanel minSize={0.2} class="min-h-0 min-w-0 overflow-hidden">
@@ -437,7 +341,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
       <HistoryRewriteDialog action={rewriteAction()} onClose={() => setRewriteAction(undefined)}
         onExecute={(target, message, acceptPublished) => runAction(async () => {
           const history = await git.rewriteHistory(target, message, acceptPublished);
-          previousContext = "";
+          resetContext();
           if (history.tip !== target.head) offerHistoryRecovery({ head: history.tip, branch: target.branch });
           return history;
         })} />
