@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "git-ui"
-version = "0.3.14"
+version = "0.3.15"
 dependencies = [
  "semver",
  "serde",
