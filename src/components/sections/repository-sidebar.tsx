@@ -130,7 +130,7 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               </SidebarMenuButton>
               <CollapsibleContent class="ml-8 pl-3">
                 <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("sidebar.unfetched")}</p>}>
-                  <SearchableReferenceList items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
+                  <SearchableReferenceList flushSearch items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
                     clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")}>{branch => <SidebarMenuSubItem>
                     <p class="h-8 truncate pr-2 text-xs leading-8 text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
                   </SidebarMenuSubItem>}</SearchableReferenceList>

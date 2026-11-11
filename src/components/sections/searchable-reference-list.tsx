@@ -6,6 +6,7 @@ import { SIDEBAR_ROW_STRIDE, WindowedList } from "~/components/ui/windowed-list"
 export default function SearchableReferenceList(props: {
   items: string[];
   disabled: boolean;
+  flushSearch?: boolean;
   label: string;
   clearLabel: string;
   emptyLabel: string;
@@ -55,7 +56,7 @@ export default function SearchableReferenceList(props: {
 
   return <div ref={element => { anchor = element; }}>
     <Show when={props.items.length > 0 && (needsSearch() || query())}>
-      <div class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-1 py-2 pl-6">
+      <div class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-1 py-2" classList={{ "pl-6": !props.flushSearch }}>
         <TextField value={query()} onChange={setQuery} disabled={props.disabled}>
           <TextFieldInput class="h-7 bg-transparent px-2 text-xs opacity-60 focus:bg-background focus:opacity-100" aria-label={props.label} placeholder={props.label} spellcheck={false}
             onKeyDown={event => {
