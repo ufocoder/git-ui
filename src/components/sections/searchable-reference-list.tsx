@@ -26,9 +26,13 @@ export default function SearchableReferenceList(props: {
     onCleanup(() => clearTimeout(timer));
   });
   const needsSearch = () => Math.max(0, props.items.length * SIDEBAR_ROW_STRIDE - 4) > availableHeight();
-  const items = createMemo(() => {
+  const matches = createMemo(() => {
     const value = filter();
-    return value ? props.items.filter(name => name.toLowerCase().includes(value)) : props.items;
+    return new Set(value ? props.items.filter(name => name.toLowerCase().includes(value)) : []);
+  });
+  const items = createMemo(() => {
+    const matching = matches();
+    return matching.size ? [...matching, ...props.items.filter(name => !matching.has(name))] : props.items;
   });
 
   onMount(() => {
@@ -51,9 +55,9 @@ export default function SearchableReferenceList(props: {
 
   return <div ref={element => { anchor = element; }}>
     <Show when={props.items.length > 0 && (needsSearch() || query())}>
-      <div class="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 pl-6">
+      <div class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-1 py-2 pl-6">
         <TextField value={query()} onChange={setQuery} disabled={props.disabled}>
-          <TextFieldInput class="h-7 bg-background px-2 text-xs" aria-label={props.label} placeholder={props.label} spellcheck={false}
+          <TextFieldInput class="h-7 bg-transparent px-2 text-xs opacity-60 focus:bg-background focus:opacity-100" aria-label={props.label} placeholder={props.label} spellcheck={false}
             onKeyDown={event => {
               if (event.key === "Escape" && query()) {
                 event.preventDefault();
@@ -68,7 +72,7 @@ export default function SearchableReferenceList(props: {
         </Show>
       </div>
     </Show>
-    <Show when={filter() && !items().length}><p role="status" class="pl-8 text-xs text-muted-foreground">{props.emptyLabel}</p></Show>
-    <WindowedList items={items()} onVisibleChange={props.onVisibleChange}>{props.children}</WindowedList>
+    <Show when={filter() && !matches().size}><p role="status" class="sr-only">{props.emptyLabel}</p></Show>
+    <WindowedList items={items()} highlightedCount={matches().size} onVisibleChange={props.onVisibleChange}>{props.children}</WindowedList>
   </div>;
 }

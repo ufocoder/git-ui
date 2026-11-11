@@ -6,10 +6,12 @@ export const SIDEBAR_ROW_STRIDE = 36;
 export function WindowedList<T>(props: {
   items: readonly T[];
   children: (item: T) => JSX.Element;
+  highlightedCount?: number;
   onVisibleChange?: (items: readonly T[]) => void;
 }) {
   const stride = SIDEBAR_ROW_STRIDE;
   const buffer = 3;
+  const highlightedCount = () => props.highlightedCount ?? 0;
   const [range, setRange] = createSignal({ top: 0, bottom: 288 });
   let list!: HTMLDivElement;
 
@@ -39,6 +41,8 @@ export function WindowedList<T>(props: {
   createEffect(() => props.onVisibleChange?.(visible()));
 
   return <div ref={element => { list = element; }} class="relative min-w-0" style={{ height: `${Math.max(0, props.items.length * stride - 4)}px` }}>
+    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 rounded-md bg-[hsl(var(--sidebar-foreground)/0.09)]"
+      style={{ height: `${Math.max(0, highlightedCount() * stride - 4)}px` }} />
     <ul class="absolute inset-x-0 m-0 list-none space-y-1" style={{ top: `${Math.min(start(), Math.max(0, props.items.length - 1)) * stride}px` }}>
       <For each={visible()}>{props.children}</For>
     </ul>
