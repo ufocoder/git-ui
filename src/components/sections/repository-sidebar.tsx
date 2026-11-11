@@ -1,5 +1,4 @@
 import SearchableReferenceList from "./searchable-reference-list";
-import { WindowedList } from "~/components/ui/windowed-list";
 import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
 import type { ReferenceAction } from "./reference-action-dialog";
@@ -131,9 +130,10 @@ export default function RepositorySidebar(props: { onStashListMount: (element: H
               </SidebarMenuButton>
               <CollapsibleContent class="ml-8 pl-3">
                 <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("sidebar.unfetched")}</p>}>
-                  <WindowedList items={remote.branches}>{branch => <SidebarMenuSubItem>
+                  <SearchableReferenceList items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
+                    clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")}>{branch => <SidebarMenuSubItem>
                     <p class="h-8 truncate pr-2 text-xs leading-8 text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
-                  </SidebarMenuSubItem>}</WindowedList>
+                  </SidebarMenuSubItem>}</SearchableReferenceList>
                 </Show>
               </CollapsibleContent>
               </Collapsible>
