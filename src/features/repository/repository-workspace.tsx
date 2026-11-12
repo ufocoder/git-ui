@@ -283,12 +283,11 @@ export default function RepositoryWorkspace(props: {
         </Show>
         <Show when={failedCommitPush()}>{target =>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
-            <p role="status" class="text-sm font-medium">{t("commit.push-failed")}</p>
+            <p role="status" class="text-xs font-medium">{t("commit.push-failed")}</p>
             <div class="flex flex-wrap items-center gap-2">
               <span title={!matchesPushTarget(history(), target()) ? t("commit.target-changed") : undefined}>
                 <Button size="sm" variant="outline" disabled={busy() || !matchesPushTarget(history(), target())} onClick={() => void retryCommitPush()}>{syncAction() === "push" ? t("push.running") : t("commit.retry-push")}</Button>
               </span>
-              <Button size="sm" variant="ghost" onClick={() => setTerminalOpen(true)}>{t("notice.terminal")}</Button>
               <Button size="icon" variant="ghost" class="size-7" aria-label={t("notice.dismiss")} title={t("notice.dismiss")} onClick={() => commitFlow.dismiss()}>×</Button>
             </div>
           </div>

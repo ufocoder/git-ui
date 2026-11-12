@@ -266,6 +266,9 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                   <DropdownMenuCheckboxItem checked={Boolean(amendTarget())} onChange={enabled => void toggleAmend(enabled)} disabled={disabled() || (!amendTarget() && !canAmend())} title={t("compose.amend-warning")}>{t("commit.amend")}</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Show when={!loading() && !amendTarget() && !stagedCount() && unstagedFiles().length}>
+                <p role="status" class="text-xs text-muted-foreground">{t("commit.stage-hint")}</p>
+              </Show>
               <Button type="submit" class="h-control-toolbar px-control-sm-x" disabled={!canSubmit()}>{props.commitPhase === "pushing" ? t("push.running") : props.commitPhase === "committing" ? t("common.saving") : amendTarget() ? t("operation.amend-commit") : t("commit.create")}</Button>
             </div>
           </form>
