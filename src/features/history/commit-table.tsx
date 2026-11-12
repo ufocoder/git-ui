@@ -1,3 +1,4 @@
+import { readHistoryColumnWidths, saveHistoryColumnWidths } from "~/lib/layout-preferences";
 import { offerHistoryRecovery } from "~/lib/operation-feedback";
 import HistoryRewriteDialog, { type HistoryRewriteAction } from "./history-rewrite-dialog";
 import * as Popover from "@kobalte/core/popover";
@@ -190,7 +191,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     } catch (e) { reportTerminalError(t("history.copy-failed", { p1: String(e) }), t("history.copy-hash")); }
   }
 
-  const [columnWidths, setColumnWidths] = createSignal<number[]>();
+  const [columnWidths, setColumnWidths] = createSignal(readHistoryColumnWidths(5));
   const [labelWidths, setLabelWidths] = createSignal<number[]>([]);
   const minimumWidths = createMemo(() => [Math.max(64, graph().width + 8), 100, 80, 90, 100]
     .map((width, index) => Math.max(width, labelWidths()[index] ?? 0)));
@@ -298,8 +299,8 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
               <TableHead scope="col" class="relative h-[34px] border-b first:pl-4">
                 <span class="block truncate pr-1"><span data-column-label class="inline-block w-max whitespace-nowrap">{heading}</span></span>
                 <Show when={index() < 4}>
-                  <span role="separator" tabindex={0} aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })}
-                    class="absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize after:pointer-events-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border/50 hover:after:bg-primary focus-visible:after:bg-primary focus-visible:outline-none"
+                  <span role="separator" tabindex={0} aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })} title={t("history.reset-columns")}
+                    class="absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize after:pointer-events-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border/[0.85] hover:after:bg-primary focus-visible:after:bg-primary focus-visible:outline-none"
                     onPointerDown={event => {
                       if (event.button !== 0) return;
                       event.preventDefault();
@@ -310,11 +311,19 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                       const drag = columnDrag;
                       if (drag?.pointer === event.pointerId) resizeColumns(drag.index, drag.widths, event.clientX - drag.x);
                     }}
-                    onLostPointerCapture={() => { columnDrag = undefined; }}
+                    onLostPointerCapture={() => {
+                      columnDrag = undefined;
+                      saveHistoryColumnWidths(columnWidths());
+                    }}
+                    onDblClick={() => {
+                      setColumnWidths(undefined);
+                      saveHistoryColumnWidths(undefined);
+                    }}
                     onKeyDown={event => {
                       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
                       event.preventDefault();
                       resizeColumns(index(), measuredColumns(), event.key === "ArrowRight" ? 8 : -8);
+                      saveHistoryColumnWidths(columnWidths());
                     }} />
                 </Show>
               </TableHead>

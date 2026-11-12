@@ -276,6 +276,7 @@
   "git.read-files": "Read files",
   "git.read-history": "Read history",
   "git.stage": "Stage files",
+  "history.reset-columns": "Double-click to reset column widths",
   "history.all-branches": "All",
   "history.author": "author",
   "history.back-to-scope": "Back to history",

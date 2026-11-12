@@ -276,6 +276,7 @@
   "git.read-files": "Чтение файлов",
   "git.read-history": "Чтение истории",
   "git.stage": "Staging файлов",
+  "history.reset-columns": "Двойной клик сбрасывает ширину колонок",
   "history.all-branches": "Все",
   "history.author": "author",
   "history.back-to-scope": "Назад к истории",

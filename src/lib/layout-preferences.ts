@@ -25,3 +25,23 @@ export function readSidebarWidth() {
 export function saveSidebarWidth(width: number) {
   try { localStorage.setItem("git-ui.sidebar-width", String(width)); } catch { /* Optional preference. */ }
 }
+
+
+const historyColumnsKey = "git-ui.history-column-widths";
+
+export function readHistoryColumnWidths(count: number): number[] | undefined {
+  try {
+    const widths: unknown = JSON.parse(localStorage.getItem(historyColumnsKey) ?? "null");
+    if (Array.isArray(widths) && widths.length === count &&
+      widths.every(width => typeof width === "number" && Number.isFinite(width) && width > 0)) {
+      return widths;
+    }
+  } catch { /* Optional preference. */ }
+}
+
+export function saveHistoryColumnWidths(widths: number[] | undefined) {
+  try {
+    if (widths) localStorage.setItem(historyColumnsKey, JSON.stringify(widths));
+    else localStorage.removeItem(historyColumnsKey);
+  } catch { /* Optional preference. */ }
+}
