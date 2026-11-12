@@ -11,7 +11,7 @@ const TabsList: Component<ComponentProps<typeof TabsPrimitive.List>> = props => 
 };
 const TabsTrigger: Component<ComponentProps<typeof TabsPrimitive.Trigger>> = props => {
   const [local, rest] = splitProps(props, ["class"]);
-  return <TabsPrimitive.Trigger class={cn("-mb-px inline-flex min-h-11 items-center justify-center whitespace-nowrap border-b-2 border-transparent px-1 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-disabled data-[selected]:border-primary data-[selected]:text-foreground", local.class)} {...rest} />;
+  return <TabsPrimitive.Trigger class={cn("-mb-px inline-flex min-h-11 items-center justify-center whitespace-nowrap border-b-2 border-transparent px-1 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-[inset_0_-1px_0_hsl(var(--ring))] disabled:pointer-events-none disabled:opacity-disabled data-[selected]:border-primary data-[selected]:text-foreground", local.class)} {...rest} />;
 };
 
 export { Tabs, TabsContent, TabsList, TabsTrigger };
