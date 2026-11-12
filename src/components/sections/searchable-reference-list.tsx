@@ -105,7 +105,7 @@ export default function SearchableReferenceList(props: {
           </Button>
         </Show>
         <TextField class="min-w-0 flex-1" value={query()} onChange={setQuery} disabled={props.disabled}>
-          <TextFieldInput class="h-7 bg-transparent px-2 text-xs opacity-60 focus:bg-background focus:opacity-100" aria-label={props.label} placeholder={props.label} spellcheck={false}
+          <TextFieldInput class="h-7 bg-transparent px-2 text-xs opacity-60 hover:bg-background focus:bg-background focus:opacity-100" aria-label={props.label} placeholder={props.label} spellcheck={false}
             onKeyDown={event => {
               if (event.key === "Escape" && query()) {
                 event.preventDefault();
