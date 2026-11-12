@@ -2,7 +2,7 @@ import { diffSyntax } from "~/lib/diff-syntax";
 import { PanelHeader } from "~/components/ui/panel-header";
 import { FilePathLabel } from "~/components/ui/file-path-label";
 import { t } from "~/lib/i18n";
-import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { FileStatus } from "~/components/ui/file-status";
 import { Badge } from "~/components/ui/badge";
@@ -10,6 +10,8 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
 import type { FileDiff, WorktreeDiffScope } from "~/lib/git";
+
+const ROW_BATCH = 200;
 
 function readView() { try { return localStorage.getItem("git-ui.diff-view") === "split"; } catch { return false; } }
 export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDiffScope; inline?: boolean; stageDisabled?: boolean; onStageHunk?: (index: number) => void }) {
@@ -27,17 +29,35 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     return { added, removed };
   });
   const rows = createMemo(() => diffRows(parsed(), split(), collapse(), expanded()));
+  const [rowLimit, setRowLimit] = createSignal(ROW_BATCH);
+  const visibleRows = createMemo(() => rows().slice(0, rowLimit()));
+  const hasMoreRows = () => rowLimit() < rows().length;
+  const [sentinel, setSentinel] = createSignal<HTMLDivElement>();
   const headers = new Map<number, HTMLDivElement>();
   let viewport!: HTMLDivElement;
-  createEffect(on(createMemo(() => `${props.diff.commit}:${props.diff.file.path}:${props.scope ?? ""}`), () => { setExpanded(new Set<string>()); setCurrentHunk(0); if (viewport) viewport.scrollTop = 0; }));
+  createEffect(() => {
+    const target = sentinel();
+    if (!target || !hasMoreRows()) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        observer.unobserve(target);
+        setRowLimit(limit => limit + ROW_BATCH);
+      }
+    }, { root: props.inline ? null : viewport, rootMargin: "240px 0px" });
+    observer.observe(target);
+    onCleanup(() => observer.disconnect());
+  });
+  createEffect(on(createMemo(() => `${props.diff.commit}:${props.diff.file.path}:${props.scope ?? ""}`), () => { setExpanded(new Set<string>()); setCurrentHunk(0); setRowLimit(ROW_BATCH); if (viewport) viewport.scrollTop = 0; }));
   createEffect(() => { const count = parsed().hunks.length; setCurrentHunk(current => Math.max(0, Math.min(current, count - 1))); });
   function chooseView(value: boolean) { setSplit(value); try { localStorage.setItem("git-ui.diff-view", value ? "split" : "unified"); } catch { /* Optional preference. */ } }
   function navigate(direction: number) {
     const next = Math.min(parsed().hunks.length - 1, Math.max(0, currentHunk() + direction));
     setCurrentHunk(next);
+    const index = rows().findIndex(row => row.kind === "header" && row.hunk === next);
+    if (index >= rowLimit()) setRowLimit(index + ROW_BATCH);
     const target = headers.get(next);
-    if (target && props.inline) { target.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
-    if (target && viewport) viewport.scrollTo({ top: target.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop, behavior: "smooth" });
+    if (target && props.inline) { target.scrollIntoView({ block: "nearest" }); return; }
+    if (target && viewport) viewport.scrollTo({ top: target.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop });
   }
   function lineClass(line: DiffLine | null) {
     return line?.kind === "add" ? "bg-success text-success-foreground" : line?.kind === "remove" ? "bg-error text-error-foreground" : line?.kind === "meta" ? "text-muted-foreground italic" : "";
@@ -99,10 +119,15 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff.binary")}</AlertDescription></Alert></Show>
     <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto rounded-md border-0 shadow-none" : "min-h-0 flex-1 overflow-auto rounded-md border-0 shadow-none"} aria-label={t("diff.title")}>
       <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-diff leading-diff">{props.diff.patch}</pre>}>
-        <Show when={split()} fallback={<div class="min-w-max py-2"><For each={rows()}>{row => renderRow(row)}</For></div>}>
+        <Show when={split()} fallback={<div class="min-w-max py-2"><For each={visibleRows()}>{row => renderRow(row)}</For></div>}>
           <div class="grid grid-cols-2 divide-x">
-            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.before")}><For each={rows()}>{row => renderRow(row, "left")}</For></div>
-            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.after")}><For each={rows()}>{row => renderRow(row, "right")}</For></div>
+            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.before")}><For each={visibleRows()}>{row => renderRow(row, "left")}</For></div>
+            <div class="min-w-0 overflow-x-auto py-2" aria-label={t("diff.after")}><For each={visibleRows()}>{row => renderRow(row, "right")}</For></div>
+          </div>
+        </Show>
+        <Show when={hasMoreRows()}>
+          <div ref={setSentinel} class="flex justify-center py-2">
+            <Button variant="ghost" size="sm" onClick={() => setRowLimit(limit => limit + ROW_BATCH)}>{t("diff.more-lines")}</Button>
           </div>
         </Show>
       </Show>

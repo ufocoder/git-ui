@@ -138,6 +138,7 @@
   "diff.collapse": "Свернуть контекст",
   "diff.expand": "Развернуть контекст",
   "diff.hidden-lines": "⋯ {count} строк без изменений",
+  "diff.more-lines": "Показать ещё строки",
   "diff.next": "Следующее изменение",
   "diff.previous": "Предыдущее изменение",
   "diff.previous-name": "Прежнее имя: {path}",

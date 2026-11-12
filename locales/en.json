@@ -138,6 +138,7 @@
   "diff.collapse": "Collapse context",
   "diff.expand": "Expand context",
   "diff.hidden-lines": "⋯ {count} unchanged lines",
+  "diff.more-lines": "Show more lines",
   "diff.next": "Next change",
   "diff.previous": "Previous change",
   "diff.previous-name": "Previous name: {path}",
