@@ -22,7 +22,11 @@ try {
     const action = document.createElement(download.url ? 'a' : 'span');
     if (download.url) {
       action.href = download.url;
-      action.textContent = size ? `Download · ${size} ↓` : 'Download ↓';
+      const arrow = document.createElement('span');
+      arrow.className = 'download-arrow';
+      arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = '↓';
+      action.append(size ? `Download · ${size} ` : 'Download ', arrow);
       action.setAttribute('aria-label', `Download for ${download.name} ${download.detail}${size ? `, ${size}` : ""}`);
     } else {
       action.className = 'unavailable';

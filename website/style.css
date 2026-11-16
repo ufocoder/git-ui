@@ -113,3 +113,11 @@ footer>span{display:none}
 .mini-palettes span:last-child{width:62%;background:#afdcca}
 .mini-palettes>div+div span{background:#9c85ba}
 .mini-palettes>div+div span:last-child{background:#75a7a5}
+
+.download-arrow {
+  display: inline-block;
+  flex-shrink: 0;
+  border-inline-start: 1px solid currentColor;
+  border-inline-start-color: color-mix(in srgb, currentColor 30%, transparent);
+  padding-inline-start: 0.75em;
+}
