@@ -24,6 +24,7 @@ import { reportTerminalError } from "~/lib/terminal";
 import { git, type Commit, type HistoryScope, type History } from "~/lib/git";
 
 const ROW_HEIGHT = 34;
+const MAX_GRAPH_COLUMN_WIDTH = 240;
 
 export default function CommitTable(props: { branch: string; onBranchChange: (branch: string) => void; search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
@@ -193,11 +194,12 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
 
   const [columnWidths, setColumnWidths] = createSignal(readHistoryColumnWidths(5));
   const [labelWidths, setLabelWidths] = createSignal<number[]>([]);
-  const minimumWidths = createMemo(() => [Math.max(64, graph().width + 8), 100, 80, 90, 100]
+  const minimumWidths = createMemo(() => [Math.max(64, Math.min(MAX_GRAPH_COLUMN_WIDTH, graph().width + 8)), 100, 80, 90, 100]
     .map((width, index) => Math.max(width, labelWidths()[index] ?? 0)));
   const defaultWidths = createMemo(() => minimumWidths().map((width, index) =>
     Math.max(width, [64, 100, 110, 160, 150][index])));
-  const widths = createMemo(() => columnWidths()?.map((width, index) => Math.max(width, minimumWidths()[index])));
+  const widths = createMemo(() => columnWidths()?.map((width, index) =>
+    Math.max(index === 0 ? Math.min(width, MAX_GRAPH_COLUMN_WIDTH) : width, minimumWidths()[index])));
   const tableMinWidth = () => {
     const customized = widths();
     const total = (customized ?? defaultWidths()).reduce((sum, width) => sum + width, 0);
@@ -211,7 +213,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
 
   function resizeColumns(index: number, start: number[], delta: number) {
     const minimum = minimumWidths();
-    const applied = Math.max(minimum[index] - start[index], Math.min(start[index + 1] - minimum[index + 1], delta));
+    const available = start[index + 1] - minimum[index + 1];
+    const maximumDelta = index === 0 ? Math.min(available, MAX_GRAPH_COLUMN_WIDTH - start[0]) : available;
+    const applied = Math.max(minimum[index] - start[index], Math.min(maximumDelta, delta));
     const next = [...start];
     next[index] += applied;
     next[index + 1] -= applied;
@@ -351,14 +355,14 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                   else void navigateCommits(event, commit);
                 }}
                 class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
-                <TableCell class="pl-2 pr-0">
+                <TableCell class="pl-2 pr-0"><div class="overflow-hidden">
                   <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>
                     <For each={graphRow().edges}>{edge =>
                       <path d={graphEdgePath(edge, ROW_HEIGHT)} stroke-linecap="round" fill="none" stroke={`hsl(calc(var(--graph-hue-start) + ${edge.color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} style={{ "stroke-width": "var(--graph-stroke-width)" }} />
                     }</For>
                     <circle cx={12 + graphRow().column * 16} cy="17" style={{ r: "var(--graph-node-radius)", "stroke-width": "var(--graph-node-border)" }} fill={`hsl(calc(var(--graph-hue-start) + ${graphRow().color} * var(--graph-hue-step)) var(--graph-saturation) var(--graph-lightness))`} stroke="hsl(var(--background))" />
                   </svg>
-                </TableCell>
+                </div></TableCell>
                 <TableCell><CommitDescription subject={commit.subject} references={commit.refs} currentBranch={props.history.current_branch} bold={commit.uncommitted} /></TableCell>
                 <TableCell>
                   <Show when={!commit.uncommitted} fallback={<span aria-label={t("details.uncommitted")}>*</span>}>
