@@ -57,15 +57,23 @@ jobs:
           RELEASE_TAG: ${{ steps.meta.outputs.tag }}
           RELEASE_SHA: ${{ steps.meta.outputs.sha }}
         run: |
-          if gh release view "$RELEASE_TAG" --json isDraft > /dev/null 2>&1; then
-            if [ "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" != "true" ]; then
-              echo "Release $RELEASE_TAG is already published; bump the app version."
-              exit 1
-            fi
+          releases=$(gh api --paginate --slurp "repos/{owner}/{repo}/releases?per_page=100")
+          release=$(jq -c --arg tag "$RELEASE_TAG" 'flatten | map(select(.tag_name == $tag)) | first // null' <<< "$releases")
+          if [[ "$release" == null ]]; then
+            release_id=$(gh api --method POST "repos/{owner}/{repo}/releases" \
+              -f tag_name="$RELEASE_TAG" -f target_commitish="$RELEASE_SHA" -f name="$RELEASE_TAG" \
+              -F draft=true -F generate_release_notes=true --jq .id)
+          elif [[ "$(jq -r .draft <<< "$release")" == true ]]; then
+            release_id=$(jq -r .id <<< "$release")
           else
-            gh release create "$RELEASE_TAG" --target "$RELEASE_SHA" --title "$RELEASE_TAG" --draft --generate-notes
+            echo "Release $RELEASE_TAG is already published; bump the app version."
+            exit 1
           fi
-          echo "id=$(gh api "repos/{owner}/{repo}/releases/tags/$RELEASE_TAG" --jq .id)" >> "$GITHUB_OUTPUT"
+          if [[ ! "$release_id" =~ ^[0-9]+$ ]]; then
+            echo "Could not resolve the draft release ID for $RELEASE_TAG."
+            exit 1
+          fi
+          echo "id=$release_id" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.name }}
