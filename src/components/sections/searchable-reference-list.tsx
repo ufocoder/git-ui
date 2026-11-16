@@ -88,10 +88,10 @@ export default function SearchableReferenceList(props: {
 
   return <div ref={element => { anchor = element; }}>
     <Show when={needsSearch()}>
-      <div class="flex items-center gap-1 py-2" classList={{ "pl-6": !props.flushSearch && !sortable() }}>
+      <div class="flex items-center gap-1 py-2" classList={{ "pl-6": !props.flushSearch, "-ml-2": props.flushSearch }}>
         <Show when={sortable()}>
           <Button variant="ghost" size="icon"
-            class="ml-0.5 size-7 shrink-0 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground"
+            class="order-last size-7 shrink-0 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground"
             disabled={props.disabled} aria-label={sortLabels()[sortMode()]} title={sortLabels()[sortMode()]}
             onClick={() => setSortMode(mode => sortModes[(sortModes.indexOf(mode) + 1) % sortModes.length])}>
             <svg aria-hidden="true" viewBox="0 0 18 16" class="h-4 w-[18px]" classList={{ "translate-x-px": sortMode() === "newest" || sortMode() === "oldest" }} fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
@@ -114,7 +114,7 @@ export default function SearchableReferenceList(props: {
               }
             }} />
         </TextField>
-        <Show when={query()} fallback={<span class="w-7 shrink-0" aria-hidden="true" />}>
+        <Show when={query()}>
           <Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled} aria-label={props.clearLabel} title={props.clearLabel}
             onClick={() => setQuery("")}>×</Button>
         </Show>

@@ -128,7 +128,7 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
               <SidebarMenuButton as={CollapsibleTrigger} class="group/section h-8 pl-8 pr-2 py-1 text-sm font-medium leading-5" title={remote.name}>
                 <span class="min-w-0 truncate">{remote.name}</span><Chevron />
               </SidebarMenuButton>
-              <CollapsibleContent class="ml-8 pl-3">
+              <CollapsibleContent class="ml-8">
                 <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("sidebar.unfetched")}</p>}>
                   <SearchableReferenceList flushSearch sort={{ initial: "name-ascending", dates: remote.branch_dates ?? {} }} items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
                     clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")}>{branch => <SidebarMenuSubItem>
