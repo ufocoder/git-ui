@@ -115,7 +115,7 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
         </div>
       </Show>
     </div>
-    <Show when={props.diff.truncated}><Alert><AlertDescription>{t("diff.truncated")}</AlertDescription></Alert></Show>
+    <Show when={props.diff.truncated}><Alert class="rounded-none py-2"><AlertDescription>{t("diff.truncated")}</AlertDescription></Alert></Show>
     <Show when={props.diff.patch.includes("Binary files ")}><Alert><AlertDescription>{t("diff.binary")}</AlertDescription></Alert></Show>
     <Card ref={element => { viewport = element; }} class={props.inline ? "min-w-0 overflow-x-auto rounded-md border-0 shadow-none" : "min-h-0 flex-1 overflow-auto rounded-md border-0 shadow-none"} aria-label={t("diff.title")}>
       <Show when={parsed().hunks.length} fallback={<pre class="min-w-max whitespace-pre p-3 font-mono text-diff leading-diff">{props.diff.patch}</pre>}>
