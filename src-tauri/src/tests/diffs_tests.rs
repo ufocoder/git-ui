@@ -288,3 +288,16 @@ fn partial_staging_commits_index_snapshot_and_preserves_later_edits() {
     );
     assert!(!read_worktree_files(&repo.0).unwrap()[0].staged);
 }
+
+#[test]
+fn shows_diff_for_untracked_nested_file_from_canonical_repository_path() {
+    let repo = TempRepo::new();
+    repo.init();
+    let path = repo.0.canonicalize().unwrap();
+    let file = "docs/nested folder/new[1].txt";
+    std::fs::create_dir_all(path.join("docs/nested folder")).unwrap();
+    std::fs::write(path.join(file), "nested content\n").unwrap();
+
+    let diff = read_worktree_diff_scoped(&path, file, Some(WorktreeDiffScope::Unstaged)).unwrap();
+    assert!(diff.patch.contains("+nested content"));
+}

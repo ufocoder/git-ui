@@ -148,7 +148,7 @@ pub(super) fn read_worktree_diff_scoped(
             } else {
                 "/dev/null".into()
             },
-            path.join(file_path).to_string_lossy().into_owned(),
+            file_path.into(),
         ]);
     } else {
         let head = git(path, &["rev-parse", "--revs-only", "HEAD"])?;
