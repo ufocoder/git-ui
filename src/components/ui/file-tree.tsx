@@ -1,7 +1,7 @@
 import { FilePathLabel } from "./file-path-label";
 import type { FileRowRenderer } from "~/lib/file-actions-context";
 import { t } from "~/lib/i18n";
-import { For, Show, type JSX } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { Button } from "./button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./collapsible";
 import type { FileTreeNode } from "~/lib/file-tree";
@@ -11,6 +11,7 @@ type FileTreeProps<T> = {
   renderRow?: FileRowRenderer;
   label?: string;
   nested?: boolean;
+  virtual?: boolean;
   selectedPath: string;
   disabled?: boolean;
   onSelect: (file: T) => void;
@@ -48,13 +49,105 @@ function navigateTree(event: KeyboardEvent & { currentTarget: HTMLUListElement }
 }
 
 export function FileTree<T>(props: FileTreeProps<T>) {
-  return <ul aria-label={props.label ?? t("tree.title")} class="min-w-0" onKeyDown={props.nested ? undefined : navigateTree}>
-    <For each={props.nodes}>{(node, index) => <FileTreeItem {...props} node={node} last={index() === props.nodes.length - 1} />}</For>
+  const large = createMemo(() => {
+    if (props.nested) return false;
+    if (props.virtual) return true;
+    const levels = [props.nodes];
+    let count = 0;
+    while (levels.length) {
+      const nodes = levels.pop()!;
+      count += nodes.length;
+      if (count > 200) return true;
+      for (const node of nodes) if (node.kind === "directory") levels.push(node.children);
+    }
+    return false;
+  });
+  return <Show when={large()}
+    fallback={<ul aria-label={props.label ?? t("tree.title")} class="min-w-0" onKeyDown={props.nested ? undefined : navigateTree}>
+      <For each={props.nodes}>{(node, index) => <FileTreeItem {...props} node={node} last={index() === props.nodes.length - 1} />}</For>
+    </ul>}>
+    <VirtualFileList {...props} />
+  </Show>;
+}
+
+const FILE_ROW_HEIGHT = 24;
+
+function VirtualFileList<T>(props: FileTreeProps<T>) {
+  let list!: HTMLUListElement;
+  let viewport: HTMLElement | null = null;
+  const [range, setRange] = createSignal({ top: 0, bottom: 480 });
+  const [closedPaths, setClosedPaths] = createSignal(new Set<string>());
+  const rows = createMemo(() => {
+    const closed = closedPaths();
+    const result: { node: FileTreeNode<T>; depth: number; last: boolean }[] = [];
+    function append(nodes: FileTreeNode<T>[], depth: number) {
+      nodes.forEach((node, index) => {
+        result.push({ node, depth, last: index === nodes.length - 1 });
+        if (node.kind === "directory" && !closed.has(node.path)) append(node.children, depth + 1);
+      });
+    }
+    append(props.nodes, 0);
+    return result;
+  });
+  function setOpen(path: string, open: boolean) {
+    setClosedPaths(previous => {
+      const next = new Set(previous);
+      if (open) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
+  const start = createMemo(() => Math.min(Math.max(0, rows().length - 1), Math.max(0, Math.floor(range().top / FILE_ROW_HEIGHT) - 8)));
+  const end = createMemo(() => Math.min(rows().length, Math.max(start(), Math.ceil(range().bottom / FILE_ROW_HEIGHT) + 8)));
+  const visible = createMemo(() => rows().slice(start(), end()));
+  function update() {
+    if (!viewport) return;
+    const top = viewport.getBoundingClientRect().top + viewport.clientTop - list.getBoundingClientRect().top;
+    const bottom = top + viewport.clientHeight;
+    setRange(previous => previous.top === top && previous.bottom === bottom ? previous : { top, bottom });
+  }
+  onMount(() => {
+    viewport = list.closest<HTMLElement>("[data-file-scroll]");
+    for (let parent = list.parentElement; !viewport && parent; parent = parent.parentElement) {
+      if (/^(auto|scroll)$/.test(getComputedStyle(parent).overflowY)) { viewport = parent; break; }
+    }
+    if (!viewport) return;
+    const scrollContainer = viewport;
+    const observer = new ResizeObserver(update);
+    observer.observe(scrollContainer);
+    observer.observe(list);
+    if (scrollContainer.firstElementChild) observer.observe(scrollContainer.firstElementChild);
+    scrollContainer.addEventListener("scroll", update, { passive: true });
+    update();
+    onCleanup(() => { observer.disconnect(); scrollContainer.removeEventListener("scroll", update); });
+  });
+  return <ul ref={element => { list = element; }} aria-label={props.label ?? t("tree.title")} class="min-w-0 [overflow-anchor:none]"
+    style={{ "padding-top": `${start() * FILE_ROW_HEIGHT}px`, "padding-bottom": `${(rows().length - end()) * FILE_ROW_HEIGHT}px` }}
+    onKeyDown={event => {
+      const row = event.target;
+      if (!(row instanceof HTMLButtonElement) || !row.hasAttribute("data-file-row") ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+        (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+      const index = [...list.children].indexOf(row.closest("li")!);
+      const next = start() + index + (event.key === "ArrowDown" ? 1 : -1);
+      if (index < 0 || next < 0 || next >= rows().length || (next >= start() && next < end()) || !viewport) {
+        navigateTree(event);
+        return;
+      }
+      event.preventDefault();
+      viewport.scrollTop += list.getBoundingClientRect().top + next * FILE_ROW_HEIGHT - viewport.getBoundingClientRect().top;
+      update();
+      const button = list.children[next - start()]?.querySelector<HTMLButtonElement>("[data-file-row]:not(:disabled)");
+      button?.focus({ preventScroll: true });
+      if (button?.hasAttribute("data-file-select")) button.click();
+    }}>
+    <For each={visible()}>{node => <FileTreeItem {...props} node={node.node} last={node.last} nested={node.depth > 0} depth={node.depth}
+      open={!closedPaths().has(node.node.path)} onOpenChange={open => setOpen(node.node.path, open)} />}</For>
   </ul>;
 }
 
-function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean }) {
-  return <li class="relative min-w-0">
+function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 21}px` : undefined }}>
     <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute -left-[9px] top-0 w-px bg-border" style={{ height: props.last ? "12px" : "100%" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
@@ -72,7 +165,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         </TreeRow>
       }</Show>
     }>{directory =>
-      <Collapsible defaultOpen>
+      <Collapsible defaultOpen open={props.open} onOpenChange={props.onOpenChange}>
         <TreeRow path={directory().path} directory render={props.renderRow}>
         <div class="flex min-w-0 items-center gap-1">
         {props.renderDirectoryControl?.(directory().path)}
@@ -94,9 +187,9 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         </Show>
         </div>
         </TreeRow>
-        <CollapsibleContent class="ml-3 pl-[9px]">
+        <Show when={props.depth === undefined}><CollapsibleContent class="ml-3 pl-[9px]">
           <FileTree {...props} nested nodes={directory().children} />
-        </CollapsibleContent>
+        </CollapsibleContent></Show>
       </Collapsible>
     }</Show>
   </li>;

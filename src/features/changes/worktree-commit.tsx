@@ -190,7 +190,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     } catch { /* Preserve the message and report failures in the terminal. */ }
   }
   return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
-    <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto" classList={{ "[scrollbar-gutter:stable]": !props.onCommitted }}>
+    <ResizablePanel data-file-scroll initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto" classList={{ "[scrollbar-gutter:stable]": !props.onCommitted }}>
       <section class="px-4 pb-4 pt-4" data-file-navigation aria-label={t("commit.files")}>
         <Show when={props.onCommitted}>
           <div class="-mx-4 border-b px-4">
@@ -210,7 +210,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
             </PanelHeader>
             <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage.empty")}</p></Show>
-            <ChangedFilesTree presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
+            <ChangedFilesTree virtual presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
               renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />}
               renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
           </section>}</For>
