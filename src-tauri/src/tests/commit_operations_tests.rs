@@ -1,5 +1,12 @@
 use super::*;
 
+fn head_parents(history: &ProjectHistory) -> &Vec<String> {
+    &history.commits.iter()
+        .find(|commit| commit.hash == history.tip)
+        .expect("HEAD should be present in the test repository history")
+        .parents
+}
+
 #[test]
 fn cherry_pick_revert_and_skip_redundant_commit_preserve_other_changes() {
     use commit_ops::Action;
@@ -49,7 +56,7 @@ fn cherry_pick_revert_and_skip_redundant_commit_preserve_other_changes() {
         },
     )
     .unwrap();
-    assert_eq!(picked.commits[0].parents, vec![before.tip.clone()]);
+    assert_eq!(head_parents(&picked), &vec![before.tip.clone()]);
     assert_eq!(
         std::fs::read_to_string(repo.0.join("feature.txt")).unwrap(),
         "feature"
@@ -107,7 +114,7 @@ fn cherry_pick_revert_and_skip_redundant_commit_preserve_other_changes() {
         std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
         "main change"
     );
-    assert_eq!(reverted.commits[0].parents, vec![picked.tip]);
+    assert_eq!(head_parents(&reverted), &vec![picked.tip]);
 }
 
 #[test]
@@ -129,10 +136,10 @@ fn signs_new_and_amended_commits_with_configured_ssh_key() {
     let signed = commit_staged_with_options(&repo.0, "Signed commit", &options).unwrap();
     git(&repo.0, &["verify-commit", &signed.tip]).unwrap();
     assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "unstaged");
-    let parents = signed.commits[0].parents.clone();
+    let parents = head_parents(&signed).clone();
     let amended = commit_ops::run_with_options(&repo.0, &signed.tip, &signed.current_branch, commit_ops::Action::Amend { commit: signed.tip.clone(), message: "Amended signed message".into(), confirmed: true }, &options).unwrap();
     assert_ne!(amended.tip, signed.tip);
-    assert_eq!(amended.commits[0].parents, parents);
+    assert_eq!(head_parents(&amended), &parents);
     git(&repo.0, &["verify-commit", &amended.tip]).unwrap();
     assert_eq!(read_commit_details(&repo.0, &amended.tip).unwrap().message, "Amended signed message");
     assert_eq!(std::fs::read_to_string(repo.0.join("file.txt")).unwrap(), "unstaged");
@@ -199,7 +206,7 @@ fn amend_requires_head_and_confirmation_and_preserves_unstaged_edits() {
     )
     .unwrap();
     assert_ne!(after.tip, before.tip);
-    assert!(after.commits[0].parents.is_empty());
+    assert!(head_parents(&after).is_empty());
     assert_eq!(
         read_commit_details(&repo.0, &after.tip).unwrap().message,
         "Revised\n\nDetails"
