@@ -121,3 +121,7 @@ footer>span{display:none}
   border-inline-start-color: color-mix(in srgb, currentColor 30%, transparent);
   padding-inline-start: 0.75em;
 }
+
+.download-row a .download-arrow {
+  margin-inline-start: 0.5em;
+}
