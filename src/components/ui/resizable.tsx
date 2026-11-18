@@ -50,7 +50,7 @@ const ResizableHandle = <T extends ValidComponent = "button">(
       {...rest}
     >
       <Show when={props.withHandle}>
-        <div class="pointer-events-none z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-data-[dragging]/resize:opacity-100">
+        <div class="pointer-events-none z-10 flex h-6 w-3 items-center justify-center rounded-sm border bg-border opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-data-[dragging]/resize:opacity-100">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
