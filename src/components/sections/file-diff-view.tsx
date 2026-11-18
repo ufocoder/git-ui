@@ -5,7 +5,6 @@ import { t } from "~/lib/i18n";
 import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { FileStatus } from "~/components/ui/file-status";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { parseDiff, diffRows, type DiffLine, type DiffRow } from "~/lib/diff";
@@ -94,9 +93,6 @@ export default function FileDiffView(props: { diff: FileDiff; scope?: WorktreeDi
           </span>
         </Show>
       </PanelHeader>
-      <Show when={props.scope}><div class="flex flex-wrap items-center gap-2">
-        <Show when={props.scope}><Badge variant="secondary">{props.scope === "staged" ? t("stage.staged") : t("stage.unstaged")}</Badge></Show>
-      </div></Show>
       <Show when={props.diff.file.old_path}><p class="break-all text-xs text-muted-foreground">{t("diff.previous-name", { path: props.diff.file.old_path ?? "" })}</p></Show>
       <Show when={parsed().hunks.length}>
         <div class="flex flex-wrap items-center gap-1">
