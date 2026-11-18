@@ -1,10 +1,10 @@
 import { FileViewToggle } from "~/components/ui/file-view-toggle";
-import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
+import { readFilePresentation, saveFilePresentation, type FileSort } from "~/lib/file-presentation";
 import { PanelHeader } from "~/components/ui/panel-header";
 import DirectoryDiffView from "./directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
 import { locale, t } from "~/lib/i18n";
-import { Show, createEffect, createSignal, onCleanup, on, createMemo } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, on, createMemo } from "solid-js";
 import { git, type Commit, type CommitFile, type FileDiff } from "~/lib/git";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import FileDiffView from "~/components/sections/file-diff-view";
@@ -13,6 +13,14 @@ import ChangedFilesTree from "./changed-files-tree";
 
 export default function CommitFiles(props: { commit: Commit; stash?: boolean; disabled: boolean }) {
   const [presentation, setPresentation] = createSignal(readFilePresentation());
+  const sortColumns: FileSort[] = ["status", "name", "path"];
+  const columnLabel = (sort: FileSort) => sort === "status" ? t("files.column-status") : sort === "name" ? t("files.column-name") : t("files.column-path");
+  function sortFiles(sort: FileSort) {
+    const current = presentation();
+    const value = { ...current, sort, descending: current.sort === sort ? !current.descending : false };
+    setPresentation(value);
+    saveFilePresentation(value);
+  }
   const [message, setMessage] = createSignal("");
   const [files, setFiles] = createSignal<CommitFile[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -66,8 +74,19 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           <ResizableHandle withHandle aria-label={t("details.resize-files")} />
           <ResizablePanel minSize={0.2} class="flex min-h-0 flex-col overflow-hidden">
           <PanelHeader class="px-4"><h3>{t("details.files", { count: files().length })}</h3><FileViewToggle value={presentation().view} onChange={view => { const value = { ...presentation(), view }; setPresentation(value); saveFilePresentation(value); }} /></PanelHeader>
-          <div class={presentation().view === "list" ? "min-h-0 flex-1 overflow-y-auto py-4 [scrollbar-gutter:stable] [&_[data-file-row]]:px-5" : "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"}>
-            <Show when={presentation().view === "list"}><div class="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-3 border-b px-5 pb-2 text-xs font-medium text-muted-foreground"><span role="img" aria-label={t("files.column-status")} title={t("files.column-status")} class="text-center">•</span><span>{t("files.column-name")}</span><span>{t("files.column-path")}</span></div></Show>
+          <div data-file-scroll class={presentation().view === "list" ? "min-h-0 flex-1 overflow-y-auto py-4 [scrollbar-gutter:stable] [&_[data-file-row]]:px-5" : "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"}>
+            <Show when={presentation().view === "list"}>
+              <div class="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-3 border-b px-5 pb-2 text-xs font-medium text-muted-foreground">
+                <For each={sortColumns}>{sort => <button type="button" class="flex min-h-6 min-w-0 items-center gap-1 text-left hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
+                  aria-label={`${columnLabel(sort)}: ${presentation().sort === sort && !presentation().descending ? t("files.descending") : t("files.ascending")}`}
+                  title={columnLabel(sort)} aria-pressed={presentation().sort === sort} onClick={() => sortFiles(sort)}>
+                  <Show when={sort !== "status"}><span class="truncate">{columnLabel(sort)}</span></Show>
+                  <Show when={presentation().sort === sort} fallback={sort === "status" ? <span aria-hidden="true" class="w-4 text-center">•</span> : undefined}>
+                    <svg aria-hidden="true" class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d={presentation().descending ? "M12 4v16m-5-5 5 5 5-5" : "M12 20V4m-5 5 5-5 5 5"} /></svg>
+                  </Show>
+                </button>}</For>
+              </div>
+            </Show>
             <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("details.loading")}</p></Show>
             <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("details.no-files")}</p></Show>
             <ChangedFilesTree presentation={presentation()} commit={props.commit.hash} files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
