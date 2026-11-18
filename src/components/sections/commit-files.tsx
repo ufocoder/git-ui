@@ -1,3 +1,5 @@
+import { FileViewToggle } from "~/components/ui/file-view-toggle";
+import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import { PanelHeader } from "~/components/ui/panel-header";
 import DirectoryDiffView from "./directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
@@ -10,6 +12,7 @@ import FileDiffView from "~/components/sections/file-diff-view";
 import ChangedFilesTree from "./changed-files-tree";
 
 export default function CommitFiles(props: { commit: Commit; stash?: boolean; disabled: boolean }) {
+  const [presentation, setPresentation] = createSignal(readFilePresentation());
   const [message, setMessage] = createSignal("");
   const [files, setFiles] = createSignal<CommitFile[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -62,11 +65,12 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
           </ResizablePanel>
           <ResizableHandle withHandle aria-label={t("details.resize-files")} />
           <ResizablePanel minSize={0.2} class="flex min-h-0 flex-col overflow-hidden">
-          <PanelHeader class="px-4"><h3>{t("details.files", { count: files().length })}</h3></PanelHeader>
-          <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]">
+          <PanelHeader class="px-4"><h3>{t("details.files", { count: files().length })}</h3><FileViewToggle value={presentation().view} onChange={view => { const value = { ...presentation(), view }; setPresentation(value); saveFilePresentation(value); }} /></PanelHeader>
+          <div class={presentation().view === "list" ? "min-h-0 flex-1 overflow-y-auto py-4 [scrollbar-gutter:stable] [&_[data-file-row]]:px-5" : "min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"}>
+            <Show when={presentation().view === "list"}><div class="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-3 border-b px-5 pb-2 text-xs font-medium text-muted-foreground"><span role="img" aria-label={t("files.column-status")} title={t("files.column-status")} class="text-center">•</span><span>{t("files.column-name")}</span><span>{t("files.column-path")}</span></div></Show>
             <Show when={loading()}><p role="status" class="text-sm text-muted-foreground">{t("details.loading")}</p></Show>
             <Show when={!loading() && !files().length && !error()}><p class="text-sm text-muted-foreground">{t("details.no-files")}</p></Show>
-            <ChangedFilesTree commit={props.commit.hash} files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
+            <ChangedFilesTree presentation={presentation()} commit={props.commit.hash} files={files()} selectedPath={selectedDirectory() || selectedFile()} disabled={props.disabled} onSelect={file => void openFile(file)}
               onSelectDirectory={path => { if (!props.disabled) { diffRequest++; setOpening(false); setDiff(undefined); setSelectedFile(""); setSelectedDirectory(path); } }} />
           </div>
           </ResizablePanel>

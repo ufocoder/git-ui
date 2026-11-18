@@ -10,6 +10,7 @@ type FileTreeProps<T> = {
   nodes: FileTreeNode<T>[];
   renderRow?: FileRowRenderer;
   label?: string;
+  columns?: boolean;
   nested?: boolean;
   virtual?: boolean;
   selectedPath: string;
@@ -97,8 +98,9 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
       return next;
     });
   }
-  const start = createMemo(() => Math.min(Math.max(0, rows().length - 1), Math.max(0, Math.floor(range().top / FILE_ROW_HEIGHT) - 8)));
-  const end = createMemo(() => Math.min(rows().length, Math.max(start(), Math.ceil(range().bottom / FILE_ROW_HEIGHT) + 8)));
+  const rowHeight = () => props.columns ? 28 : FILE_ROW_HEIGHT;
+  const start = createMemo(() => Math.min(Math.max(0, rows().length - 1), Math.max(0, Math.floor(range().top / rowHeight()) - 8)));
+  const end = createMemo(() => Math.min(rows().length, Math.max(start(), Math.ceil(range().bottom / rowHeight()) + 8)));
   const visible = createMemo(() => rows().slice(start(), end()));
   function update() {
     if (!viewport) return;
@@ -122,7 +124,7 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
     onCleanup(() => { observer.disconnect(); scrollContainer.removeEventListener("scroll", update); });
   });
   return <ul ref={element => { list = element; }} aria-label={props.label ?? t("tree.title")} class="min-w-0 [overflow-anchor:none]"
-    style={{ "padding-top": `${start() * FILE_ROW_HEIGHT}px`, "padding-bottom": `${(rows().length - end()) * FILE_ROW_HEIGHT}px` }}
+    style={{ "padding-top": `${start() * rowHeight()}px`, "padding-bottom": `${(rows().length - end()) * rowHeight()}px` }}
     onKeyDown={event => {
       const row = event.target;
       if (!(row instanceof HTMLButtonElement) || !row.hasAttribute("data-file-row") ||
@@ -135,7 +137,7 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
         return;
       }
       event.preventDefault();
-      viewport.scrollTop += list.getBoundingClientRect().top + next * FILE_ROW_HEIGHT - viewport.getBoundingClientRect().top;
+      viewport.scrollTop += list.getBoundingClientRect().top + next * rowHeight() - viewport.getBoundingClientRect().top;
       update();
       const button = list.children[next - start()]?.querySelector<HTMLButtonElement>("[data-file-row]:not(:disabled)");
       button?.focus({ preventScroll: true });
@@ -147,19 +149,19 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
 }
 
 function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; open?: boolean; onOpenChange?: (open: boolean) => void }) {
-  return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 21}px` : undefined }}>
-    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute -left-[9px] top-0 w-px bg-border" style={{ height: props.last ? "12px" : "100%" }} /></Show>
+  return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 24}px` : undefined }}>
+    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute -top-1.5 w-px bg-muted-foreground/30" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", height: props.last ? "18px" : "calc(100% + 6px)" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3 h-px bg-muted-foreground/30" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", width: props.onSelectDirectory ? "15px" : "17px" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
         <TreeRow path={file().path} directory={false} render={props.renderRow}>
-        <div class="flex min-w-0 items-center gap-1">
+        <div class="flex min-w-0 items-center gap-1" style={{ "padding-inline-start": props.label ? undefined : props.nested ? "4px" : props.onSelectDirectory ? "28px" : "20px" }}>
         {props.renderControl?.(file().value)}
         <Button data-file-row data-file-select variant={props.selectedPath === file().path ? "secondary" : "ghost"}
-          class="h-6 min-h-6 w-full justify-start gap-2 px-2 py-0 text-left text-xs" disabled={props.disabled}
+          class={props.columns ? "grid h-7 min-h-7 w-full grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-3 rounded-none border-b border-border/50 px-1 py-0 text-left text-xs" : "h-6 min-h-6 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelect(file().value); }} title={props.fileTitle?.(file().value) ?? file().path}>
           {props.renderIcon(file().value)}
-          <FilePathLabel path={file().name} />
+          <FilePathLabel path={file().name} columns={props.columns} />
         </Button>
         </div>
         </TreeRow>
@@ -170,14 +172,14 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         <div class="flex min-w-0 items-center gap-1">
         {props.renderDirectoryControl?.(directory().path)}
         <Show when={props.onSelectDirectory} fallback={
-        <CollapsibleTrigger as={Button} data-file-row variant="ghost" disabled={props.disabled} class="group/folder h-6 min-h-6 w-full justify-start gap-2 px-2 py-0 text-left text-xs" title={directory().path}>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 shrink-0 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 5 7 7-7 7" /></svg>
+        <CollapsibleTrigger as={Button} data-file-row variant="ghost" disabled={props.disabled} class="group/folder h-6 min-h-6 w-full justify-start gap-2 px-2 py-0 text-left text-xs [&>svg:first-child]:size-3" title={directory().path}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 shrink-0 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 6 6 6-6 6" /></svg>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4 shrink-0 text-muted-foreground"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" /></svg>
           <span class="min-w-0 truncate">{directory().name}</span>
         </CollapsibleTrigger>
         }>
-          <CollapsibleTrigger as={Button} data-folder-toggle variant="ghost" size="icon" class="group/folder size-6 shrink-0" disabled={props.disabled} aria-label={t("tree.toggle-folder", { path: directory().path })}>
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 5 7 7-7 7" /></svg>
+          <CollapsibleTrigger as={Button} data-folder-toggle variant="ghost" size="icon" class="group/folder ml-[7px] -mr-px h-6 w-[18px] shrink-0 rounded-sm p-0 [&_svg]:size-3" disabled={props.disabled} aria-label={t("tree.toggle-folder", { path: directory().path })}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 6 6 6-6 6" /></svg>
           </CollapsibleTrigger>
           <Button data-file-row data-file-select variant={props.selectedPath === directory().path ? "secondary" : "ghost"} class="h-6 min-h-6 min-w-0 flex-1 justify-start gap-2 px-1 py-0 text-left text-xs" disabled={props.disabled}
             aria-current={props.selectedPath === directory().path ? "true" : undefined} onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelectDirectory?.(directory().path); }} title={directory().path}>
@@ -187,7 +189,7 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         </Show>
         </div>
         </TreeRow>
-        <Show when={props.depth === undefined}><CollapsibleContent class="ml-3 pl-[9px]">
+        <Show when={props.depth === undefined}><CollapsibleContent class="ml-3 pl-3">
           <FileTree {...props} nested nodes={directory().children} />
         </CollapsibleContent></Show>
       </Collapsible>
