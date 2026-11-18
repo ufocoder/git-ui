@@ -326,6 +326,6 @@ export default function RepositoryWorkspace(props: {
         </DialogFooter>
       </DialogContent>}</Show>
     </Dialog>
-    <OperationStatus onOpenTerminal={() => setTerminalOpen(true)} canRestore={canRestore} onRestore={target => void restoreHistory(target)} />
+    <OperationStatus terminalOpen={terminalOpen()} onOpenTerminal={() => setTerminalOpen(true)} canRestore={canRestore} onRestore={target => void restoreHistory(target)} />
   </>;
 }

@@ -4,9 +4,13 @@ import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
 import { t } from "~/lib/i18n";
 import { Button } from "~/components/ui/button";
 
-export default function OperationStatus(props: { onOpenTerminal?: () => void; onRestore?: (target: RewriteRecovery) => void; canRestore?: (target: RewriteRecovery) => boolean }) {
+export default function OperationStatus(props: { terminalOpen?: boolean; onOpenTerminal?: () => void; onRestore?: (target: RewriteRecovery) => void; canRestore?: (target: RewriteRecovery) => boolean }) {
   createEffect(() => {
     const notice = operationNotice();
+    if (notice?.state === "error" && props.terminalOpen) {
+      dismissOperation(notice.id);
+      return;
+    }
     if (notice?.state !== "success") return;
     const timer = window.setTimeout(() => dismissOperation(notice.id), notice.recovery ? 15000 : 5000);
     onCleanup(() => window.clearTimeout(timer));
