@@ -44,3 +44,15 @@ test("folder selection includes descendants without matching sibling path prefix
   assert.deepEqual(filesInDirectory(files, "src/lib"), [files[1]]);
   assert.deepEqual(filesInDirectory(files, "missing"), []);
 });
+
+
+test("naturally sorts directories and filenames at every depth", () => {
+  const nodes = buildFileTree([
+    { path: "folder10/file10.txt" }, { path: "folder2/file10.txt" },
+    { path: "folder2/File2.txt" }, { path: "folder2/file1.txt" },
+    { path: "file10.txt" }, { path: "file2.txt" },
+    { path: "folder2/sub10/a.txt" }, { path: "folder2/sub2/a.txt" },
+  ]);
+  assert.deepEqual(nodes.map(node => node.name), ["folder2", "folder10", "file2.txt", "file10.txt"]);
+  assert.deepEqual(nodes[0].children.map(node => node.name), ["sub2", "sub10", "file1.txt", "File2.txt", "file10.txt"]);
+});

@@ -2,6 +2,8 @@ export type FileTreeNode<T> =
   | { kind: "directory"; name: string; path: string; children: FileTreeNode<T>[] }
   | { kind: "file"; name: string; path: string; value: T };
 
+const naturalOrder = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
 type Directory<T> = Extract<FileTreeNode<T>, { kind: "directory" }>;
 
 // Git paths always use '/', including on Windows. Keep every path component.
@@ -28,7 +30,7 @@ export function buildFileTree<T extends { path: string }>(files: readonly T[], o
     nodes.sort((a, b) => {
       if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
       const comparison = a.kind === "file" && b.kind === "file" && options.compareFiles
-        ? options.compareFiles(a.value, b.value) : a.name.localeCompare(b.name);
+        ? options.compareFiles(a.value, b.value) : naturalOrder.compare(a.name, b.name) || a.name.localeCompare(b.name);
       return options.descending ? -comparison : comparison;
     });
     nodes.forEach(node => { if (node.kind === "directory") sort(node.children); });
