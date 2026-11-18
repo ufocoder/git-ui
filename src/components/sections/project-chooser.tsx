@@ -33,6 +33,7 @@ export default function ProjectChooser(props: ProjectChooserProps) {
             <path d="M3 17V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v2" />
             <path d="M5 11h16a1 1 0 0 1 1 1.3l-2 6A2.5 2.5 0 0 1 17.6 20H5a2 2 0 0 1-2-2l1-6a1 1 0 0 1 1-1Z" />
           </svg>
+          <span aria-hidden="true" class="h-6 w-px shrink-0 bg-current opacity-30" />
           {props.choosingProject ? t("init.opening") : t("home.select")}
         </Button>
         </Show>
