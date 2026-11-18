@@ -7,7 +7,7 @@ import { FileStatus } from "~/components/ui/file-status";
 import { buildFileTree, type FileTreeNode } from "~/lib/file-tree";
 import type { CommitFile } from "~/lib/git";
 
-type ChangedFilesTreeProps = {
+export type ChangedFilesTreeProps = {
   files: CommitFile[];
   virtual?: boolean;
   presentation?: FilePresentation;

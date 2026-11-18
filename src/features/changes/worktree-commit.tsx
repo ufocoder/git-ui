@@ -1,7 +1,10 @@
+import FileTableHeader from "~/components/sections/file-table-header";
+import ChangedFilesBrowser from "~/components/sections/changed-files-browser";
+import { stagingSelection, hasDiffScope, selectDiffScope } from "./staging-selection";
 import { PanelHeader } from "~/components/ui/panel-header";
 import CommitMessageFields from "./commit-message-fields";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
-import { readPanelSizes } from "~/lib/layout-preferences";
+import { readPanelSizes, validPanelSizes } from "~/lib/layout-preferences";
 import DirectoryDiffView from "~/components/sections/directory-diff-view";
 import { filesInDirectory } from "~/lib/file-tree";
 import { compareChangedFiles } from "~/lib/file-presentation";
@@ -32,6 +35,8 @@ type WorktreeCommitProps = {
 export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [presentation, setPresentation] = createSignal(readFilePresentation());
   const panelSizes = untrack(() => readPanelSizes(props.history?.path ?? "global", props.onCommitted ? "changes.files" : "history.worktree", [0.5, 0.5]));
+  const composerVisible = () => Boolean(props.onCommitted && !props.history?.operation);
+  const [composerSizes, setComposerSizes] = createSignal(untrack(() => readPanelSizes(props.history?.path ?? "global", "changes.composer", [0.75, 0.25])));
   const draft = props.draft ?? createCommitDraft();
   const [sign, setSign] = draft.sign;
   const [amendTarget, setAmendTarget] = draft.amendTarget;
@@ -57,6 +62,9 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     const group = props.onCommitted ? selectedGroup() === "staged" ? stagedFiles() : unstagedFiles() : files();
     return filesInDirectory(group, selectedDirectory()).sort((a, b) => compareChangedFiles(a, b, presentation().sort) * (presentation().descending ? -1 : 1));
   });
+  const selectedFiles = createMemo(() => selectedDirectory() ? filesInDirectory(files(), selectedDirectory()) : files().filter(file => file.path === selectedPath()));
+  const showScopeSwitch = () => props.onCommitted && hasDiffScope(selectedFiles(), "staged") && hasDiffScope(selectedFiles(), "unstaged");
+  const allSelection = createMemo(() => stagingSelection(files()));
   const stagedCount = createMemo(() => files().filter(file => file.staged).length);
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
@@ -103,13 +111,16 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         if (!mounted || request !== loadRequest) return;
         setFiles(result.files);
         if (directory) {
-          const candidates = props.onCommitted ? result.files.filter(file => group === "staged" ? file.staged : !file.staged || file.partially_staged) : result.files;
-          if (!filesInDirectory(candidates, directory).length) setSelectedDirectory("");
+          const descendants = filesInDirectory(result.files, directory);
+          if (!descendants.length) setSelectedDirectory("");
+          else if (props.onCommitted) setSelectedGroup(selectDiffScope(descendants, group));
           return;
         }
-        const file = result.files.find(file => file.path === path && (!props.onCommitted || (group === "staged" ? file.staged : !file.staged || file.partially_staged)));
+        const file = result.files.find(file => file.path === path);
         if (!path || !file) { setSelectedPath(""); setDiff(undefined); setDiffLoading(false); return; }
-        const next = await git.getFileDiff(WORKTREE, path, props.onCommitted ? group : undefined);
+        const scope = props.onCommitted ? selectDiffScope([file], group) : undefined;
+        if (scope) setSelectedGroup(scope);
+        const next = await git.getFileDiff(WORKTREE, path, scope);
         if (mounted && request === loadRequest && diffVersion === diffRequest) setDiff(next);
       } catch { /* Preserve the current view; the terminal reports failures. */ }
       finally { if (mounted && request === loadRequest) setLoading(false); }
@@ -146,7 +157,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         if (staged ? file.staged && !file.partially_staged : !file.staged) continue;
         updated = (await git.setFileStaged(file.path, staged)).files;
       }
-      if (mounted && updated) { setSelectedDirectory(""); setFiles(updated); diffRequest++; setDiff(undefined); setSelectedPath(""); setDiffLoading(false); }
+      if (mounted && updated) setFiles(updated);
       if (mounted && props.history && props.onCommitted) {
         if (props.history.operation) props.onCommitted(await git.getHistory());
         else if (updated) props.onCommitted({ ...props.history, worktree_files: updated, has_changes: updated.length > 0, conflicts: updated.filter(file => file.status === "U") });
@@ -158,16 +169,17 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   function openDirectory(path: string, scope?: WorktreeDiffScope) {
     if (disabled()) return;
     diffRequest++; setDiff(undefined); setDiffLoading(false); setSelectedPath("");
-    if (scope) setSelectedGroup(scope);
+    if (props.onCommitted) setSelectedGroup(selectDiffScope(filesInDirectory(files(), path), scope));
     setSelectedDirectory(path);
   }
   async function openFile(file: CommitFile, scope?: WorktreeDiffScope) {
     if (disabled()) return;
     const request = ++diffRequest;
     setSelectedDirectory("");
-    if (scope) setSelectedGroup(scope);
+    const diffScope = props.onCommitted ? selectDiffScope([file], scope) : undefined;
+    if (diffScope) setSelectedGroup(diffScope);
     setSelectedPath(file.path); setDiff(undefined); setDiffLoading(true);
-    try { const result = await git.getFileDiff(WORKTREE, file.path, scope); if (request === diffRequest) setDiff(result); }
+    try { const result = await git.getFileDiff(WORKTREE, file.path, diffScope); if (request === diffRequest) setDiff(result); }
     catch { /* The Git API reports failures in the terminal. */ }
     finally { if (request === diffRequest) setDiffLoading(false); }
   }
@@ -189,37 +201,66 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       props.onCommitCreated?.();
     } catch { /* Preserve the message and report failures in the terminal. */ }
   }
-  return <div class="flex h-full min-h-0 flex-col"><div class="min-h-0 flex-1"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
-    <ResizablePanel data-file-scroll initialSize={panelSizes[0]} minSize={0.2} class="min-h-0 min-w-0 overflow-auto" classList={{ "[scrollbar-gutter:stable]": !props.onCommitted }}>
-      <section class="px-4 pb-4 pt-4" data-file-navigation aria-label={t("commit.files")}>
+  return <Resizable layoutId="changes.composer" orientation="vertical" initialSizes={composerSizes()} sizes={composerVisible() ? composerSizes() : [1, 0]}
+    onSizesChange={sizes => { if (composerVisible() && validPanelSizes(sizes, 2)) setComposerSizes(sizes); }} class="min-h-0 min-w-0">
+    <ResizablePanel minSize={0.3} class="min-h-0 overflow-hidden"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
+    <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <Show when={!props.onCommitted} fallback={<>
         <Show when={props.onCommitted}>
-          <div class="-mx-4 border-b px-4">
+          <div class="border-b px-4 pt-2">
             <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
           </div>
           <p class="sr-only" role="status">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</p>
         </Show>
+        <Show when={props.onCommitted && files().length > 0}>
+          <PanelHeader class="!min-h-8 justify-start px-4">
+<Show when={presentation().view === "tree"}>
+            <Checkbox checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
+              onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
+            </Show>
+            <h2 class="text-xs font-medium text-muted-foreground">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</h2>
+          </PanelHeader>
+        </Show>
+      <div data-file-scroll class="min-h-0 flex-1 overflow-auto">
+      <section class={props.onCommitted ? (presentation().view === "list" ? "" : "pl-4 pt-2") : "px-4"} data-file-navigation aria-label={t("commit.files")}>
+        <Show when={presentation().view === "list"}>
+          <div class="flex border-b">
+            <div class="flex h-8 w-10 shrink-0 items-center justify-center">
+              <Checkbox checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
+                onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
+            </div>
+            <FileTableHeader class="min-w-0 flex-1 border-b-0 px-1" presentation={presentation()} onPresentationChange={value => { setPresentation(value); saveFilePresentation(value); }} />
+          </div>
+        </Show>
         <Show when={loading()}><p role="status" class="sr-only">{t("commit.loading-files")}</p></Show>
         <Show when={!loading() && !files().length}><div class="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
-        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<ChangedFilesTree files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />}>
-          <For each={[
-            { kind: "unstaged" as const, label: t("stage.unstaged"), files: unstagedFiles, action: t("stage.all"), staged: false },
-            { kind: "staged" as const, label: t("stage.staged"), files: stagedFiles, action: t("stage.unstage-all"), staged: true },
-          ]}>{group => <section class="space-y-1 [&+section]:mt-3" aria-label={group.label}>
-            <PanelHeader class="-mx-4 px-4">
-              <h2 class="text-xs font-medium">{group.label} <span class="text-muted-foreground">{group.files().length}</span></h2>
-              <Button size="sm" variant="ghost" class="h-7 px-2 text-xs" disabled={disabled() || !group.files().length} onClick={() => void stageFiles(group.files(), !group.staged)}>{group.action}</Button>
-            </PanelHeader>
-            <Show when={!loading() && !group.files().length}><p class="px-2 py-2 text-xs text-muted-foreground">{t("stage.empty")}</p></Show>
-            <ChangedFilesTree virtual presentation={presentation()} files={group.files()} selectedPath={selectedGroup() === group.kind ? selectedDirectory() || selectedPath() : ""} disabled={disabled()} onSelect={file => void openFile(file, group.kind)} onSelectDirectory={path => openDirectory(path, group.kind)}
-              renderDirectoryControl={path => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFiles(group.files().filter(file => file.path.startsWith(path + "/")), !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />}
-              renderControl={file => <Checkbox checked={group.staged} disabled={disabled()} onChange={() => void stageFile(file, !group.staged)} aria-label={group.staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
-          </section>}</For>
+        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<div classList={{ "-mx-4 [&_[data-file-row]]:px-5": presentation().view === "list" }}><ChangedFilesTree virtual presentation={presentation()} files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} /></div>}>
+
+          <ChangedFilesTree virtual presentation={presentation()} files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
+            onSelect={file => void openFile(file)} onSelectDirectory={openDirectory}
+            renderDirectoryControl={(path, descendants) => {
+              const state = () => stagingSelection(descendants);
+              return <Checkbox checked={state().checked} indeterminate={state().indeterminate} disabled={disabled()}
+                onChange={checked => void stageFiles(descendants, checked)} aria-label={state().checked ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />;
+            }}
+            renderControl={file => <Checkbox checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
+              onChange={checked => void stageFile(file, checked)} aria-label={file.staged && !file.partially_staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
         </Show>
       </section>
+      </div>
+      </>}>
+        <ChangedFilesBrowser presentation={presentation()} onPresentationChange={value => { setPresentation(value); saveFilePresentation(value); }}
+          loading={loading()} commit={WORKTREE} files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
+          onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} />
+      </Show>
     </ResizablePanel>
     <ResizableHandle withHandle aria-label={t("commit.resize")} />
     <ResizablePanel initialSize={panelSizes[1]} minSize={0.25} class="min-h-0 min-w-0 overflow-hidden">
       <section class="flex h-full min-h-0 flex-col px-4 pb-4" aria-label={t("details.diff")}>
+        <Show when={showScopeSwitch()}><div class="flex shrink-0 gap-1 py-1" role="group" aria-label={t("stage.diff-scope")}>
+          <For each={["unstaged", "staged"] as const}>{scope => <Button size="sm" class="h-7 px-2 text-xs" variant={selectedGroup() === scope ? "secondary" : "ghost"} aria-pressed={selectedGroup() === scope} disabled={disabled()}
+            onClick={() => { if (selectedDirectory()) openDirectory(selectedDirectory(), scope); else { const file = selectedFiles()[0]; if (file) void openFile(file, scope); } }}>{scope === "staged" ? t("stage.staged") : t("stage.unstaged")}</Button>}</For>
+        </div></Show>
         <div class="min-h-0 flex-1">
           <Show when={selectedDirectory()} fallback={<>
           <Show when={diffLoading()}><p role="status" class="pt-4 text-sm text-muted-foreground">{t("details.loading-diff")}</p></Show>
@@ -233,10 +274,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         </div>
       </section>
     </ResizablePanel>
-  </Resizable></div>
-    <Show when={props.onCommitted && !props.history?.operation}>
-      <div class="max-h-[50%] shrink-0 panel-surface overflow-y-auto border-t px-4 pt-4">
-          <form onSubmit={submit} class="shrink-0 space-y-3">
+  </Resizable></ResizablePanel>
+    <ResizableHandle withHandle class={composerVisible() ? "" : "hidden"} aria-label={t("commit.resize-message")} />
+    <ResizablePanel minSize={composerVisible() ? 0.15 : 0} maxSize={composerVisible() ? 0.6 : 0} class="min-h-0 overflow-hidden">
+    <Show when={composerVisible()}>
+      <div class="panel-surface flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-2">
+          <form onSubmit={submit} class="flex min-h-full flex-1 flex-col gap-2 [&>div:not(:first-child)]:shrink-0">
             <CommitMessageFields value={message()} onChange={setMessage} disabled={disabled()} />
             <Show when={amendTarget()}>
               <div class="space-y-2 border-l-2 border-warning-foreground pl-3">
@@ -246,19 +289,19 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               </div>
             </Show>
             <Show when={pushAfterCommit() && !props.history?.sync.upstream}>
-              <div class="flex items-center justify-end gap-3 text-sm">
+              <div class="flex flex-wrap items-center justify-end gap-2 text-xs">
                 <span>{t("upstream.push-remote")}</span>
                 <SelectField class="w-48 max-w-full" aria-label={t("upstream.push-remote")} value={pushRemote()} disabled={disabled()}
                   options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
               </div>
             </Show>
-            <div class="panel-actions -mx-4 flex flex-wrap items-center justify-end gap-3 border-t px-4 py-3">
-              <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-sm" title={!props.history?.remotes.length ? t("upstream.no-remotes") : undefined}>
+            <div class="panel-actions -mx-4 flex flex-wrap items-center justify-end gap-2 border-t px-4 py-2">
+              <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-xs" title={!props.history?.remotes.length ? t("upstream.no-remotes") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit.push-after")} />
               <span>{t("commit.push-after")}</span>
             </label>
               <DropdownMenu placement="top-start" gutter={4}>
-                <DropdownMenuTrigger as={Button} type="button" variant="ghost" size="sm" class="h-control-toolbar gap-2 px-2 text-muted-foreground" disabled={disabled()}>
+                <DropdownMenuTrigger as={Button} type="button" variant="ghost" size="sm" class="h-7 gap-1 px-2 text-xs text-muted-foreground" disabled={disabled()}>
                   {t("compose.options")}<span aria-hidden="true">{sign() || amendTarget() ? "✓" : "⋯"}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -274,5 +317,6 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
           </form>
       </div>
     </Show>
-  </div>;
+    </ResizablePanel>
+  </Resizable>;
 }

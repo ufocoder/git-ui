@@ -4,7 +4,7 @@ import { t } from "~/lib/i18n";
 import { For, Show, createMemo, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { Button } from "./button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./collapsible";
-import type { FileTreeNode } from "~/lib/file-tree";
+import { flattenFileTree, type FileTreeNode } from "~/lib/file-tree";
 
 type FileTreeProps<T> = {
   nodes: FileTreeNode<T>[];
@@ -71,25 +71,14 @@ export function FileTree<T>(props: FileTreeProps<T>) {
   </Show>;
 }
 
-const FILE_ROW_HEIGHT = 24;
+const FILE_ROW_HEIGHT = 28;
 
 function VirtualFileList<T>(props: FileTreeProps<T>) {
   let list!: HTMLUListElement;
   let viewport: HTMLElement | null = null;
   const [range, setRange] = createSignal({ top: 0, bottom: 480 });
   const [closedPaths, setClosedPaths] = createSignal(new Set<string>());
-  const rows = createMemo(() => {
-    const closed = closedPaths();
-    const result: { node: FileTreeNode<T>; depth: number; last: boolean }[] = [];
-    function append(nodes: FileTreeNode<T>[], depth: number) {
-      nodes.forEach((node, index) => {
-        result.push({ node, depth, last: index === nodes.length - 1 });
-        if (node.kind === "directory" && !closed.has(node.path)) append(node.children, depth + 1);
-      });
-    }
-    append(props.nodes, 0);
-    return result;
-  });
+  const rows = createMemo(() => flattenFileTree(props.nodes, closedPaths()));
   function setOpen(path: string, open: boolean) {
     setClosedPaths(previous => {
       const next = new Set(previous);
@@ -98,7 +87,7 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
       return next;
     });
   }
-  const rowHeight = () => props.columns ? 28 : FILE_ROW_HEIGHT;
+  const rowHeight = () => props.columns ? 36 : FILE_ROW_HEIGHT;
   const start = createMemo(() => Math.min(Math.max(0, rows().length - 1), Math.max(0, Math.floor(range().top / rowHeight()) - 8)));
   const end = createMemo(() => Math.min(rows().length, Math.max(start(), Math.ceil(range().bottom / rowHeight()) + 8)));
   const visible = createMemo(() => rows().slice(start(), end()));
@@ -143,21 +132,25 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
       button?.focus({ preventScroll: true });
       if (button?.hasAttribute("data-file-select")) button.click();
     }}>
-    <For each={visible()}>{node => <FileTreeItem {...props} node={node.node} last={node.last} nested={node.depth > 0} depth={node.depth}
+    <For each={visible()}>{node => <FileTreeItem {...props} node={node.node} last={node.last} nested={node.depth > 0} depth={node.depth} guides={node.guides}
       open={!closedPaths().has(node.node.path)} onOpenChange={open => setOpen(node.node.path, open)} />}</For>
   </ul>;
 }
 
-function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; guides?: number[]; open?: boolean; onOpenChange?: (open: boolean) => void }) {
   return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 24}px` : undefined }}>
-    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute -top-1.5 w-px bg-muted-foreground/30" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", height: props.last ? "18px" : "calc(100% + 6px)" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3 h-px bg-muted-foreground/30" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", width: props.onSelectDirectory ? "15px" : "17px" }} /></Show>
+    <For each={props.guides}>{depth => <span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border"
+      style={{ left: `${(depth - (props.depth ?? 0)) * 24 - (props.onSelectDirectory ? 9 : 11)}px`, height: "100%" }} />}</For>
+    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", height: props.last ? "14px" : "100%" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3.5 h-px bg-border" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", width: props.onSelectDirectory ? "15px" : "17px" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
         <TreeRow path={file().path} directory={false} render={props.renderRow}>
-        <div class="flex min-w-0 items-center gap-1" style={{ "padding-inline-start": props.label ? undefined : props.nested ? "4px" : props.onSelectDirectory ? "28px" : "20px" }}>
-        {props.renderControl?.(file().value)}
+        <div class={props.columns ? `flex min-w-0 items-center border-b border-border/50 ${props.disabled ? "" : "hover:bg-accent hover:text-accent-foreground"} ${props.selectedPath === file().path ? "bg-secondary text-secondary-foreground" : ""}` : "flex min-w-0 items-center gap-1"} style={{ "padding-inline-start": props.label ? undefined : props.nested ? "4px" : props.onSelectDirectory ? "28px" : "20px" }}>
+        <Show when={props.columns && props.renderControl} fallback={props.renderControl?.(file().value)}>
+          <div class="flex h-9 w-10 shrink-0 items-center justify-center">{props.renderControl?.(file().value)}</div>
+        </Show>
         <Button data-file-row data-file-select variant={props.selectedPath === file().path ? "secondary" : "ghost"}
-          class={props.columns ? "grid h-7 min-h-7 w-full grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-3 rounded-none border-b border-border/50 px-1 py-0 text-left text-xs" : "h-6 min-h-6 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
+          class={props.columns ? "grid h-9 min-h-9 min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-4 rounded-none bg-transparent px-1 py-0 text-left text-xs hover:bg-transparent" : "h-7 min-h-7 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelect(file().value); }} title={props.fileTitle?.(file().value) ?? file().path}>
           {props.renderIcon(file().value)}
@@ -172,16 +165,16 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         <div class="flex min-w-0 items-center gap-1">
         {props.renderDirectoryControl?.(directory().path)}
         <Show when={props.onSelectDirectory} fallback={
-        <CollapsibleTrigger as={Button} data-file-row variant="ghost" disabled={props.disabled} class="group/folder h-6 min-h-6 w-full justify-start gap-2 px-2 py-0 text-left text-xs [&>svg:first-child]:size-3" title={directory().path}>
+        <CollapsibleTrigger as={Button} data-file-row variant="ghost" disabled={props.disabled} class="group/folder h-7 min-h-7 w-full justify-start gap-2 px-2 py-0 text-left text-xs [&>svg:first-child]:size-3" title={directory().path}>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 shrink-0 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 6 6 6-6 6" /></svg>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4 shrink-0 text-muted-foreground"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" /></svg>
           <span class="min-w-0 truncate">{directory().name}</span>
         </CollapsibleTrigger>
         }>
-          <CollapsibleTrigger as={Button} data-folder-toggle variant="ghost" size="icon" class="group/folder ml-[7px] -mr-px h-6 w-[18px] shrink-0 rounded-sm p-0 [&_svg]:size-3" disabled={props.disabled} aria-label={t("tree.toggle-folder", { path: directory().path })}>
+          <CollapsibleTrigger as={Button} data-folder-toggle variant="ghost" size="icon" class="group/folder ml-[7px] -mr-px h-7 w-[18px] shrink-0 rounded-sm p-0 [&_svg]:size-3" disabled={props.disabled} aria-label={t("tree.toggle-folder", { path: directory().path })}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3 transition-transform group-data-[expanded]/folder:rotate-90"><path d="m9 6 6 6-6 6" /></svg>
           </CollapsibleTrigger>
-          <Button data-file-row data-file-select variant={props.selectedPath === directory().path ? "secondary" : "ghost"} class="h-6 min-h-6 min-w-0 flex-1 justify-start gap-2 px-1 py-0 text-left text-xs" disabled={props.disabled}
+          <Button data-file-row data-file-select variant={props.selectedPath === directory().path ? "secondary" : "ghost"} class="h-7 min-h-7 min-w-0 flex-1 justify-start gap-2 px-1 py-0 text-left text-xs" disabled={props.disabled}
             aria-current={props.selectedPath === directory().path ? "true" : undefined} onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelectDirectory?.(directory().path); }} title={directory().path}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4 shrink-0 text-muted-foreground"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" /></svg>
             <span class="min-w-0 truncate">{directory().name}</span>

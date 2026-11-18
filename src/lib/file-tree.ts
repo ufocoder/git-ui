@@ -42,3 +42,19 @@ export function buildFileTree<T extends { path: string }>(files: readonly T[], o
 export function filesInDirectory<T extends { path: string }>(files: readonly T[], directory: string): T[] {
   return files.filter(file => file.path.startsWith(`${directory}/`));
 }
+
+export function flattenFileTree<T>(nodes: FileTreeNode<T>[], closed: ReadonlySet<string>) {
+  const rows: { node: FileTreeNode<T>; depth: number; last: boolean; guides: number[] }[] = [];
+  function append(level: FileTreeNode<T>[], depth: number, guides: number[]) {
+    level.forEach((node, index) => {
+      const last = index === level.length - 1;
+      rows.push({ node, depth, last, guides });
+      if (node.kind === "directory" && !closed.has(node.path)) {
+        // Keep ancestor trunks on descendant rows, even when the parent is outside the viewport.
+        append(node.children, depth + 1, depth > 0 && !last ? [...guides, depth] : guides);
+      }
+    });
+  }
+  append(nodes, 0, []);
+  return rows;
+}

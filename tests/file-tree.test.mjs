@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildFileTree, filesInDirectory } from "../src/lib/file-tree.ts";
+import { buildFileTree, filesInDirectory, flattenFileTree } from "../src/lib/file-tree.ts";
 
 test("keeps every directory even when there is just one changed file", () => {
   const file = { path: "folder1/folder3/folder3/file.md", status: "M" };
@@ -55,4 +55,17 @@ test("naturally sorts directories and filenames at every depth", () => {
   ]);
   assert.deepEqual(nodes.map(node => node.name), ["folder2", "folder10", "file2.txt", "file10.txt"]);
   assert.deepEqual(nodes[0].children.map(node => node.name), ["sub2", "sub10", "file1.txt", "File2.txt", "file10.txt"]);
+});
+
+
+test("virtual rows carry ancestor trunks through descendants and stop after the last branch", () => {
+  const nodes = buildFileTree([{ path: "root/a/nested/file.txt" }, { path: "root/b/file.txt" }]);
+  const rows = flattenFileTree(nodes, new Set());
+  const guides = path => rows.find(row => row.node.path === path).guides;
+  assert.deepEqual(guides("root/a/nested/file.txt"), [1]);
+  assert.deepEqual(guides("root/b/file.txt"), []);
+  assert.deepEqual(rows.slice(3, 4)[0].guides, [1]);
+  const collapsed = flattenFileTree(nodes, new Set(["root/a"]));
+  assert.deepEqual(collapsed.map(row => row.node.path), ["root", "root/a", "root/b", "root/b/file.txt"]);
+  assert.deepEqual(collapsed.at(-1).guides, []);
 });
