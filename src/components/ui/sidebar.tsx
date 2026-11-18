@@ -1,3 +1,4 @@
+import { ResizeGrip } from "./resize-grip";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts"
 import { readSidebarWidth, saveSidebarWidth } from "~/lib/layout-preferences";
 import { t } from "~/lib/i18n";
@@ -365,7 +366,7 @@ const SidebarResizeHandle = () => {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }}
       onPointerCancel={finish} onLostPointerCapture={finish}
-      onDblClick={() => setWidth(256)}
+      onDblClick={() => setWidth(250)}
       onKeyDown={event => {
         const step = event.shiftKey ? 40 : 10
         if (matchesShortcut("sidebarResize", event) && event.key === "ArrowLeft") setWidth(width() - step)
@@ -375,7 +376,7 @@ const SidebarResizeHandle = () => {
         else return
         event.preventDefault()
       }}>
-      <span aria-hidden="true" class="relative h-8 w-1 rounded-full bg-sidebar-border group-hover/resize-handle:bg-sidebar-ring group-focus-visible/resize-handle:bg-sidebar-ring" />
+      <ResizeGrip class="opacity-0 group-hover/resize-handle:opacity-100 group-focus-visible/resize-handle:opacity-100 group-data-[resizing=true]/sidebar-wrapper:opacity-100" />
     </div>
   </Show>
 }

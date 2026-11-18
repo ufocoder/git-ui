@@ -1,3 +1,4 @@
+import { ResizeGrip } from "./resize-grip";
 import type { ValidComponent } from "solid-js"
 import { Show, splitProps, untrack } from "solid-js"
 
@@ -50,25 +51,7 @@ const ResizableHandle = <T extends ValidComponent = "button">(
       {...rest}
     >
       <Show when={props.withHandle}>
-        <div class="pointer-events-none z-10 flex h-6 w-3 items-center justify-center rounded-sm border bg-border opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-data-[dragging]/resize:opacity-100">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2.5"
-          >
-            <path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-          </svg>
-        </div>
+        <ResizeGrip class="opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-data-[dragging]/resize:opacity-100" />
       </Show>
     </ResizablePrimitive.Handle>
   )

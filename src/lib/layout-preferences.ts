@@ -19,8 +19,8 @@ export function savePanelSizes(scope: string, id: string, sizes: number[], count
   try { localStorage.setItem(panelStorageKey(scope, id), JSON.stringify(sizes)); } catch { /* Layout preferences must not interrupt Git work. */ }
 }
 export function readSidebarWidth() {
-  try { const width = Number(localStorage.getItem("git-ui.sidebar-width")); return width >= 180 && width <= 480 ? width : 256; }
-  catch { return 256; }
+  try { const width = Number(localStorage.getItem("git-ui.sidebar-width")); return width >= 180 && width <= 480 ? width : 250; }
+  catch { return 250; }
 }
 export function saveSidebarWidth(width: number) {
   try { localStorage.setItem("git-ui.sidebar-width", String(width)); } catch { /* Optional preference. */ }
