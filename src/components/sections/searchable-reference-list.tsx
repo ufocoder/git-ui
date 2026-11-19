@@ -52,7 +52,8 @@ export default function SearchableReferenceList(props: {
     const timer = setTimeout(() => setFilter(value), 200);
     onCleanup(() => clearTimeout(timer));
   });
-  const needsSearch = () => Math.max(0, props.items.length * SIDEBAR_ROW_STRIDE - 4) > availableHeight();
+  const needsSearch = () => props.items.length > 15
+    && Math.max(0, props.items.length * SIDEBAR_ROW_STRIDE - 4) > availableHeight();
   createEffect(() => {
     if (!needsSearch()) {
       setQuery("");
