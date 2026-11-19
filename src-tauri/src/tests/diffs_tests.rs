@@ -301,3 +301,35 @@ fn shows_diff_for_untracked_nested_file_from_canonical_repository_path() {
     let diff = read_worktree_diff_scoped(&path, file, Some(WorktreeDiffScope::Unstaged)).unwrap();
     assert!(diff.patch.contains("+nested content"));
 }
+
+#[test]
+fn bulk_staging_handles_large_literal_selection_and_unborn_head() {
+    use crate::repository_operations::set_files_staged;
+    let repo = TempRepo::new();
+    repo.init();
+    let mut names = Vec::new();
+    for index in 0..11001 {
+        let name = format!("file[{index}].txt");
+        std::fs::write(repo.0.join(&name), "content").unwrap();
+        names.push(name);
+    }
+    std::fs::write(repo.0.join("excluded.txt"), "excluded").unwrap();
+    let staged = set_files_staged(&repo.0, &names, true).unwrap();
+    assert_eq!(staged.files.iter().filter(|file| file.staged).count(), 11001);
+    assert!(!staged.files.iter().find(|file| file.path == "excluded.txt").unwrap().staged);
+    let unstaged = set_files_staged(&repo.0, &names, false).unwrap();
+    assert!(unstaged.files.iter().all(|file| !file.staged));
+    assert!(repo.0.join("file[0].txt").exists());
+}
+
+#[test]
+fn bulk_staging_validates_selection_before_mutating_index() {
+    use crate::repository_operations::set_files_staged;
+    let repo = TempRepo::new();
+    repo.init();
+    std::fs::write(repo.0.join("present.txt"), "content").unwrap();
+    assert!(set_files_staged(
+        &repo.0, &["present.txt".into(), "missing.txt".into()], true
+    ).is_err());
+    assert!(git(&repo.0, &["diff", "--cached", "--name-only"]).unwrap().is_empty());
+}

@@ -269,31 +269,53 @@ pub(super) fn set_file_staged(
     file_path: &str,
     staged: bool,
 ) -> Result<CommitDetails, String> {
-    let file = read_worktree_files(path)?
+    set_files_staged(path, &[file_path.to_owned()], staged)
+}
+
+pub(super) fn set_files_staged(
+    path: &Path,
+    file_paths: &[String],
+    staged: bool,
+) -> Result<CommitDetails, String> {
+    use std::collections::{HashMap, HashSet};
+    use crate::git_command::git_with_input;
+
+    let files: HashMap<_, _> = read_worktree_files(path)?
         .into_iter()
-        .find(|file| file.path == file_path)
-        .ok_or(locale::text("error.stale-file"))?;
-    let mut paths = vec![format!(":(literal){}", file.path)];
-    if let Some(old) = &file.old_path {
-        let literal = format!(":(literal){old}");
-        if !staged || !git(path, &["ls-files", "-z", "--", &literal])?.is_empty() {
-            paths.push(literal);
+        .map(|file| (file.path.clone(), file))
+        .collect();
+    let tracked = if staged && file_paths.iter().any(|name| {
+        files.get(name).is_some_and(|file| file.old_path.is_some())
+    }) {
+        git(path, &["ls-files", "-z"])?
+    } else {
+        String::new()
+    };
+    let tracked: HashSet<_> = tracked.split('\0').collect();
+    let mut paths = Vec::new();
+    let mut seen = HashSet::new();
+    // Validate the entire selection before changing the index.
+    for name in file_paths {
+        let file = files.get(name).ok_or(locale::text("error.stale-file"))?;
+        if seen.insert(file.path.clone()) {
+            paths.push(format!(":(literal){}", file.path));
+        }
+        if let Some(old) = &file.old_path {
+            if (!staged || tracked.contains(old.as_str())) && seen.insert(old.clone()) {
+                paths.push(format!(":(literal){old}"));
+            }
         }
     }
-    if staged {
-        // Stage the currently visible file contents, including deletions.
-        let mut args = vec!["add", "--all", "--"];
-        args.extend(paths.iter().map(String::as_str));
-        git(path, &args)?;
-    } else {
-        let head = git(path, &["rev-parse", "--revs-only", "HEAD"])?;
-        let mut args = if head.trim().is_empty() {
-            vec!["rm", "--cached", "--force", "--ignore-unmatch", "--"]
+    if !paths.is_empty() {
+        let input = paths.join("\0") + "\0";
+        let args = if staged {
+            vec!["add", "--all", "--pathspec-from-file=-", "--pathspec-file-nul"]
+        } else if git(path, &["rev-parse", "--revs-only", "HEAD"])?.trim().is_empty() {
+            vec!["rm", "--cached", "--force", "--ignore-unmatch", "--pathspec-from-file=-", "--pathspec-file-nul"]
         } else {
-            vec!["reset", "--quiet", "HEAD", "--"]
+            vec!["reset", "--quiet", "HEAD", "--pathspec-from-file=-", "--pathspec-file-nul"]
         };
-        args.extend(paths.iter().map(String::as_str));
-        git(path, &args)?;
+        git_with_input(path, &args, &input, &[])?;
     }
     read_commit_details(path, WORKTREE)
 }
@@ -327,6 +349,21 @@ pub(super) async fn set_project_file_staged(
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
         set_file_staged(Path::new(&path), &file_path, staged)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub(super) async fn set_project_files_staged(
+    window: WebviewWindow,
+    projects: State<'_, Projects>,
+    file_paths: Vec<String>,
+    staged: bool,
+) -> Result<CommitDetails, String> {
+    let path = project_path(&window, &projects)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        set_files_staged(Path::new(&path), &file_paths, staged)
     })
     .await
     .map_err(|e| e.to_string())?

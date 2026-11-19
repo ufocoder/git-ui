@@ -61,8 +61,8 @@
   "commit.files": "Commit files",
   "commit.loading-files": "Loading files…",
   "changes.no-results": "No matching files",
-  "changes.files-title": "Changed files · {count}",
   "changes.search": "Search files",
+  "changes.search-count": "{count} matches",
   "commit.message": "Commit message",
   "commit.push-after": "Push after commit",
   "commit.push-error": "Commit created locally, but push failed: {p1}",
@@ -527,7 +527,7 @@
   "sidebar.toggle": "Toggle Sidebar",
   "sidebar.unfetched": "No branches fetched.",
   "sidebar.width": "Sidebar width",
-  "stage.selection-count": "{count} of {total} staged",
+  "stage.selection-count": "{count} staged · {total} total",
   "stage.include-all": "Stage all files",
   "stage.exclude-all": "Unstage all files",
   "stage.all": "Stage all",
@@ -676,5 +676,11 @@
   "upstream.set": "Set upstream",
   "upstream.set-description": "Select a remote branch to track. This does not change commits or files.",
   "upstream.tracking-branch": "Tracking branch",
-  "upstream.unfetched": "No branches have been fetched from this remote. Run Fetch first."
+  "upstream.unfetched": "No branches have been fetched from this remote. Run Fetch first.",
+  "stage.stage-matches": "Stage {count} matching files",
+  "stage.unstage-matches": "Unstage {count} matching files",
+  "stage.repository-actions": "All files…",
+  "stage.repository-files": "Stage all {count} repository files",
+  "changes.exact-name": "Exact name",
+  "stage.updating": "Updating staged files…"
 }

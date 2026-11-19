@@ -61,8 +61,8 @@
   "commit.files": "Файлы для коммита",
   "commit.loading-files": "Загружаем файлы…",
   "changes.no-results": "Файлы не найдены",
-  "changes.files-title": "Изменённые файлы · {count}",
   "changes.search": "Поиск файлов",
+  "changes.search-count": "Найдено {count}",
   "commit.message": "Текст коммита",
   "commit.push-after": "Сделать push",
   "commit.push-error": "Коммит создан локально, но push не выполнен: {p1}",
@@ -527,7 +527,7 @@
   "sidebar.toggle": "Toggle Sidebar",
   "sidebar.unfetched": "Нет загруженных веток.",
   "sidebar.width": "Ширина боковой панели",
-  "stage.selection-count": "{count} из {total} в коммите",
+  "stage.selection-count": "В индексе {count} · всего {total}",
   "stage.include-all": "Добавить всё в коммит",
   "stage.exclude-all": "Убрать всё из коммита",
   "stage.all": "Добавить всё",
@@ -676,5 +676,11 @@
   "upstream.set": "Настроить upstream",
   "upstream.set-description": "Выберите удалённую ветку для отслеживания. Настройка не меняет коммиты и файлы.",
   "upstream.tracking-branch": "Отслеживаемая ветка",
-  "upstream.unfetched": "В этом remote нет загруженных веток. Сначала выполните Fetch."
+  "upstream.unfetched": "В этом remote нет загруженных веток. Сначала выполните Fetch.",
+  "stage.stage-matches": "Добавить найденные файлы ({count})",
+  "stage.unstage-matches": "Убрать найденные файлы ({count})",
+  "stage.repository-actions": "Все файлы…",
+  "stage.repository-files": "Добавить все файлы репозитория ({count})",
+  "changes.exact-name": "Точное имя",
+  "stage.updating": "Обновление индекса…"
 }

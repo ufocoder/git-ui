@@ -60,6 +60,10 @@ const TextFieldInput = <T extends ValidComponent = "input">(
         local.class
       )}
       {...others}
+      spellcheck={false}
+      autocorrect="off"
+      autocapitalize="off"
+      autocomplete="off"
     />
   )
 }
@@ -78,6 +82,10 @@ const TextFieldTextArea = <T extends ValidComponent = "textarea">(
         local.class
       )}
       {...others}
+      spellcheck={false}
+      autocorrect="off"
+      autocapitalize="off"
+      autocomplete="off"
     />
   )
 }

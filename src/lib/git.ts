@@ -139,6 +139,7 @@ export const git = {
   createTag: (name: string) => request<History>("create_project_tag", { name }),
   addRemote: (name: string, url: string) => request<History>("add_project_remote", { name, url }),
   setFileStaged: (filePath: string, staged: boolean) => request<CommitDetails>("set_project_file_staged", { filePath, staged }),
+  setFilesStaged: (filePaths: string[], staged: boolean) => request<CommitDetails>("set_project_files_staged", { filePaths, staged }),
   commitChanges: (message: string, options?: CommitOptions) => request<History>("commit_project_changes", { message, options }),
   stash: (action: StashAction) => request<History>("stash_project", { action }),
   publishBranch: (branch: string, remote: string, remoteBranch: string) => request<History>("publish_project_branch", { branch, remote, remoteBranch }),

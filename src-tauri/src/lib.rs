@@ -146,6 +146,7 @@ pub fn run() {
             repository_operations::reset_project_commit,
             repository_operations::create_project_tag_at_commit,
             repository_operations::set_project_file_staged,
+            repository_operations::set_project_files_staged,
             repository_operations::commit_project_changes,
             repository_operations::add_project_remote,
             projects::show_project_chooser,

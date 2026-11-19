@@ -12,7 +12,7 @@ import { compareChangedFiles } from "~/lib/file-presentation";
 import FileViewControls from "./file-view-controls";
 import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
-import { t } from "~/lib/i18n";
+import { t, locale } from "~/lib/i18n";
 import { For, Show, untrack, createMemo, createSignal, onCleanup, createEffect } from "solid-js";
 import type { CommitFlowState, CommitRequest } from "./commit-flow";
 import { git, WORKTREE, type CommitFile, type FileDiff, type History, type WorktreeDiffScope } from "~/lib/git";
@@ -51,6 +51,13 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   const [message, setMessage] = draft.message;
   const [files, setFiles] = createSignal<CommitFile[]>(props.history?.worktree_files ?? []);
   const [fileQuery, setFileQuery] = createSignal("");
+  const [searchOpen, setSearchOpen] = createSignal(false);
+  let searchButton: HTMLButtonElement | undefined;
+  function closeSearch() {
+    setFileQuery("");
+    setSearchOpen(false);
+    searchButton?.focus();
+  }
   const [fileFilter, setFileFilter] = createSignal("");
   createEffect(() => {
     const query = fileQuery().trim().toLocaleLowerCase();
@@ -58,7 +65,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     const timer = setTimeout(() => setFileFilter(query), 200);
     onCleanup(() => clearTimeout(timer));
   });
-  const visibleFiles = createMemo(() => files().filter(file => file.path.toLocaleLowerCase().includes(fileFilter())));
+  const visibleFiles = createMemo(() => files().filter(file => {
+    const query = fileFilter();
+    if (!query) return true;
+    const path = file.path.toLocaleLowerCase();
+    return path.includes(query);
+  }));
   const [loading, setLoading] = createSignal(props.history?.worktree_files === undefined);
   const [pending, setPending] = createSignal(false);
   const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
@@ -74,7 +86,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
   });
   const selectedFiles = createMemo(() => selectedDirectory() ? filesInDirectory(files(), selectedDirectory()) : files().filter(file => file.path === selectedPath()));
   const showScopeSwitch = () => props.onCommitted && hasDiffScope(selectedFiles(), "staged") && hasDiffScope(selectedFiles(), "unstaged");
-  const allSelection = createMemo(() => stagingSelection(files()));
+  const allSelection = createMemo(() => stagingSelection(visibleFiles()));
   const stagedCount = createMemo(() => files().filter(file => file.staged).length);
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
@@ -162,11 +174,10 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     if (!props.onCommitted || disabled()) return;
     setPending(true); props.onBusyChange(true);
     try {
-      let updated: CommitFile[] | undefined;
-      for (const file of selected) {
-        if (staged ? file.staged && !file.partially_staged : !file.staged) continue;
-        updated = (await git.setFileStaged(file.path, staged)).files;
-      }
+      const paths = selected
+        .filter(file => staged ? !file.staged || file.partially_staged : file.staged)
+        .map(file => file.path);
+      const updated = paths.length ? (await git.setFilesStaged(paths, staged)).files : undefined;
       if (mounted && updated) setFiles(updated);
       if (mounted && props.history && props.onCommitted) {
         if (props.history.operation) props.onCommitted(await git.getHistory());
@@ -218,21 +229,52 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
       <Show when={!props.onCommitted} fallback={<>
         <PanelHeader class="px-4 [&>div]:w-full">
           <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }}
-            leading={<>
-              <h3 class="shrink-0 text-xs font-medium">{t("changes.files-title", { count: files().length })}</h3>
-              <Show when={files().length > 15 || fileQuery()}><TextField class="min-w-24 max-w-52 flex-1" value={fileQuery()} onChange={setFileQuery}>
-                <TextFieldInput class="h-7 px-2 text-xs" placeholder={t("changes.search")} aria-label={t("changes.search")} type="search" />
-              </TextField></Show>
+            actions={<>
+            <Show when={searchOpen()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger as={Button} variant="ghost" size="icon" class="size-7" aria-label={t("stage.repository-actions")} title={t("stage.repository-actions")} disabled={disabled()}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem checked={files().every(file => file.staged && !file.partially_staged)}
+                    onChange={checked => void stageFiles(files(), checked)}>
+                    {t("stage.repository-files", { count: files().length.toLocaleString(locale()) })}
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Show>
             </>}
+            leading={<>
+              <h3 class="min-w-0 truncate text-xs font-medium" aria-label={t("commit.staged-count", { count: stagedCount(), total: files().length })}>{t("stage.selection-count", { count: stagedCount().toLocaleString(locale()), total: files().length.toLocaleString(locale()) })}</h3>
+            </>}
+
             />
         </PanelHeader>
-          <div class="flex min-h-9 shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-1 text-xs">
+          <div aria-busy={pending()} class="flex min-h-9 shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-1 text-xs">
             <label class="flex cursor-pointer items-center gap-2">
-              <Checkbox class="space-x-0" checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
-                onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
-              <span>{allSelection().checked ? t("stage.exclude-all") : t("stage.include-all")}</span>
+              <Checkbox class="space-x-0" checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !visibleFiles().length || fileQuery().trim().toLocaleLowerCase() !== fileFilter()}
+                onChange={checked => void stageFiles(visibleFiles(), checked)}
+                aria-label={fileFilter() ? t(allSelection().checked ? "stage.unstage-matches" : "stage.stage-matches", { count: visibleFiles().length.toLocaleString(locale()) }) : allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
+              <Show when={pending()} fallback={<Show when={!searchOpen()}>
+                <span>{allSelection().checked ? t("stage.exclude-all") : t("stage.include-all")}</span>
+              </Show>}>
+                <span role="status" class="text-muted-foreground">{t("stage.updating")}</span>
+              </Show>
             </label>
-            <span class="ml-auto text-muted-foreground tabular-nums" role="status" aria-label={t("commit.staged-count", { count: stagedCount(), total: files().length })}>{t("stage.selection-count", { count: stagedCount(), total: files().length })}</span>
+            <Show when={searchOpen()} fallback={<Button ref={element => { searchButton = element; }} variant="ghost" size="icon" class="ml-auto size-7 shrink-0" aria-label={t("changes.search")} title={t("changes.search")} aria-expanded={searchOpen()} onClick={() => searchOpen() ? closeSearch() : setSearchOpen(true)}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
+            </Button>}><div class="flex min-w-0 flex-1 items-center gap-2">
+                <TextField class="min-w-0 flex-1" value={fileQuery()} onChange={setFileQuery}>
+                  <TextFieldInput ref={element => queueMicrotask(() => element.focus())} class="h-7 px-2 text-xs focus-visible:border-ring focus-visible:ring-0 focus-visible:ring-offset-0" placeholder={t("changes.search")} aria-label={t("changes.search")} type="search" spellcheck={false} autocorrect="off" autocapitalize="off" autocomplete="off"
+                    onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeSearch(); } }} />
+                </TextField>
+                <Show when={fileFilter()}><span role="status" class="shrink-0 text-xs text-muted-foreground tabular-nums">{t("changes.search-count", { count: visibleFiles().length.toLocaleString(locale()), total: files().length.toLocaleString(locale()) })}</span></Show>
+
+
+              <Button variant="ghost" size="icon" class="size-7 shrink-0" aria-label={t("dialog.close")} title={t("dialog.close")} onClick={closeSearch}>
+                <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 6 12 12M6 18 18 6" /></svg>
+              </Button>
+            </div></Show>
           </div>
       <div data-file-scroll class="min-h-0 flex-1 overflow-auto">
       <section class={props.onCommitted ? (presentation().view === "list" ? "" : "pl-4 pt-2") : "px-4"} data-file-navigation aria-label={t("commit.files")}>

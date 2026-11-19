@@ -140,9 +140,9 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
 function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; guides?: number[]; open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const guideOffset = () => props.renderControl ? 16 : props.onSelectDirectory ? 9 : 11;
   return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 24}px` : undefined }}>
-    <For each={props.guides}>{depth => <span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border"
+    <For each={props.guides}>{depth => <span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border/75"
       style={{ left: `${(depth - (props.depth ?? 0)) * 24 - guideOffset()}px`, height: "100%" }} />}</For>
-    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border" style={{ left: `${-guideOffset()}px`, height: props.last ? "14px" : "100%" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3.5 h-px bg-border" style={{ left: `${-guideOffset()}px`, width: props.renderControl ? "12px" : props.onSelectDirectory ? "15px" : "17px" }} /></Show>
+    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border/75" style={{ left: `${-guideOffset()}px`, height: props.last ? "14px" : "100%" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3.5 h-px bg-border/75" style={{ left: `${-guideOffset()}px`, width: props.renderControl ? "12px" : props.onSelectDirectory ? "15px" : "17px" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
         <TreeRow path={file().path} directory={false} render={props.renderRow}>

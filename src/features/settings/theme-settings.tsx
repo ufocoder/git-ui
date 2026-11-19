@@ -13,6 +13,10 @@ export default function ThemeSettings(props: { draft: string; select: (theme: st
         <label class="relative min-w-0 cursor-pointer">
           <input
             type="radio"
+            spellcheck={false}
+            autocorrect="off"
+            autocapitalize="off"
+            autocomplete="off"
             name="app-color-theme"
             class="peer sr-only"
             value={item.id}

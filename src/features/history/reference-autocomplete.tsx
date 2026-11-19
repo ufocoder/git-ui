@@ -30,7 +30,7 @@ export default function ReferenceAutocomplete(props: {
       <Combobox.ItemLabel>{item.item.rawValue.label}</Combobox.ItemLabel>
     </Combobox.Item>}>
     <Combobox.Control class="relative">
-      <Combobox.Input aria-label={props.scopePicker ? t("history.branch-filter") : t("history.jump")} placeholder={props.scopePicker ? t("history.find-branch") : t("history.jump")} spellcheck={false}
+      <Combobox.Input aria-label={props.scopePicker ? t("history.branch-filter") : t("history.jump")} placeholder={props.scopePicker ? t("history.find-branch") : t("history.jump")} spellcheck={false} autocorrect="off" autocapitalize="off" autocomplete="off"
         class="h-7 rounded-md border border-input bg-background px-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-disabled"
         classList={{ "w-full": props.scopePicker, "w-52": !props.scopePicker }} />
     </Combobox.Control>
