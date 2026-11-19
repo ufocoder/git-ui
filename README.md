@@ -1,5 +1,7 @@
 # GIT UI
 
+[![GitHub release downloads](https://img.shields.io/github/downloads/ufocoder/git-ui/total?label=downloads)](https://github.com/ufocoder/git-ui/releases)
+
 GIT UI is a free desktop Git client for macOS and Windows. Browse commit history,
 review changes, and work with branches, tags, and stashes in one window.
 
