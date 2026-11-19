@@ -23,6 +23,7 @@
   --control-height-compact: 1.75rem;
   --control-height-toolbar: 2rem;
   --panel-header-height: 2.25rem;
+  --panel-footer-height: calc(var(--control-height) + 4 * var(--space-unit) + var(--control-border-width, 1px));
   --panel-surface: var(--background);
   --panel-heading: var(--muted);
   --panel-divider: var(--border);

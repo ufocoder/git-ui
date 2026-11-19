@@ -147,7 +147,7 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
       <Show when={props.mode === "stash"}><div ref={props.onStashListMount} /></Show>
       </div>
     </SidebarContent>
-    <SidebarFooter class="border-t p-2">
+    <SidebarFooter class="min-h-[var(--panel-footer-height)] justify-center border-t p-2">
       <Button variant="ghost" class="w-full justify-start gap-2 px-2" disabled={props.disabled} onClick={props.onSettings}>
         <svg aria-hidden="true" class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="m9.5 3-.6 2.4-1.7 1-2.4-.7-2.5 4.3L4 11.7v2l-1.7 1.7 2.5 4.3 2.4-.7 1.7 1 .6 2.4h5l.6-2.4 1.7-1 2.4.7 2.5-4.3-1.7-1.7v-2l1.7-1.7-2.5-4.3-2.4.7-1.7-1L14.5 3Z" />

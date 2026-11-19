@@ -5,9 +5,9 @@ import { Button } from "~/components/ui/button";
 import { git, type History, type PullMode, type RepositoryMode, type SyncAction } from "~/lib/git";
 
 type RepositoryToolbarProps = {
+  onStashAll: () => void;
   onStashActionsMount: (element: HTMLDivElement) => void;
   mode: RepositoryMode;
-  onStashAll: () => void;
   busy: boolean;
   history: History | undefined;
   action: SyncAction | null;
@@ -52,7 +52,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
     return undefined;
   };
   return (
-        <nav aria-label={t("toolbar.navigation")} class="flex shrink-0 flex-wrap items-center justify-start gap-2 border-b px-4 py-2 min-h-16">
+        <nav aria-label={t("toolbar.navigation")} class="flex min-h-16 shrink-0 flex-wrap items-center justify-start gap-2 border-b px-4 py-2">
           <Show when={props.mode === "history"} fallback={<Show when={props.mode !== "commit"}><h1 class="text-sm font-medium">{props.mode === "conflicts" ? t("conflict.title") : t("stash.title")}</h1></Show>}>
           <div class="flex flex-wrap items-center gap-2">
             <Button variant="ghost" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.remotes.length}
@@ -95,8 +95,14 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
             </div>
           </div>
           </Show>
+          <Show when={props.mode === "commit"}>
+            <Button variant="ghost" class="h-control-toolbar gap-2 px-control-sm-x" onClick={props.onStashAll}
+              disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} title={t("stash.save-changes")}>
+              {t("stash.title")}
+            </Button>
+          </Show>
           <Show when={props.mode === "stash"}><div ref={props.onStashActionsMount} class="flex items-center gap-2" /></Show>
-          <Show when={props.mode === "commit"}><Button variant="outline" class="h-control-toolbar px-control-sm-x" disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} onClick={props.onStashAll} title={props.busy ? t("history.busy") : !props.history?.tip ? t("stash.first-commit") : props.history.operation ? t("stash.operation-in-progress") : !props.history.has_changes ? t("stash.clean") : t("stash.all-description")}>{t("stash.all")}</Button></Show>
+
           <div class="ml-auto flex shrink-0 items-center gap-2">
             <Button variant={props.terminalOpen ? "secondary" : "ghost"} class="h-control-toolbar px-control-sm-x" aria-pressed={props.terminalOpen} aria-controls="repository-terminal" onClick={props.onToggleTerminal}>
               <span aria-hidden="true" class="font-mono">{t("terminal.icon")}</span> {t("terminal.title")}</Button>

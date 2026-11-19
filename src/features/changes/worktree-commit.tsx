@@ -1,7 +1,8 @@
+import { PanelHeader } from "~/components/ui/panel-header";
+import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import FileTableHeader from "~/components/sections/file-table-header";
 import ChangedFilesBrowser from "~/components/sections/changed-files-browser";
 import { stagingSelection, hasDiffScope, selectDiffScope } from "./staging-selection";
-import { PanelHeader } from "~/components/ui/panel-header";
 import CommitMessageFields from "./commit-message-fields";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { readPanelSizes, validPanelSizes } from "~/lib/layout-preferences";
@@ -49,6 +50,15 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
 
   const [message, setMessage] = draft.message;
   const [files, setFiles] = createSignal<CommitFile[]>(props.history?.worktree_files ?? []);
+  const [fileQuery, setFileQuery] = createSignal("");
+  const [fileFilter, setFileFilter] = createSignal("");
+  createEffect(() => {
+    const query = fileQuery().trim().toLocaleLowerCase();
+    if (!query) { setFileFilter(""); return; }
+    const timer = setTimeout(() => setFileFilter(query), 200);
+    onCleanup(() => clearTimeout(timer));
+  });
+  const visibleFiles = createMemo(() => files().filter(file => file.path.toLocaleLowerCase().includes(fileFilter())));
   const [loading, setLoading] = createSignal(props.history?.worktree_files === undefined);
   const [pending, setPending] = createSignal(false);
   const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
@@ -206,44 +216,46 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     <ResizablePanel minSize={0.3} class="min-h-0 overflow-hidden"><Resizable layoutId={props.onCommitted ? "changes.files" : "history.worktree"} orientation="horizontal" initialSizes={panelSizes} class="min-h-0 min-w-0">
     <ResizablePanel initialSize={panelSizes[0]} minSize={0.2} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <Show when={!props.onCommitted} fallback={<>
-        <Show when={props.onCommitted}>
-          <div class="border-b px-4 pt-2">
-            <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }} />
+        <PanelHeader class="px-4 [&>div]:w-full">
+          <FileViewControls value={presentation()} onChange={value => { setPresentation(value); saveFilePresentation(value); }}
+            leading={<>
+              <h3 class="shrink-0 text-xs font-medium">{t("changes.files-title", { count: files().length })}</h3>
+              <Show when={files().length > 15 || fileQuery()}><TextField class="min-w-24 max-w-52 flex-1" value={fileQuery()} onChange={setFileQuery}>
+                <TextFieldInput class="h-7 px-2 text-xs" placeholder={t("changes.search")} aria-label={t("changes.search")} type="search" />
+              </TextField></Show>
+            </>}
+            />
+        </PanelHeader>
+          <div class="flex min-h-9 shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-1 text-xs">
+            <label class="flex cursor-pointer items-center gap-2">
+              <Checkbox class="space-x-0" checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
+                onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
+              <span>{allSelection().checked ? t("stage.exclude-all") : t("stage.include-all")}</span>
+            </label>
+            <span class="ml-auto text-muted-foreground tabular-nums" role="status" aria-label={t("commit.staged-count", { count: stagedCount(), total: files().length })}>{t("stage.selection-count", { count: stagedCount(), total: files().length })}</span>
           </div>
-          <p class="sr-only" role="status">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</p>
-        </Show>
-        <Show when={props.onCommitted && files().length > 0}>
-          <PanelHeader class="!min-h-8 justify-start px-4">
-<Show when={presentation().view === "tree"}>
-            <Checkbox checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
-              onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
-            </Show>
-            <h2 class="text-xs font-medium text-muted-foreground">{t("commit.staged-count", { count: stagedCount(), total: files().length })}</h2>
-          </PanelHeader>
-        </Show>
       <div data-file-scroll class="min-h-0 flex-1 overflow-auto">
       <section class={props.onCommitted ? (presentation().view === "list" ? "" : "pl-4 pt-2") : "px-4"} data-file-navigation aria-label={t("commit.files")}>
+
         <Show when={presentation().view === "list"}>
           <div class="flex border-b">
-            <div class="flex h-8 w-10 shrink-0 items-center justify-center">
-              <Checkbox checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !files().length}
-                onChange={checked => void stageFiles(files(), checked)} aria-label={allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
-            </div>
+            <div aria-hidden="true" class="h-8 w-12 shrink-0" />
             <FileTableHeader class="min-w-0 flex-1 border-b-0 px-1" presentation={presentation()} onPresentationChange={value => { setPresentation(value); saveFilePresentation(value); }} />
           </div>
         </Show>
+        <Show when={fileFilter() && !visibleFiles().length}><p role="status" class="px-4 py-3 text-xs text-muted-foreground">{t("changes.no-results")}</p></Show>
         <Show when={loading()}><p role="status" class="sr-only">{t("commit.loading-files")}</p></Show>
         <Show when={!loading() && !files().length}><div class="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
-        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<div classList={{ "-mx-4 [&_[data-file-row]]:px-5": presentation().view === "list" }}><ChangedFilesTree virtual presentation={presentation()} files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} /></div>}>
+        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<div classList={{ "-mx-4 [&_[data-file-row]]:px-5": presentation().view === "list" }}><ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} /></div>}>
 
-          <ChangedFilesTree virtual presentation={presentation()} files={files()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
+          <ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
             onSelect={file => void openFile(file)} onSelectDirectory={openDirectory}
             renderDirectoryControl={(path, descendants) => {
               const state = () => stagingSelection(descendants);
-              return <Checkbox checked={state().checked} indeterminate={state().indeterminate} disabled={disabled()}
+              return <Checkbox class="space-x-0" checked={state().checked} indeterminate={state().indeterminate} disabled={disabled()}
                 onChange={checked => void stageFiles(descendants, checked)} aria-label={state().checked ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />;
             }}
-            renderControl={file => <Checkbox checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
+            renderControl={file => <Checkbox class="space-x-0" checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
               onChange={checked => void stageFile(file, checked)} aria-label={file.staged && !file.partially_staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
         </Show>
       </section>
@@ -295,7 +307,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                   options={(props.history?.remotes ?? []).map(entry => ({ value: entry.name, label: entry.name }))} onChange={setPushRemote} />
               </div>
             </Show>
-            <div class="panel-actions -mx-4 flex flex-wrap items-center justify-end gap-2 border-t px-4 py-2">
+            <div class="panel-actions -mx-4 flex min-h-[var(--panel-footer-height)] flex-wrap items-center justify-end gap-2 border-t px-4 py-2">
               <label class="mr-auto flex w-fit shrink-0 cursor-pointer items-center gap-2 text-xs" title={!props.history?.remotes.length ? t("upstream.no-remotes") : undefined}>
               <Checkbox checked={pushAfterCommit()} onChange={setPushAfterCommit} disabled={disabled() || !props.history?.remotes.length || !props.history?.current_branch} aria-label={t("commit.push-after")} />
               <span>{t("commit.push-after")}</span>

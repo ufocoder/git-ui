@@ -138,18 +138,21 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
 }
 
 function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last: boolean; depth?: number; guides?: number[]; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const guideOffset = () => props.renderControl ? 16 : props.onSelectDirectory ? 9 : 11;
   return <li class="relative min-w-0" style={{ "margin-inline-start": props.depth ? `${props.depth * 24}px` : undefined }}>
     <For each={props.guides}>{depth => <span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border"
-      style={{ left: `${(depth - (props.depth ?? 0)) * 24 - (props.onSelectDirectory ? 9 : 11)}px`, height: "100%" }} />}</For>
-    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", height: props.last ? "14px" : "100%" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3.5 h-px bg-border" style={{ left: props.onSelectDirectory ? "-9px" : "-11px", width: props.onSelectDirectory ? "15px" : "17px" }} /></Show>
+      style={{ left: `${(depth - (props.depth ?? 0)) * 24 - guideOffset()}px`, height: "100%" }} />}</For>
+    <Show when={props.nested}><span aria-hidden="true" class="pointer-events-none absolute top-0 w-px bg-border" style={{ left: `${-guideOffset()}px`, height: props.last ? "14px" : "100%" }} /><span aria-hidden="true" class="pointer-events-none absolute top-3.5 h-px bg-border" style={{ left: `${-guideOffset()}px`, width: props.renderControl ? "12px" : props.onSelectDirectory ? "15px" : "17px" }} /></Show>
     <Show when={props.node.kind === "directory" ? props.node : undefined} fallback={
       <Show when={props.node.kind === "file" ? props.node : undefined}>{file =>
         <TreeRow path={file().path} directory={false} render={props.renderRow}>
-        <div class={props.columns ? `flex min-w-0 items-center border-b border-border/50 ${props.disabled ? "" : "hover:bg-accent hover:text-accent-foreground"} ${props.selectedPath === file().path ? "bg-secondary text-secondary-foreground" : ""}` : "flex min-w-0 items-center gap-1"} style={{ "padding-inline-start": props.label ? undefined : props.nested ? "4px" : props.onSelectDirectory ? "28px" : "20px" }}>
+        <div class={props.columns ? `flex min-w-0 items-center border-b border-border/50 ${props.disabled ? "" : "hover:bg-accent hover:text-accent-foreground"} ${props.selectedPath === file().path ? "bg-secondary text-secondary-foreground" : ""}` : "flex min-w-0 items-center gap-1"} style={{ "padding-inline-start": props.label || props.renderControl ? undefined : props.nested ? "4px" : props.onSelectDirectory ? "28px" : "20px" }}>
         <Show when={props.columns && props.renderControl} fallback={props.renderControl?.(file().value)}>
-          <div class="flex h-9 w-10 shrink-0 items-center justify-center">{props.renderControl?.(file().value)}</div>
+          <div class="flex h-9 w-12 shrink-0 items-center justify-center">{props.renderControl?.(file().value)}</div>
         </Show>
+        <Show when={!props.columns && props.renderControl && !props.nested}><span aria-hidden="true" class="w-6 shrink-0" /></Show>
         <Button data-file-row data-file-select variant={props.selectedPath === file().path ? "secondary" : "ghost"}
+          classList={{ "ml-1": Boolean(!props.columns && props.renderControl && props.nested) }}
           class={props.columns ? "grid h-9 min-h-9 min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-4 rounded-none bg-transparent px-1 py-0 text-left text-xs hover:bg-transparent" : "h-7 min-h-7 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelect(file().value); }} title={props.fileTitle?.(file().value) ?? file().path}>
