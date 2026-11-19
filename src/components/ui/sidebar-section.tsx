@@ -4,7 +4,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./collapsib
 import { Chevron } from "./repository-icons";
 
 export function SidebarSection(props: ParentProps<{ title: string; count?: number; icon: JSX.Element; action: JSX.Element }>) {
-  return <SidebarGroup>
+  return <SidebarGroup class="py-4">
     <Collapsible defaultOpen>
       <div class="flex items-center gap-1">
       <SidebarGroupLabel as={CollapsibleTrigger} class="group/section min-w-0 flex-1 cursor-pointer gap-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
@@ -14,7 +14,7 @@ export function SidebarSection(props: ParentProps<{ title: string; count?: numbe
       </SidebarGroupLabel>
       {props.action}
       </div>
-      <CollapsibleContent>{props.children}</CollapsibleContent>
+      <CollapsibleContent class="pt-2">{props.children}</CollapsibleContent>
     </Collapsible>
   </SidebarGroup>;
 }

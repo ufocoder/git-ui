@@ -97,7 +97,7 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
       </nav>
     </SidebarHeader>
     <SidebarContent data-sidebar-scroll class="overflow-x-hidden overflow-y-scroll [scrollbar-gutter:stable]">
-      <div class="flex shrink-0 flex-col gap-2">
+      <div class="flex shrink-0 flex-col">
       <Show when={props.mode === "conflicts"}>
         <div class="mx-2 mt-2 flex items-center gap-2 rounded-md border px-2 py-2 text-xs text-muted-foreground" title={props.history.current_branch || t("sidebar.detached")}>
           <SectionIcon name="branches" /><span class="truncate">{props.history.current_branch || t("sidebar.detached")}</span>
