@@ -29,15 +29,15 @@ pub struct UpdateSettings {
 #[derive(Default)]
 pub struct PendingUpdate(pub tauri::async_runtime::Mutex<Option<Update>>);
 #[derive(Deserialize)]
-struct Release {
-    tag_name: String,
-    body: Option<String>,
-    assets: Vec<Asset>,
+struct ManifestMetadata {
+    version: String,
+    notes: Option<String>,
 }
-#[derive(Deserialize)]
-struct Asset {
-    name: String,
-    browser_download_url: String,
+#[derive(Debug)]
+struct ReleaseMetadata {
+    version: Version,
+    notes: Option<String>,
+    manifest: bool,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -72,7 +72,7 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
         .join("update-settings.json"))
 }
 
-// Only repository roots on GitHub are accepted; API paths are constructed locally.
+// Only repository roots on GitHub are accepted; release download paths are constructed locally.
 fn repository_url(value: &str) -> Result<String, String> {
     let invalid = || locale::text("update.invalid-repo").to_string();
     let url = Url::parse(value.trim()).map_err(|_| invalid())?;
@@ -128,7 +128,65 @@ fn save_repository(app: &AppHandle, repository: &str) -> Result<(), String> {
     std::fs::write(path, bytes).map_err(|e| failure("update.save-error", e))
 }
 fn release_version(tag: &str) -> Result<Version, String> {
-    Version::parse(tag.strip_prefix('v').unwrap_or(tag)).map_err(|_| locale::text("update.invalid-version").into())
+    Version::parse(tag.strip_prefix('v').unwrap_or(tag))
+        .map_err(|_| locale::text("update.invalid-version").into())
+}
+
+fn manifest_url(repository: &str) -> String {
+    format!("{repository}/releases/latest/download/latest.json")
+}
+
+fn version_from_release_url(repository: &str, url: &Url) -> Result<Version, String> {
+    let prefix = format!("{repository}/releases/tag/");
+    let tag = url
+        .as_str()
+        .strip_prefix(&prefix)
+        .ok_or_else(|| locale::text("update.invalid-version").to_owned())?;
+    release_version(tag)
+}
+
+async fn read_release_metadata(
+    client: &Client,
+    repository: &str,
+) -> Result<Option<ReleaseMetadata>, String> {
+    let response = client
+        .get(manifest_url(repository))
+        .send()
+        .await
+        .map_err(|e| failure("update.check-error", e))?;
+    if response.status().as_u16() == 404 {
+        // Old releases may lack updater assets. Follow the public latest-release
+        // redirect to retain manual updates without querying the REST API.
+        let release = client
+            .get(format!("{repository}/releases/latest"))
+            .send()
+            .await
+            .map_err(|e| failure("update.check-error", e))?;
+        if release.status().as_u16() == 404 {
+            return Ok(None);
+        }
+        let release = release
+            .error_for_status()
+            .map_err(|e| failure("update.check-error", e))?;
+        return Ok(Some(ReleaseMetadata {
+            version: version_from_release_url(repository, release.url())?,
+            notes: None,
+            manifest: false,
+        }));
+    }
+    let bytes = response
+        .error_for_status()
+        .map_err(|e| failure("update.check-error", e))?
+        .bytes()
+        .await
+        .map_err(|e| failure("update.check-error", e))?;
+    let metadata: ManifestMetadata =
+        serde_json::from_slice(&bytes).map_err(|e| failure("update.check-error", e))?;
+    Ok(Some(ReleaseMetadata {
+        version: release_version(&metadata.version)?,
+        notes: metadata.notes,
+        manifest: true,
+    }))
 }
 
 #[tauri::command]
@@ -159,54 +217,31 @@ pub async fn check_app_update(
         notice: None,
         release_url: None,
     };
-    let slug = repository
-        .strip_prefix("https://github.com/")
-        .expect("validated repository");
     let client = Client::builder()
         .user_agent(concat!("git-ui/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| failure("update.check-error", e))?;
-    let response = client
-        .get(format!(
-            "https://api.github.com/repos/{slug}/releases/latest"
-        ))
-        .header("Accept", "application/vnd.github+json")
-        .send()
-        .await
-        .map_err(|e| failure("update.check-error", e))?;
-    if response.status().as_u16() == 404 {
+    let Some(release) = read_release_metadata(&client, &repository).await? else {
         info.notice = Some(locale::text("update.no-releases").into());
         return Ok(info);
-    }
-    let bytes = response
-        .error_for_status()
-        .map_err(|e| failure("update.check-error", e))?
-        .bytes()
-        .await
-        .map_err(|e| failure("update.check-error", e))?;
-    let release: Release = serde_json::from_slice(&bytes).map_err(|e| failure("update.check-error", e))?;
-    let latest = release_version(&release.tag_name)?;
+    };
+    let latest = release.version;
     info.version = Some(latest.to_string());
-    info.notes = release.body;
+    info.notes = release.notes;
     if latest <= current {
         return Ok(info);
     }
     info.available = true;
-    // Construct links from the validated source, never from release body content.
     info.release_url = Some(format!("{repository}/releases/latest"));
-    let Some(manifest) = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == "latest.json")
-    else {
+    if !release.manifest {
         info.notice = Some(locale::text("update.missing-manifest").into());
         return Ok(info);
-    };
+    }
     let update = app
         .updater_builder()
         .endpoints(vec![
-            Url::parse(&manifest.browser_download_url).map_err(|e| failure("update.check-error", e))?,
+            Url::parse(&manifest_url(&repository)).map_err(|e| failure("update.check-error", e))?,
         ])
         .map_err(|e| failure("update.check-error", e))?
         .timeout(Duration::from_secs(60))
@@ -276,6 +311,179 @@ pub async fn install_app_update(
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct MockResponse {
+        path: &'static str,
+        status: &'static str,
+        redirect: Option<&'static str>,
+        body: &'static str,
+    }
+
+    fn release_server(responses: Vec<MockResponse>) -> (String, std::thread::JoinHandle<()>) {
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server_origin = origin.clone();
+        let server = std::thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut request = String::new();
+                reader.read_line(&mut request).unwrap();
+                assert_eq!(request.split_whitespace().nth(1), Some(response.path));
+                loop {
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).unwrap() == 0 || line == "\r\n" {
+                        break;
+                    }
+                }
+                let location = response
+                    .redirect
+                    .map(|path| format!("Location: {server_origin}{path}\r\n"))
+                    .unwrap_or_default();
+                write!(
+                    stream,
+                    "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n{}\r\n{}",
+                    response.status,
+                    response.body.len(),
+                    location,
+                    response.body
+                )
+                .unwrap();
+            }
+        });
+        (format!("{origin}/owner/repo"), server)
+    }
+
+    fn test_client() -> Client {
+        Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn reads_version_and_notes_from_public_release_asset_without_api() {
+        let (repository, server) = release_server(vec![MockResponse {
+            path: "/owner/repo/releases/latest/download/latest.json",
+            status: "200 OK",
+            redirect: None,
+            body: r#"{"version":"0.3.99","notes":"Release notes","platforms":{}}"#,
+        }]);
+        let release =
+            tauri::async_runtime::block_on(read_release_metadata(&test_client(), &repository))
+                .unwrap()
+                .unwrap();
+        server.join().unwrap();
+        assert_eq!(release.version, release_version("v0.3.99").unwrap());
+        assert_eq!(release.notes.as_deref(), Some("Release notes"));
+        assert!(release.manifest);
+    }
+
+    #[test]
+    fn missing_manifest_uses_public_redirect_for_manual_updates() {
+        let (repository, server) = release_server(vec![
+            MockResponse {
+                path: "/owner/repo/releases/latest/download/latest.json",
+                status: "404 Not Found",
+                redirect: None,
+                body: "",
+            },
+            MockResponse {
+                path: "/owner/repo/releases/latest",
+                status: "302 Found",
+                redirect: Some("/owner/repo/releases/tag/v0.3.99"),
+                body: "",
+            },
+            MockResponse {
+                path: "/owner/repo/releases/tag/v0.3.99",
+                status: "200 OK",
+                redirect: None,
+                body: "release page",
+            },
+        ]);
+        let release =
+            tauri::async_runtime::block_on(read_release_metadata(&test_client(), &repository))
+                .unwrap()
+                .unwrap();
+        server.join().unwrap();
+        assert_eq!(release.version, release_version("0.3.99").unwrap());
+        assert!(!release.manifest);
+    }
+
+    #[test]
+    fn no_public_release_is_reported_without_querying_api() {
+        let (repository, server) = release_server(vec![
+            MockResponse {
+                path: "/owner/repo/releases/latest/download/latest.json",
+                status: "404 Not Found",
+                redirect: None,
+                body: "",
+            },
+            MockResponse {
+                path: "/owner/repo/releases/latest",
+                status: "404 Not Found",
+                redirect: None,
+                body: "",
+            },
+        ]);
+        assert!(
+            tauri::async_runtime::block_on(read_release_metadata(&test_client(), &repository))
+                .unwrap()
+                .is_none()
+        );
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn network_rejection_is_an_error_not_an_up_to_date_result() {
+        let (repository, server) = release_server(vec![MockResponse {
+            path: "/owner/repo/releases/latest/download/latest.json",
+            status: "403 Forbidden",
+            redirect: None,
+            body: "Forbidden",
+        }]);
+        assert!(
+            tauri::async_runtime::block_on(read_release_metadata(&test_client(), &repository))
+                .unwrap_err()
+                .contains("403")
+        );
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn fallback_version_must_come_from_the_selected_repository() {
+        let repository = "https://github.com/owner/repo";
+        assert!(
+            version_from_release_url(
+                repository,
+                &Url::parse("https://evil.test/owner/repo/releases/tag/v1.0.0").unwrap()
+            )
+            .is_err()
+        );
+        assert!(
+            version_from_release_url(
+                repository,
+                &Url::parse("https://github.com/other/repo/releases/tag/v1.0.0").unwrap()
+            )
+            .is_err()
+        );
+        assert!(
+            version_from_release_url(
+                repository,
+                &Url::parse("https://github.com/owner/repo/releases/tag/not-a-version").unwrap()
+            )
+            .is_err()
+        );
+        assert_eq!(
+            manifest_url(repository),
+            "https://github.com/owner/repo/releases/latest/download/latest.json"
+        );
+    }
+
     #[test]
     fn accepts_repository_roots_and_normalizes_clone_urls() {
         assert_eq!(

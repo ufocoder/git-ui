@@ -14,3 +14,9 @@ export function SectionIcon(props: { name: SectionIconName }) {
 export function Chevron() {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ml-auto size-3 shrink-0 transition-transform group-data-[expanded]/section:rotate-90"><path d="m9 5 7 7-7 7" /></svg>;
 }
+
+export function PinnedReferenceIcon(props: { label: string; class?: string }) {
+  return <span role="img" aria-label={props.label} title={props.label} class={`inline-flex shrink-0 text-muted-foreground ${props.class ?? ""}`}>
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 3h6l-1 7 4 4v3H6v-3l4-4-1-7Z" /></svg>
+  </span>;
+}

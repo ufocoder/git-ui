@@ -1,3 +1,4 @@
+import { readPinnedBranches, savePinnedBranches } from "~/lib/pinned-branches";
 import SearchableReferenceList from "./searchable-reference-list";
 import { git } from "~/lib/git";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
@@ -15,10 +16,25 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/component
 import { Button } from "~/components/ui/button";
 import AddSidebarItem from "~/components/sections/add-sidebar-item";
 import { SidebarSection } from "~/components/ui/sidebar-section";
-import { SectionIcon, Chevron } from "~/components/ui/repository-icons";
+import { SectionIcon, Chevron, PinnedReferenceIcon } from "~/components/ui/repository-icons";
 import type { History, RepositoryMode } from "~/lib/git";
 
 export default function RepositorySidebar(props: { tagFetchRevision: number; onStashListMount: (element: HTMLDivElement) => void; history: History; mode: RepositoryMode; onModeChange: (mode: RepositoryMode) => void; onChangeProject: () => void; projectMenuOpen: boolean; onSettings: () => void; onRepositorySettings: () => void; disabled: boolean; onSwitchBranch: (branch: string) => void; onCreateBranch: () => void; onRebaseBranch: (name: string) => void; onReferenceAction: (action: ReferenceAction) => void; onPushBranch: () => void; onCreateTag: (name: string) => Promise<void>; onPushTags: (remote: string, tag: string | null) => Promise<void>; onDeleteTag: (tag: string, remote: string | null) => Promise<void>; onAddRemote: (name: string, url: string) => Promise<void> }) {
+  const [pinnedBranches, setPinnedBranches] = createSignal(readPinnedBranches(props.history.path));
+  createEffect(on(() => props.history.path, path => setPinnedBranches(readPinnedBranches(path))));
+  const localReference = (name: string) => `refs/heads/${name}`;
+  const remoteReference = (remote: string, name: string) => `refs/remotes/${remote}/${name}`;
+  const isPinned = (reference: string) => pinnedBranches().has(reference);
+  function togglePin(reference: string) {
+    const next = new Set(pinnedBranches());
+    if (next.has(reference)) next.delete(reference);
+    else next.add(reference);
+    setPinnedBranches(next);
+    savePinnedBranches(props.history.path, next);
+  }
+  function pinAction(reference: string) {
+    return <ContextMenuItem onSelect={() => togglePin(reference)}>{isPinned(reference) ? t("branch.unpin") : t("branch.pin")}</ContextMenuItem>;
+  }
   const [visibleBranches, setVisibleBranches] = createSignal<readonly string[]>([]);
   const [comparisons, setComparisons] = createSignal<History["branch_comparisons"]>({});
   const comparisonSnapshot = createMemo(() => JSON.stringify([props.history.path, props.history.tip, props.history.current_branch, props.history.sync.upstream, props.history.branch_tips]));
@@ -44,6 +60,8 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
   onCleanup(() => { comparisonGeneration++; clearTimeout(comparisonTimer); });
   function branchActions(branch: string) {
     return <>
+      {pinAction(localReference(branch))}
+      <ContextMenuSeparator />
       <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("ref-action.switch")}</ContextMenuItem>
       <ContextMenuItem title={branch !== props.history.current_branch ? t("ref-action.switch-before-push") : undefined} disabled={props.disabled || props.history.git_lfs_missing || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("push.action")}</ContextMenuItem>
       <ContextMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("ref-action.rename")}</ContextMenuItem>
@@ -92,13 +110,14 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
           <Show when={props.history.current_branch && !props.history.branches.includes(props.history.current_branch)}>
             <p class="break-all px-2 py-2 text-xs text-muted-foreground">{props.history.current_branch}</p>
           </Show>
-          <SearchableReferenceList sort={{ initial: "name-ascending", dates: props.history.branch_dates ?? {} }} items={props.history.branches} disabled={props.disabled} label={t("branch-search.search")}
+          <SearchableReferenceList isPinned={name => isPinned(localReference(name))} sort={{ initial: "name-ascending", dates: props.history.branch_dates ?? {} }} items={props.history.branches} disabled={props.disabled} label={t("branch-search.search")}
             clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")} onVisibleChange={setVisibleBranches}>{branch => <SidebarMenuItem><ContextMenu>
               <ContextMenuTrigger as={SidebarMenuButton} disabled={props.disabled} isActive={branch === props.history.current_branch}
                 aria-current={branch === props.history.current_branch ? "true" : undefined}
                 onClick={() => props.onSwitchBranch(branch)} title={branch}
-                class="group/branch min-w-0 flex-1 h-8 min-h-8 justify-between gap-2 pl-8 pr-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
+                class="group/branch relative min-w-0 flex-1 h-8 min-h-8 justify-between gap-2 pl-8 pr-2 py-1 text-sm leading-5 data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground data-[active=true]:font-normal data-[active=true]:hover:bg-sidebar-selected data-[active=true]:hover:text-sidebar-foreground">
                 <span class="min-w-0 flex-1 truncate">{branch}</span>
+                <Show when={isPinned(localReference(branch))}><PinnedReferenceIcon class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2" label={t("branch.pinned")} /></Show>
                 <Show when={comparisons()[branch]}>{comparison =>
                   <Show when={comparison().ahead > 0 || comparison().behind > 0}>
                   <span class="inline-flex shrink-0 items-center gap-1 rounded bg-muted-foreground px-1.5 text-2xs font-medium leading-4 tabular-nums text-background"
@@ -130,9 +149,11 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
               </SidebarMenuButton>
               <CollapsibleContent class="ml-8">
                 <Show when={remote.branches.length} fallback={<p class="pb-2 text-xs text-muted-foreground">{t("sidebar.unfetched")}</p>}>
-                  <SearchableReferenceList flushSearch sort={{ initial: "name-ascending", dates: remote.branch_dates ?? {} }} items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
+                  <SearchableReferenceList flushSearch isPinned={name => isPinned(remoteReference(remote.name, name))} sort={{ initial: "name-ascending", dates: remote.branch_dates ?? {} }} items={remote.branches} disabled={props.disabled} label={t("branch-search.search")}
                     clearLabel={t("branch-search.clear")} emptyLabel={t("branch-search.empty")}>{branch => <SidebarMenuSubItem>
-                    <p class="h-8 truncate pr-2 text-xs leading-8 text-muted-foreground" title={`${remote.name}/${branch}`}>{branch}</p>
+                    <ContextMenu><ContextMenuTrigger as="div" class="relative flex h-8 min-w-0 items-center gap-2 pr-2 text-xs text-muted-foreground" title={`${remote.name}/${branch}`}>
+                      <span class="min-w-0 flex-1 truncate">{branch}</span><Show when={isPinned(remoteReference(remote.name, branch))}><PinnedReferenceIcon class="pointer-events-none absolute -left-6 top-1/2 -translate-y-1/2" label={t("branch.pinned")} /></Show>
+                    </ContextMenuTrigger><ContextMenuContent>{pinAction(remoteReference(remote.name, branch))}</ContextMenuContent></ContextMenu>
                   </SidebarMenuSubItem>}</SearchableReferenceList>
                 </Show>
               </CollapsibleContent>

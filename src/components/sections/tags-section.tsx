@@ -1,3 +1,4 @@
+import { readPinnedTags, savePinnedTags } from "~/lib/pinned-branches";
 import SearchableReferenceList from "./searchable-reference-list";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "~/components/ui/context-menu";
 import { Show, createSignal, createEffect, createMemo, onCleanup, on } from "solid-js";
@@ -5,7 +6,7 @@ import { t } from "~/lib/i18n";
 import { git, type History } from "~/lib/git";
 import { SidebarSection } from "~/components/ui/sidebar-section";
 import { SidebarGroupContent, SidebarMenuItem } from "~/components/ui/sidebar";
-import { SectionIcon } from "~/components/ui/repository-icons";
+import { SectionIcon, PinnedReferenceIcon } from "~/components/ui/repository-icons";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "~/components/ui/dialog";
 import { SelectField } from "~/components/ui/select";
@@ -21,6 +22,15 @@ export default function TagsSection(props: {
   onDelete: (tag: string, remote: string | null) => Promise<void>;
   onPush: (remote: string, tag: string | null) => Promise<void>;
 }) {
+  const [pinnedTags, setPinnedTags] = createSignal(readPinnedTags(props.history.path));
+  createEffect(on(() => props.history.path, path => setPinnedTags(readPinnedTags(path))));
+  function togglePin(tag: string) {
+    const next = new Set(pinnedTags());
+    if (next.has(tag)) next.delete(tag);
+    else next.add(tag);
+    setPinnedTags(next);
+    savePinnedTags(props.history.path, next);
+  }
   const [selection, setSelection] = createSignal<{ tag: string | null; deleting?: boolean }>();
   const [deleteRemote, setDeleteRemote] = createSignal(false);
   const [remote, setRemote] = createSignal("");
@@ -104,10 +114,11 @@ export default function TagsSection(props: {
     <SidebarSection title={t("sidebar.tags")} icon={<SectionIcon name="tags" />} action={
       <AddSidebarItem kind="tag" disabled={disabled() || !props.history.tip} onCreate={name => props.onCreate(name)} />
     }>
-      <SidebarGroupContent><SearchableReferenceList sort={{ initial: "newest" }} items={props.history.tags} disabled={disabled()} label={t("tag-search.search")} clearLabel={t("tag-search.clear")} emptyLabel={t("tag-search.empty")}>{tag => <SidebarMenuItem>
+      <SidebarGroupContent><SearchableReferenceList isPinned={tag => pinnedTags().has(tag)} sort={{ initial: "newest" }} items={props.history.tags} disabled={disabled()} label={t("tag-search.search")} clearLabel={t("tag-search.clear")} emptyLabel={t("tag-search.empty")}>{tag => <SidebarMenuItem>
           <ContextMenu onOpenChange={open => { if (open) refreshOriginTags(); }}>
-            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+            <ContextMenuTrigger as="div" tabIndex={disabled() ? -1 : 0} disabled={disabled()} class="relative flex h-8 min-w-0 items-center rounded-md pl-8 pr-2 py-1 text-sm leading-5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span class="min-w-0 flex-1 truncate" title={tag}>{tag}</span>
+              <Show when={pinnedTags().has(tag)}><PinnedReferenceIcon class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2" label={t("tag.pinned")} /></Show>
               <Show when={publicationStatus(tag)}>{status => {
                 const label = () => status() === "unpublished" ? t("tag-status.unpublished") : t("tag-status.different");
                 return <span class="ml-2 shrink-0 text-xs text-muted-foreground" title={label()}>
@@ -117,6 +128,8 @@ export default function TagsSection(props: {
               }}</Show>
             </ContextMenuTrigger>
             <ContextMenuContent>
+              <ContextMenuItem onSelect={() => togglePin(tag)}>{pinnedTags().has(tag) ? t("tag.unpin") : t("tag.pin")}</ContextMenuItem>
+              <ContextMenuSeparator />
               <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{publicationStatus(tag) === "unpublished" ? t("tag-status.publish") : t("tag-push.selected", { tag })}</ContextMenuItem>
               <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tag-push.all")}</ContextMenuItem>
               <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("ref-action.rename")}</ContextMenuItem>

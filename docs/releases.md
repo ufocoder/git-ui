@@ -74,6 +74,11 @@ release or configure GitHub secrets.
 Choose **Check for updates** in the application menu on macOS, or the Help menu
 on Windows/Linux. Menu labels follow the selected language. The dialog checks
 the latest published stable GitHub release and offers to update or close.
+Checks download `latest.json` directly from
+`https://github.com/ufocoder/git-ui/releases/latest/download/latest.json`, without
+calling `api.github.com` or consuming the unauthenticated REST API rate limit.
+For older releases without that asset, the public latest-release redirect provides
+the version for a manual download.
 After confirmation, the app downloads the signed artifact, installs it, and
 restarts. Development builds can check releases but cannot replace their running
 executable. Releases without updater artifacts offer a manual installer download.

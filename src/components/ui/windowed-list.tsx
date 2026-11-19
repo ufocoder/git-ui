@@ -1,3 +1,4 @@
+import { highlightedRanges } from "~/lib/pinned-branches";
 import { For, createMemo, createSignal, onCleanup, onMount, createEffect, type JSX } from "solid-js";
 
 export const SIDEBAR_ROW_STRIDE = 36;
@@ -6,12 +7,12 @@ export const SIDEBAR_ROW_STRIDE = 36;
 export function WindowedList<T>(props: {
   items: readonly T[];
   children: (item: T) => JSX.Element;
-  highlightedCount?: number;
+  highlightedItems?: ReadonlySet<T>;
   onVisibleChange?: (items: readonly T[]) => void;
 }) {
   const stride = SIDEBAR_ROW_STRIDE;
   const buffer = 3;
-  const highlightedCount = () => props.highlightedCount ?? 0;
+  const highlights = createMemo(() => highlightedRanges(props.items, props.highlightedItems ?? new Set<T>()));
   const [range, setRange] = createSignal({ top: 0, bottom: 288 });
   let list!: HTMLDivElement;
 
@@ -41,8 +42,8 @@ export function WindowedList<T>(props: {
   createEffect(() => props.onVisibleChange?.(visible()));
 
   return <div ref={element => { list = element; }} class="relative min-w-0" style={{ height: `${Math.max(0, props.items.length * stride - 4)}px` }}>
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 rounded-md bg-[hsl(var(--sidebar-foreground)/0.09)]"
-      style={{ height: `${Math.max(0, highlightedCount() * stride - 4)}px` }} />
+    <For each={highlights()}>{range => <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 rounded-md bg-[hsl(var(--sidebar-foreground)/0.09)]"
+      style={{ top: `${range.start * stride}px`, height: `${range.length * stride - 4}px` }} />}</For>
     <ul class="absolute inset-x-0 m-0 list-none space-y-1" style={{ top: `${Math.min(start(), Math.max(0, props.items.length - 1)) * stride}px` }}>
       <For each={visible()}>{props.children}</For>
     </ul>

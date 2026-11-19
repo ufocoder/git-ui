@@ -1,3 +1,4 @@
+import { orderReferences } from "~/lib/pinned-branches";
 import { Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { t } from "~/lib/i18n";
 import { Button } from "~/components/ui/button";
@@ -10,6 +11,7 @@ type SortMode = typeof sortModes[number];
 export default function SearchableReferenceList(props: {
   items: string[];
   disabled: boolean;
+  isPinned?: (name: string) => boolean;
   flushSearch?: boolean;
   label: string;
   clearLabel: string;
@@ -64,10 +66,7 @@ export default function SearchableReferenceList(props: {
     const value = filter();
     return new Set(value ? orderedItems().filter(name => name.toLowerCase().includes(value)) : []);
   });
-  const items = createMemo(() => {
-    const matching = matches();
-    return matching.size ? [...matching, ...orderedItems().filter(name => !matching.has(name))] : orderedItems();
-  });
+  const items = createMemo(() => orderReferences(orderedItems(), name => props.isPinned?.(name) ?? false, matches()));
 
   onMount(() => {
     const viewport = anchor.closest<HTMLElement>("[data-sidebar-scroll]");
@@ -122,6 +121,6 @@ export default function SearchableReferenceList(props: {
       </div>
     </Show>
     <Show when={filter() && !matches().size}><p role="status" class="sr-only">{props.emptyLabel}</p></Show>
-    <WindowedList items={items()} highlightedCount={matches().size} onVisibleChange={props.onVisibleChange}>{props.children}</WindowedList>
+    <WindowedList items={items()} highlightedItems={matches()} onVisibleChange={props.onVisibleChange}>{props.children}</WindowedList>
   </div>;
 }
