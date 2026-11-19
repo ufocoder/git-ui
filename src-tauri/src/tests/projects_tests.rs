@@ -75,3 +75,20 @@ fn terminal_log_preserves_last_operation_and_reports_failures() {
         failed.id
     );
 }
+
+#[test]
+fn missing_recent_project_is_removed_only_when_folder_is_absent() {
+    use crate::projects::{project_folder_exists, remove_missing_recent};
+    let folder = TempRepo::new();
+    let file = folder.0.join("settings/recent-projects.json");
+    let existing = folder.0.to_string_lossy().to_string();
+    let missing = folder.0.join("missing").to_string_lossy().to_string();
+    save_recent(&file, existing.clone()).unwrap();
+    save_recent(&file, missing.clone()).unwrap();
+    assert!(!project_folder_exists(Path::new(&missing)).unwrap());
+    assert!(project_folder_exists(Path::new(&existing)).unwrap());
+    assert_eq!(remove_missing_recent(&file, &existing).unwrap().len(), 2);
+    assert_eq!(remove_missing_recent(&file, &missing).unwrap(), vec![existing.clone()]);
+    assert!(Path::new(&existing).is_dir());
+    assert_eq!(load_recent(&file).unwrap(), vec![existing]);
+}

@@ -4,7 +4,8 @@ import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import GitSettingsDialog from "~/components/sections/git-settings-dialog";
 import UpdateDialog from "~/components/sections/update-dialog";
 import { operationNotice, dismissOperation } from "~/lib/operation-feedback";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
+import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "~/components/ui/dialog";
 import { t } from "~/lib/i18n";
 import { Show, batch, createSignal, onCleanup, onMount } from "solid-js";
 import { git, type History } from "~/lib/git";
@@ -41,6 +42,8 @@ function App() {
   const [choosingProject, setChoosingProject] = createSignal(false);
   const [error, setError] = createSignal("");
   const [history, setHistory] = createSignal<History>();
+  const [missingProject, setMissingProject] = createSignal("");
+  const [removeProjectError, setRemoveProjectError] = createSignal("");
   const [initializePath, setInitializePath] = createSignal("");
   const [initializeError, setInitializeError] = createSignal("");
   const [recentProjects, setRecentProjects] = createSignal<string[]>([]);
@@ -159,8 +162,26 @@ function App() {
     if (busy() || (gitCheck() !== "ready" && !isHistory())) return;
     setBusy(true);
     setError("");
-    try { await openSelectedProject(path); }
+    try {
+      if (!await git.projectDirectoryExists(path)) {
+        setRemoveProjectError("");
+        setMissingProject(path);
+        return;
+      }
+      await openSelectedProject(path);
+    }
     catch (e) { setError(String(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function removeMissingProject() {
+    const path = missingProject();
+    if (!path || busy()) return;
+    setBusy(true); setRemoveProjectError("");
+    try {
+      setRecentProjects(await git.removeMissingRecentProject(path));
+      setMissingProject("");
+    } catch (e) { setRemoveProjectError(String(e)); }
     finally { setBusy(false); }
   }
 
@@ -192,6 +213,20 @@ function App() {
     <ProjectSwitcherDialog open={projectSwitcherOpen()} currentPath={history()?.path ?? ""} recentProjects={recentProjects()}
       pending={busy()} choosingProject={choosingProject()} error={error()} onOpenChange={setProjectSwitcherOpen}
       onSelect={path => void openRecentProject(path)} onOpenFolder={() => void selectProject()} />
+    <Dialog open={Boolean(missingProject())} onOpenChange={open => { if (!open && !busy()) setMissingProject(""); }}>
+      <Show when={missingProject()}><DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("project.missing-title")}</DialogTitle>
+          <DialogDescription>{t("project.missing-description")}</DialogDescription>
+        </DialogHeader>
+        <p class="break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">{missingProject()}</p>
+        <Show when={removeProjectError()}><Alert variant="destructive"><AlertDescription>{removeProjectError()}</AlertDescription></Alert></Show>
+        <DialogFooter class="gap-2">
+          <Button variant="outline" disabled={busy()} onClick={() => setMissingProject("")}>{t("common.cancel")}</Button>
+          <Button disabled={busy()} onClick={() => void removeMissingProject()}>{t("project.remove-recent")}</Button>
+        </DialogFooter>
+      </DialogContent></Show>
+    </Dialog>
     <KeyboardShortcutsDialog open={shortcutsOpen()} onOpenChange={setShortcutsOpen} />
     <InitializeRepositoryDialog path={initializePath()} pending={busy()} error={initializeError()}
       onConfirm={() => void initializeProject()} onCancel={() => { setInitializePath(""); setInitializeError(""); }} />

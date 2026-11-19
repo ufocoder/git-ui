@@ -70,6 +70,44 @@ pub(super) fn get_recent_projects(
     load_recent(&file)
 }
 
+pub(super) fn project_folder_exists(path: &Path) -> Result<bool, String> {
+    match std::fs::metadata(path) {
+        Ok(metadata) => Ok(metadata.is_dir()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(locale::format("error.check-folder", &[("error", error.to_string())])),
+    }
+}
+
+pub(super) fn remove_missing_recent(file: &Path, path: &str) -> Result<Vec<String>, String> {
+    if project_folder_exists(Path::new(path))? {
+        return load_recent(file);
+    }
+    let mut paths = load_recent(file)?;
+    paths.retain(|existing| existing != path);
+    let temporary = file.with_extension("tmp");
+    std::fs::write(&temporary, serde_json::to_vec_pretty(&paths).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    std::fs::rename(&temporary, file).map_err(|e| e.to_string())?;
+    Ok(paths)
+}
+
+#[tauri::command]
+pub(super) async fn project_directory_exists(path: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || project_folder_exists(Path::new(&path)))
+        .await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub(super) async fn remove_missing_recent_project(
+    app: tauri::AppHandle,
+    recent: State<'_, RecentProjects>,
+    path: String,
+) -> Result<Vec<String>, String> {
+    let file = app.path().app_data_dir().map_err(|e| e.to_string())?.join("recent-projects.json");
+    let _guard = recent.0.lock().map_err(|e| e.to_string())?;
+    remove_missing_recent(&file, &path)
+}
+
 pub(super) fn can_initialize_repository(path: &Path) -> Result<bool, String> {
     let path = path
         .canonicalize()

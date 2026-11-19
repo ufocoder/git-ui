@@ -125,6 +125,8 @@ pub fn run() {
             projects::can_initialize_project,
             projects::initialize_project,
             projects::get_recent_projects,
+            projects::project_directory_exists,
+            projects::remove_missing_recent_project,
             projects::get_project_history,
             projects::get_project_terminal_log,
             history::get_commit_page,

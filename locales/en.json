@@ -682,5 +682,8 @@
   "stage.repository-actions": "All files…",
   "stage.repository-files": "Stage all {count} repository files",
   "changes.exact-name": "Exact name",
-  "stage.updating": "Updating staged files…"
+  "stage.updating": "Updating staged files…",
+  "project.missing-title": "Remove missing project?",
+  "project.missing-description": "This folder no longer exists. Remove its entry from recent projects?",
+  "project.remove-recent": "Remove from recent projects"
 }
