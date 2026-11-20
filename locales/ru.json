@@ -681,7 +681,6 @@
   "stage.unstage-matches": "Убрать найденные файлы ({count})",
   "stage.repository-actions": "Все файлы…",
   "stage.repository-files": "Добавить все файлы репозитория ({count})",
-  "changes.exact-name": "Точное имя",
   "stage.updating": "Обновление индекса…",
   "project.missing-title": "Убрать недоступный проект?",
   "project.missing-description": "Эта папка больше не существует. Удалить запись из недавних проектов?",

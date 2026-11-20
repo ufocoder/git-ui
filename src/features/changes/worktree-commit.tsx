@@ -254,7 +254,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             <label class="flex cursor-pointer items-center gap-2">
               <Checkbox class="space-x-0" checked={allSelection().checked} indeterminate={allSelection().indeterminate} disabled={disabled() || !visibleFiles().length || fileQuery().trim().toLocaleLowerCase() !== fileFilter()}
                 onChange={checked => void stageFiles(visibleFiles(), checked)}
-                aria-label={fileFilter() ? t(allSelection().checked ? "stage.unstage-matches" : "stage.stage-matches", { count: visibleFiles().length.toLocaleString(locale()) }) : allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
+                aria-label={fileFilter() ? (allSelection().checked ? t("stage.unstage-matches", { count: visibleFiles().length.toLocaleString(locale()) }) : t("stage.stage-matches", { count: visibleFiles().length.toLocaleString(locale()) })) : allSelection().checked ? t("stage.unstage-all") : t("stage.all")} />
               <Show when={pending()} fallback={<Show when={!searchOpen()}>
                 <span>{allSelection().checked ? t("stage.exclude-all") : t("stage.include-all")}</span>
               </Show>}>
