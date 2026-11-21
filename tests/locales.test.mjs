@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import ru from "../locales/ru.json" with { type: "json" };
 import en from "../locales/en.json" with { type: "json" };
-import { language, locale, normalizeLanguage, setLanguage, t } from "../src/lib/i18n.ts";
+import zh from "../locales/zh.json" with { type: "json" };
+import { language, locale, normalizeLanguage, preferredLanguage, setLanguage, t } from "../src/lib/i18n.ts";
 
 const root = new URL("../", import.meta.url);
 function files(directory) {
@@ -53,15 +54,17 @@ test("production sources contain no hardcoded Russian UI text", () => {
   assert.doesNotMatch(backend, /[А-Яа-яЁё]/);
 });
 
-test("English has all keys and preserves interpolation placeholders", () => {
-  assert.deepEqual(Object.keys(en).sort(), Object.keys(ru).sort());
-  const placeholders = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
-  for (const [key, value] of Object.entries(en)) {
-    assert.ok(value.length > 0, key);
-    assert.deepEqual(placeholders(value), placeholders(ru[key]), key);
-    if (key !== "language.russian") assert.doesNotMatch(value, /[А-Яа-яЁё]/, key);
-  }
-});
+for (const [name, dictionary] of Object.entries({ English: en, Chinese: zh })) {
+  test(`${name} has all keys and preserves interpolation placeholders`, () => {
+    assert.deepEqual(Object.keys(dictionary).sort(), Object.keys(ru).sort());
+    const placeholders = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
+    for (const [key, value] of Object.entries(dictionary)) {
+      assert.ok(value.length > 0, key);
+      assert.deepEqual(placeholders(value), placeholders(ru[key]), key);
+      if (key !== "language.russian") assert.doesNotMatch(value, /[А-Яа-яЁё]/, key);
+    }
+  });
+}
 
 test("Russian is the default and language switches translations and date locale", () => {
   assert.equal(language(), "ru");
@@ -76,4 +79,28 @@ test("Russian is the default and language switches translations and date locale"
   } finally { setLanguage("ru"); }
   assert.equal(locale(), "ru-RU");
   assert.equal(t("commit.create"), ru["commit.create"]);
+});
+
+test("Chinese switches translations, date locale and normalization", () => {
+  assert.equal(normalizeLanguage("zh"), "zh");
+  try {
+    setLanguage("zh");
+    assert.equal(t("commit.create"), "创建提交");
+    assert.equal(locale(), "zh-CN");
+    const name = "feature/{p2}/$&";
+    assert.equal(t("sidebar.comparison", { p1: name, p2: 2, p3: 0 }),
+      `相对于 ${name}：领先 2 个提交，落后 0 个提交`);
+  } finally { setLanguage("ru"); }
+});
+
+test("preferredLanguage resolves supported system tags in order", () => {
+  assert.equal(preferredLanguage(["zh-CN", "en-US"]), "zh");
+  assert.equal(preferredLanguage(["zh-Hans"]), "zh");
+  assert.equal(preferredLanguage(["zh-TW"]), "zh");
+  assert.equal(preferredLanguage(["zh_Hans_CN"]), "zh");
+  assert.equal(preferredLanguage(["en-US", "zh-CN"]), "en");
+  assert.equal(preferredLanguage(["fr-FR", "zh-CN"]), "zh");
+  assert.equal(preferredLanguage([]), "ru");
+  assert.equal(preferredLanguage(["fr-FR"]), "ru");
+  assert.equal(preferredLanguage(["RU_ru"]), "ru");
 });

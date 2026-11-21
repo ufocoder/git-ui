@@ -32,6 +32,10 @@ workflow, or build the app yourself.
 2. Download the installer for macOS (Apple Silicon or Intel) or Windows (x64).
 3. Open GIT UI, choose a project, and select a local Git repository.
 
+The interface is available in Russian, English, and Simplified Chinese. Change it
+under Settings > Appearance > Interface language. On first launch GIT UI follows
+a supported system language preference; your choice is saved for later runs.
+
 [Development and setup](docs/development.md) ·
 [Releases and updates](docs/releases.md) ·
 [Landing page setup](docs/website.md)

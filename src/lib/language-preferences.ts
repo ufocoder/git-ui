@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { normalizeLanguage, setLanguage, type Language } from "./i18n";
+import { normalizeLanguage, preferredLanguage, setLanguage, type Language } from "./i18n";
 
 const storageKey = "git-ui.language";
 let disposeListener: (() => void) | undefined;
@@ -9,21 +9,17 @@ function apply(value: unknown) {
   setLanguage(next);
   document.documentElement.lang = next;
 }
-function preferredLanguage(): Language {
-  for (const tag of navigator.languages.length ? navigator.languages : [navigator.language]) {
-    const code = tag.split(/[-_]/)[0].toLowerCase();
-    if (code === "ru" || code === "en") return code;
-  }
-  return "ru";
+function systemLanguage() {
+  return preferredLanguage(navigator.languages.length ? navigator.languages : [navigator.language]);
 }
 export async function initializeLanguage() {
   if (isTauri()) {
     // Subscribe before reading so other windows cannot leave this view stale.
     disposeListener = await listen<string>("language-changed", event => apply(event.payload)).catch(error => { console.error(error); return undefined; });
-    apply(await invoke<string>("get_app_language", { preferredLanguage: preferredLanguage() }));
+    apply(await invoke<string>("get_app_language", { preferredLanguage: systemLanguage() }));
   } else {
-    try { apply(localStorage.getItem(storageKey) ?? preferredLanguage()); } catch { apply(preferredLanguage()); }
-    const synchronize = (event: StorageEvent) => { if (event.key === storageKey || event.key === null) apply(event.newValue ?? preferredLanguage()); };
+    try { apply(localStorage.getItem(storageKey) ?? systemLanguage()); } catch { apply(systemLanguage()); }
+    const synchronize = (event: StorageEvent) => { if (event.key === storageKey || event.key === null) apply(event.newValue ?? systemLanguage()); };
     window.addEventListener("storage", synchronize);
     disposeListener = () => window.removeEventListener("storage", synchronize);
   }

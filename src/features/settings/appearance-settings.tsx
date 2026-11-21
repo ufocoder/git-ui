@@ -13,7 +13,7 @@ export default function AppearanceSettings(props: { pending: boolean; setPending
   }
   return <>
     <SelectField label={t("language.title")} value={language()} disabled={props.pending} onChange={value => void chooseLanguage(value as Language)}
-      options={[{ value: "ru", label: t("language.russian") }, { value: "en", label: t("language.english") }]} />
+      options={[{ value: "ru", label: t("language.russian") }, { value: "en", label: t("language.english") }, { value: "zh", label: t("language.chinese") }]} />
     <Show when={languageError()}><p role="alert" class="text-sm text-destructive">{t("language.save-error", { error: languageError() })}</p></Show>
     <SelectField label={t("appearance.font-size")} value={String(uiFontScale.value())} onChange={value => uiFontScale.save(Number(value))}
       options={uiFontScale.choices.map((value, index) => ({
