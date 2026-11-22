@@ -1,7 +1,9 @@
+import { createConflictSession } from "~/lib/conflict-session";
 import { FileViewToggle } from "~/components/ui/file-view-toggle";
 import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import FileTableHeader from "~/components/sections/file-table-header";
-import { changedLineBlocks, conflictMarkerBlocks } from "~/lib/conflict-lines";
+import { createConflictAnalysis } from "./create-conflict-analysis";
+import type { LineBlock } from "~/lib/conflict-lines";
 import { PanelHeader } from "~/components/ui/panel-header";
 import { FilePathLabel } from "~/components/ui/file-path-label";
 import ConflictCode from "./conflict-code";
@@ -36,14 +38,13 @@ export default function ConflictResolution(props: Props) {
   const [resolved, setResolved] = state.resolved;
   const [currentBlock, setCurrentBlock] = createSignal(0);
   const [navigationTick, setNavigationTick] = createSignal(0);
-  const blockCount = createMemo(() => {
+  const source = createMemo(() => {
     const file = data();
-    if (!file) return 0;
-    const base = file.base.exists ? file.base.text : "";
-    return Math.max(conflictMarkerBlocks(file.working_text ?? "").length,
-      changedLineBlocks(base ?? "", file.ours.text ?? "").length,
-      changedLineBlocks(base ?? "", file.theirs.text ?? "").length);
+    return file ? { base: file.base.exists ? file.base.text ?? "" : "", ours: file.ours.text ?? "", theirs: file.theirs.text ?? "" } : undefined;
   });
+  const analysis = createConflictAnalysis(source, draft);
+  const blockCount = () => analysis().targets.length;
+  createEffect(() => setCurrentBlock(index => Math.max(0, Math.min(index, blockCount() - 1))));
   function navigateBlock(index: number) {
     setCurrentBlock(Math.max(0, Math.min(index, blockCount() - 1)));
     setNavigationTick(value => value + 1);
@@ -52,10 +53,11 @@ export default function ConflictResolution(props: Props) {
   const disabled = () => props.disabled || pending() || loading();
   const chosenVersion = () => choice() === "ours" ? data()?.ours : choice() === "theirs" ? data()?.theirs : undefined;
   const deleting = () => Boolean(chosenVersion()) && !chosenVersion()!.exists;
+  const session = createConflictSession(git);
   let loadedPath = data()?.file.path ?? "";
   let generation = 0;
   let mounted = true;
-  onCleanup(() => { mounted = false; generation++; });
+  onCleanup(() => { mounted = false; generation++; session.dispose(); });
   createEffect(() => {
     const files = props.history.conflicts ?? [];
     if (!files.some(file => file.path === selected())) setSelected(files[0]?.path ?? "");
@@ -63,7 +65,7 @@ export default function ConflictResolution(props: Props) {
   createEffect(() => {
     const path = selected();
     if (path && loadedPath !== path) void load(path);
-    else if (!path) { loadedPath = ""; generation++; setData(undefined); setDraft(""); setLoading(false); }
+    else if (!path) { loadedPath = ""; generation++; session.invalidate(); setData(undefined); setDraft(""); setLoading(false); }
   });
   async function load(path: string) {
     loadedPath = path;
@@ -71,8 +73,8 @@ export default function ConflictResolution(props: Props) {
     const request = ++generation;
     setLoading(true); setData(undefined); setChoice("manual"); setDraft("");
     try {
-      const result = await git.getConflictFile(path);
-      if (mounted && request === generation) { setData(result); setDraft(result.working_text ?? ""); }
+      const result = await session.load(path);
+      if (mounted && request === generation && result) { setData(result); setDraft(result.working_text ?? ""); }
     } catch { /* Errors are shown in the terminal. */ }
     finally { if (mounted && request === generation) setLoading(false); }
   }
@@ -103,8 +105,8 @@ export default function ConflictResolution(props: Props) {
     if (!current || disabled() || !current.supported || (choice() === "manual" && !current.editable)) return;
     setPending(true); props.onBusyChange(true);
     try {
-      const result = await git.resolveConflict(current.file.path, current.token, choice() === "manual" ? { kind: "manual", content: draft() } : { kind: choice() as "ours" | "theirs" });
-      if (!mounted) return;
+      const result = await session.save(current, choice(), draft());
+      if (!mounted || !result) return;
       setData(undefined); setDraft(""); setResolved(true); props.onHistoryChange(result);
     } catch { /* Preserve the draft; the terminal explains the failure. */ }
     finally { setPending(false); props.onBusyChange(false); }
@@ -148,8 +150,8 @@ export default function ConflictResolution(props: Props) {
               <Resizable layoutId="conflicts.result" orientation="vertical" initialSizes={[0.45, 0.55]} class="min-h-0 flex-1">
                 <ResizablePanel minSize={0.15} class="min-h-0 overflow-hidden">
                   <div class="grid h-full min-h-0 grid-cols-2 divide-x">
-                    <ConflictSide current={currentBlock()} navigation={navigationTick()} identity={`${current().file.path}:ours`} base={current().base.exists ? current().base.text : ""} title={t("conflict.ours")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conflict.use-ours")} />
-                    <ConflictSide current={currentBlock()} navigation={navigationTick()} identity={`${current().file.path}:theirs`} base={current().base.exists ? current().base.text : ""} title={t("conflict.theirs")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conflict.use-theirs")} />
+                    <ConflictSide current={currentBlock()} changes={analysis().ours} target={analysis().targets[currentBlock()]?.ours} navigation={navigationTick()} identity={`${current().file.path}:ours`} title={t("conflict.ours")} version={current().ours} disabled={disabled() || !current().supported} onChoose={() => choose("ours")} button={t("conflict.use-ours")} />
+                    <ConflictSide current={currentBlock()} changes={analysis().theirs} target={analysis().targets[currentBlock()]?.theirs} navigation={navigationTick()} identity={`${current().file.path}:theirs`} title={t("conflict.theirs")} version={current().theirs} disabled={disabled() || !current().supported} onChoose={() => choose("theirs")} button={t("conflict.use-theirs")} />
                   </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle aria-label={t("conflict.result")} />
@@ -159,7 +161,7 @@ export default function ConflictResolution(props: Props) {
                       {!current().supported ? t("conflict.unsupported") : deleting() ? t("conflict.delete-description") : choice() === "ours" ? t("conflict.ours-selected") : choice() === "theirs" ? t("conflict.theirs-selected") : t("conflict.readonly")}
                     </div>
                   }>
-                    <ConflictCode current={currentBlock()} navigation={navigationTick()} identity={`${current().file.path}:result`} text={draft()} base={current().base.exists ? current().base.text : ""} label={t("conflict.result")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
+                    <ConflictCode current={currentBlock()} changes={analysis().result} markers={analysis().markers} target={analysis().targets[currentBlock()]?.result} navigation={navigationTick()} identity={`${current().file.path}:result`} text={draft()} label={t("conflict.result")} tone="result" editable disabled={disabled()} onChange={value => { setChoice("manual"); setDraft(value); }} />
                   </Show>
                   <div class="panel-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2">
                     <p class="text-xs text-muted-foreground">{t("conflict.save-description")}</p>
@@ -180,13 +182,13 @@ export default function ConflictResolution(props: Props) {
   </div>;
 }
 
-function ConflictSide(props: { current: number; navigation: number; identity: string; base: string | null; title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
+function ConflictSide(props: { current: number; changes: LineBlock[]; target?: LineBlock; navigation: number; identity: string; title: string; version: ConflictVersion; button: string; disabled: boolean; onChoose: () => void }) {
   return <div class="flex min-h-0 min-w-0 flex-col">
     <PanelHeader class="flex-wrap gap-1 px-2"><h4 class="text-xs font-medium">{props.title}</h4><Button size="sm" variant="outline" class="h-7 text-xs" disabled={props.disabled} onClick={props.onChoose}>{props.button}</Button></PanelHeader>
     <Show when={props.version.exists && !props.version.large && !props.version.binary && props.version.mode !== "120000" && props.version.text !== null} fallback={
       <pre class="min-h-0 flex-1 overflow-auto bg-muted/20 p-3 font-mono text-diff leading-diff">{!props.version.exists ? t("conflict.deleted") : props.version.large ? t("conflict.large") : props.version.binary ? t("conflict.binary") : props.version.mode === "120000" ? t("conflict.symlink") : t("conflict.unsupported")}</pre>
     }>
-      <ConflictCode current={props.current} navigation={props.navigation} identity={props.identity} text={props.version.text ?? ""} base={props.base} label={props.title} tone={props.identity.endsWith(":ours") ? "ours" : "theirs"} />
+      <ConflictCode current={props.current} changes={props.changes} target={props.target} navigation={props.navigation} identity={props.identity} text={props.version.text ?? ""} label={props.title} tone={props.identity.endsWith(":ours") ? "ours" : "theirs"} />
     </Show>
   </div>;
 }

@@ -1,3 +1,4 @@
+import { virtualRange } from "./virtual-range.ts";
 export type LineBlock = { start: number; end: number };
 export function textLines(text: string): string[] {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
@@ -17,19 +18,21 @@ export function mergeLineBlocks(blocks: LineBlock[]): LineBlock[] {
 
 // Patience anchors avoid quadratic work on large files; small repeated regions
 // use LCS. A bounded fallback highlights the remaining region as one block.
-export function changedLineBlocks(base: string, text: string): LineBlock[] {
+export type LineEdit = { baseStart: number; baseEnd: number; start: number; end: number };
+
+// Edit ranges are half-open, so an insertion or deletion can have zero length.
+export function changedLineEdits(base: string, text: string): LineEdit[] {
   const left = textLines(base), right = textLines(text);
-  const blocks: LineBlock[] = [];
+  const edits: LineEdit[] = [];
   let budget = 500_000;
-  const mark = (start: number, end: number) => {
-    const last = Math.max(0, right.length - 1);
-    blocks.push({ start: Math.min(start, last), end: Math.min(Math.max(start, end - 1), last) });
+  const mark = (baseStart: number, baseEnd: number, start: number, end: number) => {
+    edits.push({ baseStart, baseEnd, start, end });
   };
   function compare(a: number, b: number, c: number, d: number, depth: number) {
     while (a < b && c < d && left[a] === right[c]) { a++; c++; }
     while (a < b && c < d && left[b - 1] === right[d - 1]) { b--; d--; }
     if (a === b && c === d) return;
-    if (a === b || c === d || depth > 32) { mark(c, d); return; }
+    if (a === b || c === d || depth > 32) { mark(a, b, c, d); return; }
     const cells = (b - a + 1) * (d - c + 1);
     if (cells <= budget) {
       budget -= cells;
@@ -38,18 +41,18 @@ export function changedLineBlocks(base: string, text: string): LineBlock[] {
       for (let i = b - a - 1; i >= 0; i--) for (let j = d - c - 1; j >= 0; j--) {
         table[i * width + j] = left[a + i] === right[c + j] ? 1 + table[(i + 1) * width + j + 1] : Math.max(table[(i + 1) * width + j], table[i * width + j + 1]);
       }
-      let i = 0, j = 0, start = -1;
+      let i = 0, j = 0, start = -1, baseStart = -1;
       while (i < b - a || j < d - c) {
         if (i < b - a && j < d - c && left[a + i] === right[c + j]) {
-          if (start !== -1) { mark(c + start, c + j); start = -1; }
+          if (start !== -1) { mark(a + baseStart, a + i, c + start, c + j); start = -1; }
           i++; j++;
         } else {
-          if (start === -1) start = j;
+          if (start === -1) { start = j; baseStart = i; }
           if (i < b - a && (j === d - c || table[(i + 1) * width + j] >= table[i * width + j + 1])) i++;
           else j++;
         }
       }
-      if (start !== -1) mark(c + start, c + j);
+      if (start !== -1) mark(a + baseStart, a + i, c + start, c + j);
       return;
     }
     const uniqueLeft = new Map<string, number>(), uniqueRight = new Map<string, number>();
@@ -67,7 +70,7 @@ export function changedLineBlocks(base: string, text: string): LineBlock[] {
       previous[i] = low ? tails[low - 1] : -1;
       tails[low] = i;
     }
-    if (!tails.length) { mark(c, d); return; }
+    if (!tails.length) { mark(a, b, c, d); return; }
     const anchors: [number, number][] = [];
     for (let i = tails[tails.length - 1]; i >= 0; i = previous[i]) anchors.push(pairs[i]);
     anchors.reverse();
@@ -75,7 +78,16 @@ export function changedLineBlocks(base: string, text: string): LineBlock[] {
     compare(a, b, c, d, depth + 1);
   }
   compare(0, left.length, 0, right.length, 0);
-  return mergeLineBlocks(blocks);
+  return edits;
+}
+
+export function changedLineBlocks(base: string, text: string): LineBlock[] {
+  return editLineBlocks(changedLineEdits(base, text), textLines(text).length);
+}
+
+export function editLineBlocks(edits: readonly LineEdit[], lineCount: number): LineBlock[] {
+  const last = Math.max(0, lineCount - 1);
+  return mergeLineBlocks(edits.map(edit => ({ start: Math.min(edit.start, last), end: Math.min(Math.max(edit.start, edit.end - 1), last) })));
 }
 
 export function conflictMarkerBlocks(text: string): LineBlock[] {
@@ -91,7 +103,5 @@ export function conflictMarkerBlocks(text: string): LineBlock[] {
 
 // A small overscan keeps scrolling smooth without mounting the entire file.
 export function visibleConflictLines(count: number, top: number, height: number, stride: number) {
-  const lineHeight = Math.max(1, stride);
-  const start = Math.min(count, Math.max(0, Math.floor(top / lineHeight) - 8));
-  return { start, end: Math.min(count, Math.max(start, Math.ceil((Math.max(0, top) + Math.max(0, height)) / lineHeight) + 8)) };
+  return virtualRange(count, Math.max(0, top), height, stride);
 }
