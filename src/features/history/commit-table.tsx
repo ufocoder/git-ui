@@ -49,15 +49,8 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     { value: "all", label: t("history.all-branches") },
     ...props.history.branches.map(branch => ({ value: `refs/heads/${branch}`, label: branch })),
   ]);
-  const jumpOptions = createMemo(() => [
-    ...branches().slice(1),
-    ...props.history.remotes.flatMap(remote => remote.branches.map(branch => ({
-      value: `refs/remotes/${remote.name}/${branch}`, label: `${remote.name}/${branch}`,
-    }))),
-    ...props.history.tags.filter(tag => props.history.tag_tips?.[tag]).map(tag => ({ value: `refs/tags/${tag}`, label: t("history.jump-tag", { tag }) })),
-  ]);
   const [filter, setFilter] = search.filter;
-  const { referenceTip, jumpTip, filtered, debouncing, loading, error, setError, hasMore, displayedCommits, graphRevision, loadMore, retry, generation, resetContext } = createCommitHistory({
+  const { jumpTip, filtered, debouncing, loading, error, setError, hasMore, displayedCommits, graphRevision, loadMore, retry, generation, resetContext } = createCommitHistory({
     history: () => props.history,
     branch: () => props.branch,
     scope: () => props.scope,
@@ -71,22 +64,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     selectedCommit, setSelectedCommit,
     resetRange() { setRangeSelection([]); setSelectionAnchor(undefined); },
   });
-  function jumpTo(ref: string) {
-    const hash = referenceTip(ref);
-    if (!hash) return;
-    const rows = displayedCommits();
-    const index = rows.findIndex(commit => commit.hash === hash);
-    if (index >= 0 && !loading() && !debouncing()) {
-      selectRow(rows[index], false);
-      viewport.scrollTop = index * ROW_HEIGHT;
-      setScrollTop(viewport.scrollTop);
-    } else {
-      batch(() => {
-        setFilter({ text: "", sha: "", author: "", file: "" });
-        setJumpRef(ref);
-      });
-    }
-  }
   const rangeHashes = createMemo(() => new Set(rangeSelection().map(commit => commit.hash)));
   const canRewrite = () => !props.disabled && !props.history.git_lfs_missing && Boolean(props.history.current_branch) && !props.history.has_changes && !props.history.operation;
   const squashRange = (commit: Commit) => rangeHashes().has(commit.hash) ? rangeSelection() : [];
@@ -249,12 +226,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
         }}>
-          <Show when={searchOpen()}>
-            <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={jumpTo} />
-          </Show>
           <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
             aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}
-            aria-expanded={searchOpen()} aria-controls={`${searchId}-fields ${searchId}-path`} onClick={() => setSearchOpen(open => !open)}>
+            aria-expanded={searchOpen()} aria-controls={`${searchId}-fields`} onClick={() => setSearchOpen(open => !open)}>
             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
           </Button>
         </div>
@@ -278,6 +252,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
       </Show>
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("search.searching")}</span></Show>
       <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div class="relative min-w-0 shrink-0">
       <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("history.title")}
         containerProps={{ ref: element => { headingViewport = element; }, class: "shrink-0 overflow-hidden bg-[hsl(var(--panel-heading))]", style: { "padding-right": `${scrollbarWidth()}px` } }}>
         <colgroup>
@@ -292,7 +267,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         }}>
           <TableRow class="hover:bg-transparent">
             <For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{(heading, index) =>
-              <TableHead scope="col" class="relative h-[34px] border-b first:pl-4">
+              <TableHead scope="col" class="relative h-[34px] border-b pl-4">
                 <span class="block truncate pr-1"><span data-column-label class="inline-block w-max whitespace-nowrap">{heading}</span></span>
                 <Show when={index() < 4}>
                   <span role="separator" aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })} title={t("history.reset-columns")}
@@ -323,6 +298,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           <Show when={searchOpen()}><HistoryFilters id={searchId} filter={filter()} onChange={setFilter} disabled={props.disabled} /></Show>
         </TableHeader>
       </Table>
+      <span aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-[33px] border-b" />
+      <span aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 border-b" />
+      </div>
       <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
         containerProps={{
           ref: element => { viewport = element; },

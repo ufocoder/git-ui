@@ -395,3 +395,37 @@ fn missing_git_lfs_keeps_history_available() {
     assert!(!history.git_lfs_missing);
     assert!(history.has_changes);
 }
+
+#[test]
+fn unified_history_query_matches_messages_or_literal_paths_without_duplicates() {
+    let repo = TempRepo::new();
+    repo.init();
+    std::fs::create_dir_all(repo.0.join("nested")).unwrap();
+    std::fs::write(repo.0.join("nested/needle[1].txt"), "first").unwrap();
+    git(&repo.0, &["add", "--all"]).unwrap();
+    commit_file(&repo, "base", "Unrelated message");
+    let oldest = git(&repo.0, &["rev-parse", "HEAD"]).unwrap().trim().to_string();
+    commit_file(&repo, "message only", "Mention NEEDLE[1] in message");
+    std::fs::write(repo.0.join("nested/needle[1].txt"), "second").unwrap();
+    git(&repo.0, &["add", "--all"]).unwrap();
+    commit_file(&repo, "both", "needle[1] matches both");
+    let both = git(&repo.0, &["rev-parse", "HEAD"]).unwrap().trim().to_string();
+    std::fs::write(repo.0.join("nested/needle1.txt"), "not a wildcard match").unwrap();
+    git(&repo.0, &["add", "--all"]).unwrap();
+    commit_file(&repo, "noise", "Ignore this commit");
+    let history = read_history(&repo.0).unwrap();
+    let filter = history_search::HistoryFilter { text: "needle[1]".into(), ..Default::default() };
+    let matches = history_search::page(&repo.0, &history.tip, None, "all", &filter, 0).unwrap();
+    assert_eq!(matches.commits.len(), 3);
+    assert_eq!(matches.commits[0].hash, both);
+    assert_eq!(matches.commits[2].hash, oldest);
+    let next = history_search::page(&repo.0, &history.tip, None, "all", &filter, 1).unwrap();
+    assert_eq!(next.commits.len(), 2);
+    assert_eq!(next.commits[0].hash, matches.commits[1].hash);
+    let folder = history_search::HistoryFilter { text: "nested".into(), ..Default::default() };
+    assert_eq!(history_search::page(&repo.0, &history.tip, None, "all", &folder, 0).unwrap().commits.len(), 3);
+    let author = history_search::HistoryFilter { author: "Nobody".into(), ..filter.clone() };
+    assert!(history_search::page(&repo.0, &history.tip, None, "all", &author, 0).unwrap().commits.is_empty());
+    let sha = history_search::HistoryFilter { sha: oldest[..8].into(), ..filter };
+    assert_eq!(history_search::page(&repo.0, &history.tip, None, "all", &sha, 0).unwrap().commits[0].hash, oldest);
+}

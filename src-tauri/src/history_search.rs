@@ -108,6 +108,39 @@ pub fn page_at_tips(path: &Path, local_tip: &str, remote_tip: Option<&str>, scop
     if !author.is_empty() {
         args.push(format!("--author={author}"));
     }
+    // A single query matches messages OR changed paths; author, SHA and explicit
+    // file-history constraints still narrow the result. Order before paginating.
+    if !text.is_empty() {
+        let mut candidates = args.clone();
+        candidates.retain(|arg| !arg.starts_with("--max-count=") && !arg.starts_with("--skip=") && !arg.starts_with("--format=") && arg != "-z");
+        candidates.push("--format=%H".into());
+        let read_hashes = |extra: Vec<String>, paths: Vec<String>| -> Result<Vec<String>, String> {
+            let mut command = candidates.clone();
+            command.extend(extra);
+            command.extend([revision.clone(), "--".into()]);
+            command.extend(paths);
+            Ok(git(path, &command.iter().map(String::as_str).collect::<Vec<_>>())?.lines().map(str::to_owned).collect())
+        };
+        let constraint = if file.is_empty() { vec![] } else { vec![format!(":(literal){file}")] };
+        let messages: HashSet<_> = read_hashes(vec![format!("--grep={text}")], constraint.clone())?.into_iter().collect();
+        let query = text.strip_prefix("./").unwrap_or(text);
+        let escaped: String = query.chars().flat_map(|ch| {
+            if "*?[]\\".contains(ch) { vec!['\\', ch] } else { vec![ch] }
+        }).collect();
+        let paths: HashSet<_> = read_hashes(vec![], vec![format!(":(icase,glob)**/*{escaped}*"), format!(":(icase,glob)**/*{escaped}*/**")])?.into_iter().collect();
+        let implicit_sha = sha.is_empty() && (4..=64).contains(&text.len()) && text.bytes().all(|ch| ch.is_ascii_hexdigit());
+        let prefix = text.to_ascii_lowercase();
+        let explicit_prefix = sha.to_ascii_lowercase();
+        let matches: Vec<_> = read_hashes(vec![], constraint)?.into_iter()
+            .filter(|hash| (sha.is_empty() || hash.starts_with(&explicit_prefix))
+                && (messages.contains(hash) || paths.contains(hash) || (implicit_sha && hash.starts_with(&prefix))))
+            .skip(offset).take(PAGE_SIZE + 1).collect();
+        if matches.is_empty() { return Ok(empty_page()); }
+        let mut command = vec!["--no-pager".to_string(), "log".into(), "--no-walk=unsorted".into(), "--no-show-signature".into(), "--format=%H%x00%an%x00%aI%x00%s%x00%P".into(), "-z".into()];
+        command.extend(matches);
+        command.push("--".into());
+        return parse_commit_log(path, &git(path, &command.iter().map(String::as_str).collect::<Vec<_>>())?);
+    }
     // SHA input is matched only against commits reachable in the chosen scope
     // and touching the chosen path, never against arbitrary refs or options.
     let sha_search = !sha.is_empty()
