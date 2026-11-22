@@ -4,12 +4,24 @@ use tauri::{
     AppHandle, Emitter, Manager,
 };
 
+pub const ABOUT: &str = "open-about";
+
 pub const SETTINGS: &str = "open-settings";
 pub const CHECK_UPDATES: &str = "check-updates";
 pub const KEYBOARD_SHORTCUTS: &str = "keyboard-shortcuts";
 
 pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::default(app)?;
+    #[cfg(target_os = "macos")]
+    let about_menu = menu.items()?.first().and_then(|item| item.as_submenu().cloned());
+    #[cfg(not(target_os = "macos"))]
+    let about_menu = menu.get(tauri::menu::HELP_SUBMENU_ID).and_then(|item| item.as_submenu().cloned());
+    if let Some(submenu) = about_menu {
+        let about = MenuItem::with_id(app, ABOUT, locale::text("menu.about").replace("{app}", &app.package_info().name), true, None::<&str>)?;
+        submenu.remove_at(0)?;
+        submenu.insert(&about, 0)?;
+    }
+
     #[cfg(target_os = "macos")]
     localize_macos_menu(&menu, &app.package_info().name)?;
     let check = MenuItem::with_id(
@@ -22,7 +34,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let settings = MenuItem::with_id(
         app,
         SETTINGS,
-        locale::text("settings.title"),
+        locale::text("settings.menu-label"),
         true,
         None::<&str>,
     )?;

@@ -1,3 +1,4 @@
+import AboutDialog from "~/components/sections/about-dialog";
 import OperationStatus from "~/components/sections/operation-status";
 import KeyboardShortcutsDialog from "~/components/sections/keyboard-shortcuts-dialog";
 import { matchesShortcut } from "~/lib/keyboard-shortcuts";
@@ -31,12 +32,14 @@ function App() {
   const [repositorySettingsOpen, setRepositorySettingsOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
+  const [aboutOpen, setAboutOpen] = createSignal(false);
+  let unlistenAbout: UnlistenFn | undefined;
   let unlistenUpdates: UnlistenFn | undefined;
   let unlistenSettings: UnlistenFn | undefined;
   let unlistenShortcuts: UnlistenFn | undefined;
   const [shortcutsOpen, setShortcutsOpen] = createSignal(false);
   let disposed = false;
-  onCleanup(() => { disposed = true; unlistenUpdates?.(); unlistenShortcuts?.(); unlistenSettings?.(); });
+  onCleanup(() => { disposed = true; unlistenAbout?.(); unlistenUpdates?.(); unlistenShortcuts?.(); unlistenSettings?.(); });
   const [gitCheck, setGitCheck] = createSignal<GitCheckState>(isTauri() ? "checking" : "ready");
   const [gitPlatform, setGitPlatform] = createSignal("");
   const [choosingProject, setChoosingProject] = createSignal(false);
@@ -63,6 +66,9 @@ function App() {
     setBusy(true);
     try {
       if (isTauri()) {
+        const aboutListener = await listen("open-about", () => { if (!installingUpdate()) setAboutOpen(true); });
+        if (disposed) { aboutListener(); return; }
+        unlistenAbout = aboutListener;
         const unlisten = await listen("check-updates", () => setUpdatesOpen(true));
         if (disposed) { unlisten(); return; }
         unlistenUpdates = unlisten;
@@ -227,6 +233,7 @@ function App() {
         </DialogFooter>
       </DialogContent></Show>
     </Dialog>
+    <AboutDialog open={aboutOpen()} onOpenChange={setAboutOpen} />
     <KeyboardShortcutsDialog open={shortcutsOpen()} onOpenChange={setShortcutsOpen} />
     <InitializeRepositoryDialog path={initializePath()} pending={busy()} error={initializeError()}
       onConfirm={() => void initializeProject()} onCancel={() => { setInitializePath(""); setInitializeError(""); }} />

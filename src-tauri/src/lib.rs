@@ -84,7 +84,11 @@ pub fn run() {
             Ok(())
         })
         .on_menu_event(|app, event| {
-            if event.id().as_ref() == update_menu::CHECK_UPDATES {
+            if event.id().as_ref() == update_menu::ABOUT {
+                if let Err(error) = update_menu::show_dialog(app, update_menu::ABOUT) {
+                    eprintln!("{error}");
+                }
+            } else if event.id().as_ref() == update_menu::CHECK_UPDATES {
                 if let Err(error) = update_menu::show(app) {
                     eprintln!("{error}");
                 }
