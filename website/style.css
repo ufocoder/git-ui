@@ -102,6 +102,11 @@ footer>span{display:none}
 .mini-node{width:8px;height:8px;flex:none;border:2px solid #627f64;border-radius:50%}
 .mini-button{padding:2px 6px;border-radius:4px;background:#425d48;color:#fff}
 .mini-check{color:#426b47;font-weight:700}
+.mini-ref-icon{width:14px;height:14px;flex:none;color:#627f64}
+.mini-side-title{background:#f6f7f5;color:#626d63;border-bottom:1px solid #dfe4dc}
+.mini-result{border-top:1px solid #dfe4dc;flex-wrap:wrap}
+.mini-result code{margin-left:auto}
+.mini-result .mini-check{font-size:11px;white-space:nowrap}
 .mini-code{padding:4px 8px;font-family:monospace}
 .mini-removed{background:#f9e9e8;color:#903b36}
 .mini-added{background:#e8f4e6;color:#386341}
