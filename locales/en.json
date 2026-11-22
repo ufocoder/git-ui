@@ -250,8 +250,6 @@
   "git-settings.group-sync": "Synchronization",
   "git-settings.group-defaults": "Branches and files",
   "git-settings.inherit": "Default / inherit",
-  "git-settings.global-warning": "Changes to global Git settings affect all projects under your account on this device, including in the terminal and other Git clients.",
-  "git-settings.local-overrides": "Repository settings take precedence.",
   "git-settings.inherit-description": "Clear a field to use the inherited value or the Git default.",
   "git-settings.initial-branch": "Initial branch for new repositories",
   "git-settings.interactive-rebase": "Interactive rebase",
@@ -683,5 +681,6 @@
   "stage.updating": "Updating staged files…",
   "project.missing-title": "Remove missing project?",
   "project.missing-description": "This folder no longer exists. Remove its entry from recent projects?",
-  "project.remove-recent": "Remove from recent projects"
+  "project.remove-recent": "Remove from recent projects",
+  "git-settings.global-summary": "Applies to all projects. Repository settings take precedence; empty fields use Git defaults."
 }

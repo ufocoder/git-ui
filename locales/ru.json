@@ -250,8 +250,6 @@
   "git-settings.group-sync": "Синхронизация",
   "git-settings.group-defaults": "Ветки и файлы",
   "git-settings.inherit": "По умолчанию / наследовать",
-  "git-settings.global-warning": "Изменения глобальных настроек Git повлияют на все проекты вашей учётной записи на этом устройстве, в том числе при работе в терминале и других Git-клиентах.",
-  "git-settings.local-overrides": "Настройки отдельных репозиториев имеют приоритет.",
   "git-settings.inherit-description": "Очистите поле, чтобы вернуть унаследованное или стандартное значение Git.",
   "git-settings.initial-branch": "Начальная ветка новых репозиториев",
   "git-settings.interactive-rebase": "Интерактивный rebase",
@@ -683,5 +681,6 @@
   "stage.updating": "Обновление индекса…",
   "project.missing-title": "Убрать недоступный проект?",
   "project.missing-description": "Эта папка больше не существует. Удалить запись из недавних проектов?",
-  "project.remove-recent": "Убрать из недавних"
+  "project.remove-recent": "Убрать из недавних",
+  "git-settings.global-summary": "Для всех проектов. Настройки репозитория имеют приоритет; пустое поле использует значение Git по умолчанию."
 }
