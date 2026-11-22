@@ -89,20 +89,15 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
       </div>
       <nav class="mt-3 space-y-1" aria-label={t("toolbar.modes")}>
         <For each={[{ mode: "history" as const, label: t("mode.history"), icon: "branches" as const, count: 0 }, { mode: "commit" as const, label: t("mode.changes"), icon: "changes" as const, count: props.history.has_changes ? 1 : 0 }, { mode: "conflicts" as const, label: t("conflict.title"), icon: "conflicts" as const, count: props.history.conflicts.length }, { mode: "stash" as const, label: t("stash.title"), icon: "stash" as const, count: props.history.stashes.length }]}>{item =>
-          <SidebarMenuButton disabled={props.disabled || (item.mode !== "history" && (props.history.git_lfs_missing || item.count === 0))} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class="h-9 gap-2 rounded-md data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground">
+          <SidebarMenuButton disabled={props.disabled || (item.mode !== "history" && (props.history.git_lfs_missing || item.count === 0))} isActive={props.mode === item.mode} aria-current={props.mode === item.mode ? "page" : undefined} onClick={() => props.onModeChange(item.mode)} class={`h-9 gap-2 rounded-md ${item.mode === "conflicts" && item.count > 0 ? "text-error-foreground hover:bg-error-foreground/10 hover:text-error-foreground active:bg-error-foreground/15 active:text-error-foreground data-[active=true]:bg-error-foreground/10 data-[active=true]:text-error-foreground data-[state=open]:hover:bg-error-foreground/10 data-[state=open]:hover:text-error-foreground" : "data-[active=true]:bg-sidebar-selected data-[active=true]:text-sidebar-foreground"}`}>
             <SectionIcon name={item.icon} /><span class="min-w-0 flex-1 truncate">{item.label}</span>
-            <Show when={item.count > 0}><span class="rounded bg-muted px-1.5 text-xs tabular-nums">{item.mode === "commit" ? "•" : item.count}</span></Show>
+            <Show when={item.count > 0}><span class={`rounded px-1.5 text-xs tabular-nums ${item.mode === "conflicts" ? "bg-error-foreground text-background font-medium" : "bg-muted"}`}>{item.mode === "commit" ? "•" : item.count}</span></Show>
           </SidebarMenuButton>
         }</For>
       </nav>
     </SidebarHeader>
     <SidebarContent data-sidebar-scroll class="overflow-x-hidden overflow-y-scroll [scrollbar-gutter:stable]">
       <div class="flex shrink-0 flex-col">
-      <Show when={props.mode === "conflicts"}>
-        <div class="mx-2 mt-2 flex items-center gap-2 rounded-md border px-2 py-2 text-xs text-muted-foreground" title={props.history.current_branch || t("sidebar.detached")}>
-          <SectionIcon name="branches" /><span class="truncate">{props.history.current_branch || t("sidebar.detached")}</span>
-        </div>
-      </Show>
       <Show when={props.mode === "history"}>
       <SidebarSection title={t("sidebar.branches")} icon={<SectionIcon name="branches" />} action={<Button variant="ghost" size="icon" class="size-7 shrink-0" disabled={props.disabled || props.history.git_lfs_missing || !props.history.tip} onClick={props.onCreateBranch} aria-label={t("branch.create")} title={t("branch.create")}>+</Button>}>
         <SidebarGroupContent>
