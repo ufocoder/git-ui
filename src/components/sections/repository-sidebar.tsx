@@ -169,7 +169,7 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
           <path d="m9.5 3-.6 2.4-1.7 1-2.4-.7-2.5 4.3L4 11.7v2l-1.7 1.7 2.5 4.3 2.4-.7 1.7 1 .6 2.4h5l.6-2.4 1.7-1 2.4.7 2.5-4.3-1.7-1.7v-2l1.7-1.7-2.5-4.3-2.4.7-1.7-1L14.5 3Z" />
           <circle cx="12" cy="12.7" r="3" />
         </svg>
-        {t("settings.menu-label")}
+        {t("settings.title")}
       </Button>
     </SidebarFooter>
     <SidebarResizeHandle />
