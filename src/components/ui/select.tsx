@@ -7,7 +7,7 @@ export const Select = SelectPrimitive.Root;
 export const SelectValue = SelectPrimitive.Value;
 export const SelectItemLabel = SelectPrimitive.ItemLabel;
 
-export type SelectOption = { value: string; label: string };
+export type SelectOption = { value: string; label: string; icon?: string };
 export function SelectField(props: {
   options: SelectOption[];
   value: string;
@@ -24,13 +24,17 @@ export function SelectField(props: {
   return <Select<SelectOption> class={cn("min-w-0 space-y-1", props.class)} options={props.options} optionValue={option => `option-${encodeURIComponent(option.value)}`} optionTextValue="label"
     virtualized={props.options.length > 100} value={value()} disabled={props.disabled} disallowEmptySelection onChange={option => { if (option && option.value !== props.value) props.onChange(option.value); }}
     placeholder={props.placeholder}
-    itemComponent={item => <SelectItem item={item.item}><SelectItemLabel class="break-all">{item.item.rawValue.label}</SelectItemLabel></SelectItem>}>
+    itemComponent={item => <SelectItem item={item.item}><SelectItemLabel class="break-all"><OptionLabel option={item.item.rawValue} /></SelectItemLabel></SelectItem>}>
     <Show when={props.label}><SelectPrimitive.Label class="block text-sm font-medium">{props.label}</SelectPrimitive.Label></Show>
     <SelectTrigger id={props.id} class={cn("w-full font-normal", props.triggerClass)} aria-label={props["aria-label"]}>
-      <span class="min-w-0 truncate"><SelectValue<SelectOption>>{state => state.selectedOption()?.label ?? props.placeholder ?? ""}</SelectValue></span>
+      <span class="min-w-0 truncate"><SelectValue<SelectOption>>{state => <Show when={state.selectedOption()} fallback={props.placeholder ?? ""}>{option => <OptionLabel option={option()} />}</Show>}</SelectValue></span>
     </SelectTrigger>
     <Show when={props.options.length > 100} fallback={<SelectContent />}><VirtualSelectContent /></Show>
   </Select>;
+}
+
+function OptionLabel(props: { option: SelectOption }) {
+  return <Show when={props.option.icon} fallback={props.option.label}><span class="inline-flex min-w-0 items-center gap-2"><img src={props.option.icon} alt="" aria-hidden="true" class="h-3.5 w-5 shrink-0 object-cover" /><span class="truncate">{props.option.label}</span></span></Show>;
 }
 
 function VirtualSelectContent() {

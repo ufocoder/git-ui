@@ -31,6 +31,12 @@ button,a{-webkit-tap-highlight-color:transparent}
 .downloads{border-top:1px solid #e1e4dc;padding-block:75px 100px;display:grid;grid-template-columns:1fr 1fr;gap:90px;align-items:center}
 .downloads h2{font-size:46px;margin-bottom:24px}
 .download-description{font-size:18px;color:#686e62}
+.supported-languages{margin:24px 0}
+.supported-languages h3{font-size:20px;font-weight:550;margin:0 0 12px}
+.supported-languages ul{display:flex;flex-wrap:wrap;gap:10px 20px;list-style:none;padding:0;margin:0;font-size:17px}
+.supported-languages li{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.supported-languages small{font-size:14px;color:#686e62}
+.supported-languages p{font-size:14px;color:#686e62;margin:10px 0 0}
 .download-panel{border:1px solid #e0e3db;border-radius:12px;background:#fdfefb;padding:25px}
 .download-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #e8eae3;padding-bottom:15px;margin-bottom:4px}
 .download-heading h3{font-size:20px;font-weight:550;margin:0}
@@ -130,3 +136,5 @@ footer>span{display:none}
 .download-row a .download-arrow {
   margin-inline-start: 0.5em;
 }
+
+.language-flag{display:inline-block;width:20px;height:14px;object-fit:cover;vertical-align:middle;flex-shrink:0}
