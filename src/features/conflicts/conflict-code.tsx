@@ -79,7 +79,7 @@ export default function ConflictCode(props: Props) {
           <For each={markers()}>{block => <div class="bg-warning" style={{ position: "absolute", left: 0, right: 0, top: `${padding() + block.start * lineHeight() - top()}px`, height: `${(block.end - block.start + 1) * lineHeight()}px` }} />}</For>
         </div>
         <TextField class="relative h-full min-h-0" value={props.text} onChange={value => props.onChange?.(value)} disabled={props.disabled}>
-          <TextFieldTextArea ref={element => { scroll = element; editor = element; }} aria-label={props.label} class="h-full min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-3 font-mono text-diff leading-diff shadow-none focus-visible:ring-inset focus-visible:ring-offset-0" wrap="off" spellcheck={false} onScroll={event => setTop(event.currentTarget.scrollTop)} />
+          <TextFieldTextArea ref={element => { scroll = element; editor = element; }} aria-label={props.label} class="h-full min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-3 font-mono text-diff leading-diff shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" wrap="off" spellcheck={false} onScroll={event => setTop(event.currentTarget.scrollTop)} />
         </TextField>
       </Show>
     </div>
