@@ -88,3 +88,10 @@ export function conflictMarkerBlocks(text: string): LineBlock[] {
   if (start >= 0) blocks.push({ start, end: Math.max(start, lines.length - 1) });
   return blocks;
 }
+
+// A small overscan keeps scrolling smooth without mounting the entire file.
+export function visibleConflictLines(count: number, top: number, height: number, stride: number) {
+  const lineHeight = Math.max(1, stride);
+  const start = Math.min(count, Math.max(0, Math.floor(top / lineHeight) - 8));
+  return { start, end: Math.min(count, Math.max(start, Math.ceil((Math.max(0, top) + Math.max(0, height)) / lineHeight) + 8)) };
+}

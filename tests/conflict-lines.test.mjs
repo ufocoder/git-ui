@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { changedLineBlocks, conflictMarkerBlocks } from '../src/lib/conflict-lines.ts';
+import { changedLineBlocks, conflictMarkerBlocks, visibleConflictLines } from '../src/lib/conflict-lines.ts';
 
 test('highlights replacements and insertions without marking unchanged shifted lines', () => {
   assert.deepEqual(changedLineBlocks('a\nb\nc\nd\ne\n', 'a\nnew\nc\nd\nlast\n'), [{ start: 1, end: 1 }, { start: 4, end: 4 }]);
@@ -25,4 +25,12 @@ test('conflict regions include their markers and incomplete edits remain navigab
   assert.deepEqual(conflictMarkerBlocks('a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> incoming\nz'), [{ start: 1, end: 5 }]);
   assert.deepEqual(conflictMarkerBlocks('a\n<<<<<<< HEAD\nunfinished'), [{ start: 1, end: 2 }]);
   assert.deepEqual(conflictMarkerBlocks('resolved'), []);
+});
+
+
+test('large conflict files render only the viewport and a bounded overscan', () => {
+  assert.deepEqual(visibleConflictLines(10000, 0, 320, 16), { start: 0, end: 28 });
+  assert.deepEqual(visibleConflictLines(10000, 80000, 320, 16), { start: 4992, end: 5028 });
+  assert.deepEqual(visibleConflictLines(10000, 159900, 320, 16), { start: 9985, end: 10000 });
+  assert.deepEqual(visibleConflictLines(0, 0, 320, 16), { start: 0, end: 0 });
 });
