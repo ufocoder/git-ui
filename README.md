@@ -13,7 +13,7 @@ Available in **English, Russian, and Simplified Chinese**.
 [Website](https://ufocoder.github.io/git-ui/) ·
 [User guide](docs/features.md)
 
-![GIT UI showing the commit graph, repository sidebar, and a file diff](website/assets/image.webp)
+![GIT UI in English showing the commit graph, repository sidebar, and a file diff](website/assets/en.webp)
 
 ## Built for everyday Git work
 
