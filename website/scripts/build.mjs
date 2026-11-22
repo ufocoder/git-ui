@@ -16,6 +16,6 @@ if (!process.argv.includes('--offline')) {
 }
 const output = new URL('dist/', root);
 await mkdir(output, { recursive: true });
-for (const file of ['index.html', 'style.css', 'main.js', 'assets']) await cp(new URL(file, root), new URL(file, output), { recursive: true });
+for (const file of ['index.html', 'style.css', 'main.js', 'screenshot.js', 'assets']) await cp(new URL(file, root), new URL(file, output), { recursive: true });
 await writeFile(new URL('release.json', output), JSON.stringify(releaseData(repository, release), null, 2) + '\n');
 console.log(`Built ${fileURLToPath(output)}${release ? ` for ${release.tag_name}` : ' (no published release)'}`);

@@ -1,3 +1,23 @@
+import { screenshotLanguage } from './screenshot.js';
+
+const screenshot = document.querySelector('#app-screenshot');
+function updateScreenshot() {
+  if (!screenshot) return;
+  const language = screenshotLanguage(navigator.languages?.length ? navigator.languages : [navigator.language]);
+  const names = { en: 'English', ru: 'Russian', zh: 'Simplified Chinese' };
+  screenshot.src = new URL(`./assets/${language}.webp`, import.meta.url).href;
+  screenshot.alt = `GIT UI interface in ${names[language]}`;
+}
+screenshot?.addEventListener('error', () => {
+  const fallback = new URL('./assets/en.webp', import.meta.url).href;
+  if (screenshot.src !== fallback) {
+    screenshot.src = fallback;
+    screenshot.alt = 'GIT UI interface in English';
+  }
+});
+updateScreenshot();
+window.addEventListener('languagechange', updateScreenshot);
+
 const list = document.querySelector('#download-list');
 const primary = document.querySelector('#primary-download');
 const allReleases = document.querySelector('#all-releases');
