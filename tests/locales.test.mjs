@@ -1,3 +1,4 @@
+import { translationKeys } from "../scripts/translation-keys.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -26,9 +27,9 @@ test("all frontend and backend translation keys exist in the shared dictionary",
   const used = new Set(Array.from(html.matchAll(/\{\{([a-z0-9.-]+)\}\}/g), match => match[1]));
   for (const filename of sources) {
     const source = readFileSync(filename, "utf8");
-    for (const match of source.matchAll(/\b(?:t|locale::text|locale::format|failure)\(\s*"([a-z0-9.-]+)"/g)) {
-      assert.equal(typeof ru[match[1]], "string", `${filename}: ${match[1]}`);
-      used.add(match[1]);
+    for (const key of translationKeys(filename, source)) {
+      assert.equal(typeof ru[key], "string", `${filename}: ${key}`);
+      used.add(key);
     }
   }
   for (const [key, value] of Object.entries(ru)) {
