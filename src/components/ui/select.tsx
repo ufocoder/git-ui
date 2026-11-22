@@ -1,3 +1,4 @@
+import { virtualRange } from "~/lib/virtual-range";
 import * as SelectPrimitive from "@kobalte/core/select";
 import { For, Show, createMemo, createSignal, splitProps, type ComponentProps } from "solid-js";
 import { cn } from "~/lib/utils";
@@ -38,8 +39,9 @@ function VirtualSelectContent() {
   const [scrollTop, setScrollTop] = createSignal(0);
   let list: HTMLDivElement | undefined;
   const rowHeight = 32;
-  const start = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight) - 3));
-  const end = createMemo(() => Math.min(items().length, start() + 14));
+  const range = createMemo(() => virtualRange(items().length, scrollTop(), 256, rowHeight, 3));
+  const start = () => range().start;
+  const end = () => range().end;
   function scrollToItem(key: string) {
     const index = items().findIndex(item => item.key === key);
     if (!list || index < 0) return;

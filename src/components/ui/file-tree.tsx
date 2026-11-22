@@ -1,3 +1,4 @@
+import { virtualRange } from "~/lib/virtual-range";
 import { FilePathLabel } from "./file-path-label";
 import type { FileRowRenderer } from "~/lib/file-actions-context";
 import { t } from "~/lib/i18n";
@@ -88,8 +89,9 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
     });
   }
   const rowHeight = () => props.columns ? 36 : FILE_ROW_HEIGHT;
-  const start = createMemo(() => Math.min(Math.max(0, rows().length - 1), Math.max(0, Math.floor(range().top / rowHeight()) - 8)));
-  const end = createMemo(() => Math.min(rows().length, Math.max(start(), Math.ceil(range().bottom / rowHeight()) + 8)));
+  const window = createMemo(() => virtualRange(rows().length, range().top, range().bottom - range().top, rowHeight()));
+  const start = () => window().start;
+  const end = () => window().end;
   const visible = createMemo(() => rows().slice(start(), end()));
   function update() {
     if (!viewport) return;

@@ -1,3 +1,4 @@
+import { virtualRange } from "~/lib/virtual-range";
 import { highlightedRanges } from "~/lib/pinned-branches";
 import { For, createMemo, createSignal, onCleanup, onMount, createEffect, type JSX } from "solid-js";
 
@@ -36,8 +37,9 @@ export function WindowedList<T>(props: {
     });
   });
 
-  const start = createMemo(() => Math.min(props.items.length, Math.max(0, Math.floor(range().top / stride) - buffer)));
-  const end = createMemo(() => Math.min(props.items.length, Math.max(start(), Math.ceil(range().bottom / stride) + buffer)));
+  const window = createMemo(() => virtualRange(props.items.length, range().top, range().bottom - range().top, stride, buffer));
+  const start = () => window().start;
+  const end = () => window().end;
   const visible = createMemo(() => props.items.slice(start(), end()));
   createEffect(() => props.onVisibleChange?.(visible()));
 
