@@ -7,7 +7,7 @@ import { t } from "~/lib/i18n";
 
 export default function ThemeSettings(props: { draft: string; select: (theme: string) => void }) {
   return <>
-    <div class="min-h-0 flex-1 overflow-y-auto pb-4 pr-2"><fieldset class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+    <fieldset class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
       <legend class="sr-only">{t("theme.title")}</legend>
       <For each={themes}>{item => (
         <label class="relative min-w-0 cursor-pointer">
@@ -32,8 +32,8 @@ export default function ThemeSettings(props: { draft: string; select: (theme: st
           </span>
         </label>
       )}</For>
-    </fieldset></div>
-    <DialogFooter class="shrink-0 gap-2 border-t bg-background pt-3">
+    </fieldset>
+    <DialogFooter class="gap-2">
       <Button type="button" disabled={props.draft === theme()} onClick={() => saveTheme(props.draft)}>{t("theme.apply")}</Button>
     </DialogFooter>
   </>;

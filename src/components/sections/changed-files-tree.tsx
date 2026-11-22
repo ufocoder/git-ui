@@ -4,13 +4,12 @@ import { compareChangedFiles, type FilePresentation } from "~/lib/file-presentat
 import { createMemo, type JSX } from "solid-js";
 import { FileTree } from "~/components/ui/file-tree";
 import { FileStatus } from "~/components/ui/file-status";
-import { buildFileTree, compactFileTree, type FileTreeNode } from "~/lib/file-tree";
+import { buildFileTree, type FileTreeNode } from "~/lib/file-tree";
 import type { CommitFile } from "~/lib/git";
 
 export type ChangedFilesTreeProps = {
   files: CommitFile[];
   virtual?: boolean;
-  stackedList?: boolean;
   presentation?: FilePresentation;
   commit?: string;
   selectedPath: string;
@@ -23,13 +22,13 @@ export type ChangedFilesTreeProps = {
 export default function ChangedFilesTree(props: ChangedFilesTreeProps) {
   const nodes = createMemo(() => {
     const preference = props.presentation;
-    if (!preference) return compactFileTree(buildFileTree(props.files));
+    if (!preference) return buildFileTree(props.files);
     const compareFiles = (a: CommitFile, b: CommitFile) => compareChangedFiles(a, b, preference.sort);
-    if (preference.view === "tree") return compactFileTree(buildFileTree(props.files, { compareFiles, descending: preference.descending }));
+    if (preference.view === "tree") return buildFileTree(props.files, { compareFiles, descending: preference.descending });
     return [...props.files].sort((a, b) => compareFiles(a, b) * (preference.descending ? -1 : 1))
       .map((file): FileTreeNode<CommitFile> => ({ kind: "file", name: file.path, path: file.path, value: file }));
   });
-  return <FileTree stacked={props.stackedList} columns={props.presentation?.view === "list"} virtual={props.virtual || props.presentation?.view === "list"} renderRow={(path, _directory, children) => <FileContextMenu path={path} commit={props.commit}>{children}</FileContextMenu>} label={props.presentation?.view === "list" ? t("files.list-label") : undefined} nodes={nodes()} selectedPath={props.selectedPath} disabled={props.disabled} onSelect={props.onSelect} onSelectDirectory={props.onSelectDirectory}
+  return <FileTree columns={props.presentation?.view === "list"} virtual={props.virtual || props.presentation?.view === "list"} renderRow={(path, _directory, children) => <FileContextMenu path={path} commit={props.commit}>{children}</FileContextMenu>} label={props.presentation?.view === "list" ? t("files.list-label") : undefined} nodes={nodes()} selectedPath={props.selectedPath} disabled={props.disabled} onSelect={props.onSelect} onSelectDirectory={props.onSelectDirectory}
     renderControl={props.renderControl}
     renderDirectoryControl={props.renderDirectoryControl ? path => props.renderDirectoryControl?.(path, props.files.filter(file => file.path.startsWith(path + "/"))) : undefined}
     renderIcon={file => <FileStatus status={file.status} />}

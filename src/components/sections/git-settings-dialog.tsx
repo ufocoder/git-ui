@@ -37,10 +37,10 @@ export default function GitSettingsDialog(props: { hasProject: boolean; reposito
         <TabsContent value="appearance" class="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 outline-none">
           <AppearanceSettings pending={languagePending()} setPending={setLanguagePending} />
         </TabsContent>
-        <TabsContent value="themes" class="flex min-h-0 flex-1 flex-col overflow-hidden px-1 outline-none">
+        <TabsContent value="themes" class="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 outline-none">
           <ThemeSettings draft={draftTheme()} select={setDraftTheme} />
         </TabsContent></Show>
-        <TabsContent value="git" class="flex min-h-0 flex-1 flex-col overflow-hidden px-1 outline-none">
+        <TabsContent value="git" class="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 outline-none">
           <GitConfigForm form={form} repositoryOnly={props.repositoryOnly} hasProject={props.hasProject} onClose={props.onClose} />
         </TabsContent>
       </Tabs>

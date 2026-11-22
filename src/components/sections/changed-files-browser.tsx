@@ -18,7 +18,7 @@ export default function ChangedFilesBrowser(props: Props) {
     <PanelHeader class="px-4"><h3>{t("details.files", { count: props.files.length })}</h3>
       <FileViewToggle value={props.presentation.view} onChange={view => props.onPresentationChange({ ...props.presentation, view })} />
     </PanelHeader>
-    <div data-file-scroll classList={{ "focus-within:outline focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-ring": true }} class={props.presentation.view === "list" ? "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] [&_[data-file-row]]:px-6" : "min-h-0 flex-1 space-y-4 overflow-y-auto pl-2.5 pr-3 py-2 [scrollbar-gutter:stable]"}>
+    <div data-file-scroll classList={{ "focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ring": true }} class={props.presentation.view === "list" ? "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] [&_[data-file-row]]:px-6" : "min-h-0 flex-1 space-y-4 overflow-y-auto pl-2.5 pr-3 py-2 [scrollbar-gutter:stable]"}>
             <Show when={props.presentation.view === "list"}>
               <FileTableHeader class="px-6" presentation={props.presentation} onPresentationChange={props.onPresentationChange} />
             </Show>

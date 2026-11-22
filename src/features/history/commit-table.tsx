@@ -32,7 +32,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const [scrollbarWidth, setScrollbarWidth] = createSignal(0);
   let searchButton!: HTMLButtonElement;
   const searchId = createUniqueId();
-  const [jumpOpen, setJumpOpen] = createSignal(false);
   const search = props.search ?? createHistorySearch();
   const [searchOpen, setSearchOpen] = search.open;
   const [editAction, setEditAction] = createSignal<CommitEditAction>();
@@ -251,9 +250,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           }
         }}>
           <Show when={searchOpen()}>
-            <Show when={jumpOpen()} fallback={<Button size="sm" variant="ghost" class="h-7 text-xs" onClick={() => setJumpOpen(true)}>{t("search.jump")}</Button>}>
-              <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={value => { jumpTo(value); setJumpOpen(false); }} />
-            </Show>
+            <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={jumpTo} />
           </Show>
           <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
             aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}

@@ -58,15 +58,3 @@ export function flattenFileTree<T>(nodes: FileTreeNode<T>[], closed: ReadonlySet
   append(nodes, 0, []);
   return rows;
 }
-
-export function compactFileTree<T>(nodes: FileTreeNode<T>[]): FileTreeNode<T>[] {
-  return nodes.map(node => {
-    if (node.kind === "file") return node;
-    let name = node.name, tail = node;
-    while (tail.children.length === 1 && tail.children[0].kind === "directory") {
-      tail = tail.children[0];
-      name += "/" + tail.name;
-    }
-    return { ...tail, name, children: compactFileTree(tail.children) };
-  });
-}
