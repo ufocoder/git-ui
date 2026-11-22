@@ -5,12 +5,14 @@ function updateScreenshot() {
   if (!screenshot) return;
   const language = screenshotLanguage(navigator.languages?.length ? navigator.languages : [navigator.language]);
   const names = { en: 'English', ru: 'Russian', zh: 'Simplified Chinese' };
+  screenshot.srcset = [640, 720, 1120, 1280, 1920, 3104].map(width => `${new URL(`./assets/${language}${width === 3104 ? '' : `-${width}`}.webp`, import.meta.url).href} ${width}w`).join(', ');
   screenshot.src = new URL(`./assets/${language}.webp`, import.meta.url).href;
   screenshot.alt = `GIT UI interface in ${names[language]}`;
 }
 screenshot?.addEventListener('error', () => {
   const fallback = new URL('./assets/en.webp', import.meta.url).href;
-  if (screenshot.src !== fallback) {
+  if (screenshot.hasAttribute('srcset') || screenshot.src !== fallback) {
+    screenshot.removeAttribute('srcset');
     screenshot.src = fallback;
     screenshot.alt = 'GIT UI interface in English';
   }
@@ -47,7 +49,7 @@ try {
       arrow.setAttribute('aria-hidden', 'true');
       arrow.textContent = '↓';
       action.append(size ? `Download · ${size} ` : 'Download ', arrow);
-      action.setAttribute('aria-label', `Download for ${download.name} ${download.detail}${size ? `, ${size}` : ""}`);
+      action.setAttribute('aria-label', `${size ? `Download · ${size}` : "Download"} for ${download.name} ${download.detail}`);
     } else {
       action.className = 'unavailable';
       action.textContent = 'Coming soon';

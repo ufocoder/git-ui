@@ -22,7 +22,7 @@ button,a{-webkit-tap-highlight-color:transparent}
 .text-link{font-size:16px}
 .text-link span{margin-left:8px}
 .app-preview{display:block;width:100%;height:auto;border-radius:12px}
-.preview-caption{text-align:center;color:#73776f;font-size:14px;margin-top:18px}
+.preview-caption{text-align:center;color:#656b61;font-size:14px;margin-top:18px}
 .features{padding-top:105px;padding-bottom:100px}
 .features h2,.downloads h2{font-size:48px;font-weight:500;letter-spacing:-1.8px;line-height:1.15;margin:19px 0 22px}
 .feature-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
@@ -40,14 +40,14 @@ button,a{-webkit-tap-highlight-color:transparent}
 .download-panel{border:1px solid #e0e3db;border-radius:12px;background:#fdfefb;padding:25px}
 .download-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #e8eae3;padding-bottom:15px;margin-bottom:4px}
 .download-heading h3{font-size:20px;font-weight:550;margin:0}
-.download-heading>span{font-size:13px;color:#92978a}
+.download-heading>span{font-size:13px;color:#646d5b}
 .download-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 0;border-bottom:1px solid #eceee7;font-size:17px}
 .download-row small{display:block;color:#707768;font-size:14px}
 .download-row a{padding:8px 12px;border:1px solid #dfe3d8;border-radius:5px;font-size:14px}
 .download-row a:hover{background:#edf0e8}
-.download-row .unavailable{font-size:13px;color:#727b69}
-.download-footnote{font-size:13px;color:#727b69;margin:17px 0 8px}
-footer{border-top:1px solid #e1e4dc;padding-block:24px;display:flex;align-items:center;gap:20px;font-size:14px;color:#72796a}
+.download-row .unavailable{font-size:13px;color:#626c5a}
+.download-footnote{font-size:13px;color:#626c5a;margin:17px 0 8px}
+footer{border-top:1px solid #e1e4dc;padding-block:24px;display:flex;align-items:center;gap:20px;font-size:14px;color:#626a5c}
 footer>.brand{font-size:16px;color:#575e51}
 footer>a:last-child{margin-left:auto}
 .section-description{max-width:650px;font-size:20px;line-height:1.7;color:#6a7163;margin:0 0 38px}
@@ -138,3 +138,8 @@ footer>span{display:none}
 }
 
 .language-flag{display:inline-block;width:20px;height:14px;object-fit:cover;vertical-align:middle;flex-shrink:0}
+
+/* Reserve release metadata space before the async response arrives. */
+.hero-version{min-height:1.6em}
+.hero-version[hidden]{display:block;visibility:hidden}
+#download-list{min-height:244px}
