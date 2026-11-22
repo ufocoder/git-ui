@@ -12,6 +12,7 @@ type FileTreeProps<T> = {
   renderRow?: FileRowRenderer;
   label?: string;
   columns?: boolean;
+  stacked?: boolean;
   nested?: boolean;
   virtual?: boolean;
   selectedPath: string;
@@ -88,7 +89,7 @@ function VirtualFileList<T>(props: FileTreeProps<T>) {
       return next;
     });
   }
-  const rowHeight = () => props.columns ? 36 : FILE_ROW_HEIGHT;
+  const rowHeight = () => props.columns ? props.stacked ? 48 : 36 : FILE_ROW_HEIGHT;
   const window = createMemo(() => virtualRange(rows().length, range().top, range().bottom - range().top, rowHeight()));
   const start = () => window().start;
   const end = () => window().end;
@@ -155,11 +156,11 @@ function FileTreeItem<T>(props: FileTreeProps<T> & { node: FileTreeNode<T>; last
         <Show when={!props.columns && props.renderControl && !props.nested}><span aria-hidden="true" class="w-6 shrink-0" /></Show>
         <Button data-file-row data-file-select variant={props.selectedPath === file().path ? "secondary" : "ghost"}
           classList={{ "ml-1": Boolean(!props.columns && props.renderControl && props.nested) }}
-          class={props.columns ? "grid h-9 min-h-9 min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-4 rounded-none bg-transparent px-1 py-0 text-left text-xs hover:bg-transparent" : "h-7 min-h-7 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
+          class={props.columns && props.stacked ? "grid h-12 min-h-12 min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)] items-center gap-x-3 rounded-none bg-transparent px-3 py-0 text-left text-xs hover:bg-transparent" : props.columns ? "grid h-9 min-h-9 min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-x-4 rounded-none bg-transparent px-1 py-0 text-left text-xs hover:bg-transparent" : "h-7 min-h-7 w-full justify-start gap-2 px-1 py-0 text-left text-xs"} disabled={props.disabled}
           aria-current={props.selectedPath === file().path ? "true" : undefined}
           onClick={event => { event.currentTarget.focus({ preventScroll: true }); props.onSelect(file().value); }} title={props.fileTitle?.(file().value) ?? file().path}>
           {props.renderIcon(file().value)}
-          <FilePathLabel path={file().name} columns={props.columns} />
+          <FilePathLabel path={file().name} columns={props.columns} stacked={props.stacked} />
         </Button>
         </div>
         </TreeRow>

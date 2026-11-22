@@ -120,8 +120,8 @@ export default function ConflictResolution(props: Props) {
         <Show when={resolved() && props.history.has_changes && !props.history.operation}><Button variant="outline" onClick={props.onCreateCommit}>{t("conflict.commit")}</Button></Show>
       </div>
     }>
-      <Resizable layoutId="conflicts.columns" orientation="horizontal" initialSizes={[0.25, 0.75]} class="min-h-0 flex-1">
-        <ResizablePanel minSize={0.15} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <Resizable layoutId="conflicts.columns" orientation="horizontal" initialSizes={[0.34, 0.66]} class="min-h-0 flex-1">
+        <ResizablePanel minSize={0.25} class="flex min-h-0 min-w-0 flex-col overflow-hidden">
     <PanelHeader class="h-[var(--panel-header-height)] px-4">
       <h2>{props.history.operation ? t("conflict.title") : t("conflict.count", { count: props.history.conflicts?.length ?? 0 })}</h2>
       <div class="flex shrink-0 items-center gap-1"><FileViewToggle value={presentation().view} onChange={view => { const value = { ...presentation(), view }; setPresentation(value); saveFilePresentation(value); }} />
@@ -129,9 +129,9 @@ export default function ConflictResolution(props: Props) {
         <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17" /></svg>
       </Button></div>
     </PanelHeader>
-          <div data-file-scroll class="min-h-0 flex-1 overflow-auto focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ring" classList={{ "p-3": presentation().view === "tree" }}>
+          <div data-file-scroll class="min-h-0 flex-1 overflow-auto" classList={{ "p-3": presentation().view === "tree" }}>
             <Show when={presentation().view === "list"}><FileTableHeader class="px-3" presentation={presentation()} onPresentationChange={value => { setPresentation(value); saveFilePresentation(value); }} /></Show>
-            <ChangedFilesTree virtual presentation={presentation()} files={props.history.conflicts ?? []} selectedPath={selected()} disabled={props.disabled || pending()} onSelect={file => selectFile(file.path)} /></div>
+            <ChangedFilesTree stackedList virtual presentation={presentation()} files={props.history.conflicts ?? []} selectedPath={selected()} disabled={props.disabled || pending()} onSelect={file => selectFile(file.path)} /></div>
         </ResizablePanel>
         <ResizableHandle withHandle aria-label={t("details.resize")} />
         <ResizablePanel minSize={0.4} class="min-h-0 min-w-0 overflow-hidden">

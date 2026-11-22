@@ -88,7 +88,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
               </Button>
             </div></Show>
           </div>
-      <div data-file-scroll class="min-h-0 flex-1 overflow-auto focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ring">
+      <div data-file-scroll class="min-h-0 flex-1 overflow-auto">
       <section class={props.onCommitted ? (presentation().view === "list" ? "" : "pl-4 pt-2") : "px-4"} data-file-navigation aria-label={t("commit.files")}>
 
         <Show when={presentation().view === "list"}>
