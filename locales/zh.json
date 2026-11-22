@@ -132,7 +132,6 @@
   "details.loading-diff": "正在加载更改…",
   "details.no-files": "此提交没有文件更改。",
   "details.resize": "调整提交详情与差异面板大小",
-  "details.resize-files": "垂直调整提交文件列表大小",
   "details.select-file": "在左侧选择一个文件以查看更改。",
   "details.selected": "已选中的提交",
   "details.title": "所选提交详情",
@@ -250,8 +249,6 @@
   "git-settings.group-sync": "同步",
   "git-settings.group-defaults": "分支和文件",
   "git-settings.inherit": "默认 / 继承",
-  "git-settings.global-warning": "对全局 Git 设置的更改会影响此设备上你账户下的所有项目，包括终端和其他 Git 客户端中的项目。",
-  "git-settings.local-overrides": "仓库设置优先。",
   "git-settings.inherit-description": "清空字段以使用继承值或 Git 默认值。",
   "git-settings.initial-branch": "新仓库的初始分支",
   "git-settings.interactive-rebase": "交互式 Rebase",
@@ -298,7 +295,7 @@
   "history.empty": "此项目还没有提交。",
   "history.find-branch": "查找本地分支",
   "history.full-hash": "完整哈希：{p1}",
-  "history.graph": "图形",
+  "history.graph": "提交图",
   "history.hash": "提交哈希",
   "history.hash-copied": "SHA-1 已复制到剪贴板。",
   "history.jump": "跳转到分支或标签",
@@ -683,5 +680,11 @@
   "stage.updating": "正在更新暂存文件…",
   "project.missing-title": "移除缺失的项目？",
   "project.missing-description": "此文件夹已不存在。要从最近项目中移除其条目吗？",
-  "project.remove-recent": "从最近项目中移除"
+  "project.remove-recent": "从最近项目中移除",
+  "search.filters": "筛选条件",
+  "search.jump": "跳转到分支或标签",
+  "details.show-message": "显示说明",
+  "details.hide-message": "收起说明",
+  "git-settings.global-summary": "适用于所有项目。仓库设置优先；留空使用 Git 默认值。",
+  "shortcuts.layout": "面板大小"
 }

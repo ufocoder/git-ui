@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildFileTree, filesInDirectory, flattenFileTree } from "../src/lib/file-tree.ts";
+import { buildFileTree, compactFileTree, filesInDirectory, flattenFileTree } from "../src/lib/file-tree.ts";
 
 test("keeps every directory even when there is just one changed file", () => {
   const file = { path: "folder1/folder3/folder3/file.md", status: "M" };
@@ -68,4 +68,16 @@ test("virtual rows carry ancestor trunks through descendants and stop after the 
   const collapsed = flattenFileTree(nodes, new Set(["root/a"]));
   assert.deepEqual(collapsed.map(row => row.node.path), ["root", "root/a", "root/b", "root/b/file.txt"]);
   assert.deepEqual(collapsed.at(-1).guides, []);
+});
+
+test("compact folders preserve action paths, values and sibling branches", () => {
+  const files = [{ path: "src/app/components/a.ts" }, { path: "src/app/components/b.ts" }, { path: "src/app/lib/c.ts" }];
+  const original = buildFileTree(files);
+  const compact = compactFileTree(original);
+  assert.equal(compact[0].name, "src/app");
+  assert.equal(compact[0].path, "src/app");
+  assert.deepEqual(compact[0].children.map(node => node.name), ["components", "lib"]);
+  assert.equal(compact[0].children[0].children[0].value, files[0]);
+  assert.equal(original[0].name, "src");
+  assert.deepEqual(filesInDirectory(files, compact[0].path), files);
 });

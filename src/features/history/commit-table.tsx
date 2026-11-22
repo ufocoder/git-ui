@@ -14,7 +14,6 @@ import CommitEditDialog, { type CommitEditAction } from "./commit-edit-dialog";
 import CommitActionsDialog, { type CommitDialogAction } from "./commit-actions-dialog";
 import { CommitDescription } from "~/components/ui/commit-description";
 import { Button } from "~/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "~/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Resizable, ResizablePanel, ResizableHandle } from "~/components/ui/resizable";
 import HistoryFilters from "./history-filters";
@@ -29,11 +28,13 @@ const MAX_GRAPH_COLUMN_WIDTH = 240;
 export default function CommitTable(props: { branch: string; onBranchChange: (branch: string) => void; search?: HistorySearch; scope: HistoryScope; history: History; disabled: boolean; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void }) {
   let viewport!: HTMLDivElement;
   let header!: HTMLTableSectionElement;
+  let headingViewport!: HTMLDivElement;
+  const [scrollbarWidth, setScrollbarWidth] = createSignal(0);
   let searchButton!: HTMLButtonElement;
   const searchId = createUniqueId();
+  const [jumpOpen, setJumpOpen] = createSignal(false);
   const search = props.search ?? createHistorySearch();
   const [searchOpen, setSearchOpen] = search.open;
-  const [headerHeight, setHeaderHeight] = createSignal(ROW_HEIGHT);
   const [editAction, setEditAction] = createSignal<CommitEditAction>();
   const [dialogAction, setDialogAction] = createSignal<CommitDialogAction>();
   const [selectedCommit, setSelectedCommit] = createSignal<Commit>();
@@ -62,7 +63,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     branch: () => props.branch,
     scope: () => props.scope,
     disabled: () => props.disabled,
-    filter, jumpRef, rowHeight: ROW_HEIGHT, headerHeight, height, scrollTop,
+    filter, jumpRef, rowHeight: ROW_HEIGHT, headerHeight: () => 0, height, scrollTop,
     readScrollPosition: () => viewport?.scrollTop ?? scrollTop(),
     setScrollPosition(top) {
       if (viewport) viewport.scrollTop = top;
@@ -110,7 +111,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     setRewriteAction({ head: props.history.tip, branch: props.history.current_branch, commits });
   }
   onMount(() => {
-    const observer = new ResizeObserver(() => { setHeight(viewport.clientHeight); setHeaderHeight(header.clientHeight); });
+    const observer = new ResizeObserver(() => { setHeight(viewport.clientHeight); setScrollbarWidth(viewport.offsetWidth - viewport.clientWidth); });
     observer.observe(viewport);
     observer.observe(header);
     const labels = Array.from(header.rows[0].querySelectorAll<HTMLElement>("[data-column-label]"));
@@ -121,7 +122,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     const labelObserver = new ResizeObserver(measureLabels);
     labels.forEach(label => labelObserver.observe(label));
     measureLabels();
-    setHeaderHeight(header.clientHeight);
     setHeight(viewport.clientHeight);
     onCleanup(() => { observer.disconnect(); labelObserver.disconnect(); });
   });
@@ -138,7 +138,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     }
     return graphBuilder.append(rows.slice(graphBuilder.length));
   });
-  const start = createMemo(() => Math.max(0, Math.floor(Math.max(0, scrollTop() - headerHeight()) / ROW_HEIGHT) - Math.ceil(height() / ROW_HEIGHT)));
+  const start = createMemo(() => Math.max(0, Math.floor(Math.max(0, scrollTop()) / ROW_HEIGHT) - Math.ceil(height() / ROW_HEIGHT)));
   const end = createMemo(() => Math.min(displayedCommits().length, start() + Math.ceil(height() / ROW_HEIGHT) * 3 + 4));
   const visibleCommits = createMemo(() => displayedCommits().slice(start(), end()));
   const date = (value: string) => new Date(value).toLocaleString(locale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -162,7 +162,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     if (!next) return;
     selectRow(next, event.shiftKey);
     const top = nextIndex * ROW_HEIGHT;
-    const bottom = top + headerHeight() + ROW_HEIGHT;
+    const bottom = top + ROW_HEIGHT;
     if (top < viewport.scrollTop) viewport.scrollTop = top;
     else if (bottom > viewport.scrollTop + viewport.clientHeight) viewport.scrollTop = bottom - viewport.clientHeight;
     setScrollTop(viewport.scrollTop);
@@ -251,7 +251,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           }
         }}>
           <Show when={searchOpen()}>
-            <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={jumpTo} />
+            <Show when={jumpOpen()} fallback={<Button size="sm" variant="ghost" class="h-7 text-xs" onClick={() => setJumpOpen(true)}>{t("search.jump")}</Button>}>
+              <ReferenceAutocomplete options={jumpOptions()} disabled={props.disabled || !jumpOptions().length} onSelect={value => { jumpTo(value); setJumpOpen(false); }} />
+            </Show>
           </Show>
           <Button ref={element => { searchButton = element; }} size="icon" variant={searchOpen() || filtered() ? "secondary" : "ghost"} class="size-6 shrink-0"
             aria-label={searchOpen() ? t("search.hide") : t("search.commits")} title={searchOpen() ? t("search.hide") : t("search.commits")}
@@ -278,22 +280,15 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         </div>
       </Show>
       <Show when={debouncing() || (filtered() && loading())}><span role="status" class="sr-only">{t("search.searching")}</span></Show>
-      <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
-        containerProps={{
-          ref: element => { viewport = element; },
-          onScroll: () => setScrollTop(viewport.scrollTop),
-          onKeyDown: event => { if (event.target === viewport) void navigateCommits(event); },
-          class: "min-h-0 flex-1 bg-background [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          tabindex: 0,
-          "aria-label": t("history.title"),
-          "aria-busy": loading() || debouncing(),
-        }}>
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("history.title")}
+        containerProps={{ ref: element => { headingViewport = element; }, class: "shrink-0 overflow-hidden bg-[hsl(var(--panel-heading))]", style: { "padding-right": `${scrollbarWidth()}px` } }}>
         <colgroup>
           <For each={[0, 1, 2, 3, 4]}>{index =>
             <col style={{ width: !widths() && index === 1 ? undefined : `${(widths() ?? defaultWidths())[index]}px` }} />
           }</For>
         </colgroup>
-        <TableHeader ref={element => { header = element; }} class="history-columns sticky top-0 z-10" onKeyDown={event => {
+        <TableHeader ref={element => { header = element; }} class="history-columns" onKeyDown={event => {
           if (matchesShortcut("dismiss", event) && searchOpen()) {
             event.preventDefault(); setSearchOpen(false); searchButton.focus();
           }
@@ -303,8 +298,8 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
               <TableHead scope="col" class="relative h-[34px] border-b first:pl-4">
                 <span class="block truncate pr-1"><span data-column-label class="inline-block w-max whitespace-nowrap">{heading}</span></span>
                 <Show when={index() < 4}>
-                  <span role="separator" tabindex={0} aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })} title={t("history.reset-columns")}
-                    class="absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize after:pointer-events-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border/[0.85] hover:after:bg-primary focus-visible:after:bg-primary focus-visible:outline-none"
+                  <span role="separator" aria-orientation="vertical" aria-label={t("history.resize-column", { column: heading })} title={t("history.reset-columns")}
+                    class="absolute inset-y-0 right-0 z-10 w-2 touch-none cursor-col-resize after:pointer-events-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border/[0.85] hover:after:bg-primary"
                     onPointerDown={event => {
                       if (event.button !== 0) return;
                       event.preventDefault();
@@ -323,18 +318,30 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                       setColumnWidths(undefined);
                       saveHistoryColumnWidths(undefined);
                     }}
-                    onKeyDown={event => {
-                      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-                      event.preventDefault();
-                      resizeColumns(index(), measuredColumns(), event.key === "ArrowRight" ? 8 : -8);
-                      saveHistoryColumnWidths(columnWidths());
-                    }} />
+                    />
                 </Show>
               </TableHead>
             }</For>
           </TableRow>
           <Show when={searchOpen()}><HistoryFilters id={searchId} filter={filter()} onChange={setFilter} disabled={props.disabled} /></Show>
         </TableHeader>
+      </Table>
+      <Table style={{ "min-width": tableMinWidth() }} class="table-fixed border-separate border-spacing-0 font-sans text-sm font-normal leading-5" aria-label={t("app.commits")}
+        containerProps={{
+          ref: element => { viewport = element; },
+          onScroll: () => { setScrollTop(viewport.scrollTop); headingViewport.scrollLeft = viewport.scrollLeft; },
+          onKeyDown: event => { if (event.target === viewport) void navigateCommits(event); },
+          class: "min-h-0 flex-1 bg-background [overflow-anchor:none] outline-none",
+          tabindex: props.disabled || visibleCommits().some(commit => commit.hash === selectedCommit()?.hash) ? -1 : 0,
+          "aria-label": t("history.title"),
+          "aria-busy": loading() || debouncing(),
+        }}>
+        <colgroup>
+          <For each={[0, 1, 2, 3, 4]}>{index =>
+            <col style={{ width: !widths() && index === 1 ? undefined : `${(widths() ?? defaultWidths())[index]}px` }} />
+          }</For>
+        </colgroup>
+        <TableHeader class="sr-only"><TableRow><For each={[t("history.graph"), t("history.subject"), t("history.hash"), t("history.author"), t("history.date")]}>{heading => <TableHead scope="col">{heading}</TableHead>}</For></TableRow></TableHeader>
         <TableBody>
           <Show when={start() > 0}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${start() * ROW_HEIGHT}px` }} /></TableRow></Show>
           <For each={visibleCommits()}>{(commit, index) => {
@@ -343,7 +350,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
               <ContextMenuTrigger as={TableRow} disabled={props.disabled || commit.uncommitted}
                 data-commit-index={start() + index()}
                 data-state={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash) ? "selected" : undefined}
-                aria-selected={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash)} tabindex={props.disabled ? -1 : 0}
+                aria-selected={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash)} tabindex={!props.disabled && selectedCommit()?.hash === commit.hash ? 0 : -1}
                 onClick={event => {
                   if (props.disabled) return;
                   if (event.target instanceof Element && !event.target.closest("button, a, input")) event.currentTarget.focus({ preventScroll: true });
@@ -354,7 +361,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                   if (matchesShortcut("selectCommit", event)) { event.preventDefault(); selectRow(commit, event.shiftKey); }
                   else void navigateCommits(event, commit);
                 }}
-                class="commit-row data-[state=selected]:[&>td:first-child]:border-l-primary [&>td:first-child]:border-l-2 [&>td:first-child]:border-l-transparent cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
+                class="commit-row cursor-pointer outline-none h-[34px] [&>td]:h-[34px] [&>td]:overflow-hidden [&>td]:text-ellipsis [&>td]:whitespace-nowrap [&>td]:border-b [&>td]:py-0">
                 <TableCell class="pl-2 pr-0"><div class="overflow-hidden">
                   <svg class={commit.uncommitted ? "block opacity-40" : "block"} width={graph().width} height={ROW_HEIGHT - 1} viewBox={`0 0 ${graph().width} ${ROW_HEIGHT}`} aria-label={t("history.parents", { p1: commit.parents.length })}>
                     <For each={graphRow().edges}>{edge =>
@@ -366,12 +373,9 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                 <TableCell><CommitDescription subject={commit.subject} references={commit.refs} currentBranch={props.history.current_branch} bold={commit.uncommitted} /></TableCell>
                 <TableCell>
                   <Show when={!commit.uncommitted} fallback={<span aria-label={t("details.uncommitted")}>*</span>}>
-                  <Tooltip openDelay={350}>
-                    <TooltipTrigger class="rounded-sm font-sans text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("history.full-hash", { p1: commit.hash })}>
-                      {commit.hash.slice(0, 8)}
-                    </TooltipTrigger>
-                    <TooltipContent class="max-w-[90vw] break-all font-mono text-xs">{commit.hash}</TooltipContent>
-                  </Tooltip>
+                  <span class="font-sans text-sm font-normal" title={commit.hash} aria-label={t("history.full-hash", { p1: commit.hash })}>
+                    {commit.hash.slice(0, 8)}
+                  </span>
                   </Show>
                 </TableCell>
                 <TableCell class="text-muted-foreground" title={commit.author}>{commit.author}</TableCell>
@@ -400,6 +404,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           </div></TableCell></TableRow></Show>
         </TableBody>
       </Table>
+      </div>
       <span role="status" class="sr-only">{copyStatus()}</span>
       <Show when={loading()}><span role="status" class="sr-only">{t("history.loading")}</span></Show>
       <Show when={error()}><Button variant="link" size="sm" class="shrink-0 self-start" onClick={retry} disabled={props.disabled}>{t("history.retry")}</Button></Show>

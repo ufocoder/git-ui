@@ -56,15 +56,10 @@ export function createGitConfigForm(props: { open: boolean; repositoryOnly?: boo
 export default function GitConfigForm(props: { form: ReturnType<typeof createGitConfigForm>; repositoryOnly?: boolean; hasProject: boolean; onClose: () => void }) {
   const { settings, values, pending, error, saved, groups, change, save } = props.form;
   return <Show when={!props.repositoryOnly || props.hasProject} fallback={<div class="space-y-4"><p class="text-sm text-muted-foreground">{t("settings.open-repository")}</p><DialogFooter><Button type="button" variant="outline" onClick={props.onClose}>{t("update.close")}</Button></DialogFooter></div>}>
-    <Show when={!props.repositoryOnly}>
-      <div class="rounded-md border bg-muted p-3">
-        <p class="text-sm font-medium">{t("git-settings.global-warning")}</p>
-        <p class="mt-1 text-xs text-muted-foreground">{t("git-settings.local-overrides")}</p>
-      </div>
-      <p class="text-xs text-muted-foreground">{t("git-settings.inherit-description")}</p>
-    </Show>
     <Show when={settings()} fallback={<p class="text-sm text-muted-foreground" role="status">{pending() ? t("git-settings.loading") : error()}</p>}>
-      <form onSubmit={save} class="space-y-6 pb-1">
+      <form onSubmit={save} class="flex min-h-0 flex-1 flex-col">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2 pb-4">
+          <p class="text-xs text-muted-foreground">{props.repositoryOnly ? t("git-settings.inherit-description") : t("git-settings.global-summary")}</p>
         <For each={groups()}>{group => (
           <fieldset class="min-w-0 space-y-3">
             <legend class="mb-1 pt-1 text-base font-semibold text-foreground">{group.label}</legend>
@@ -90,7 +85,8 @@ export default function GitConfigForm(props: { form: ReturnType<typeof createGit
         )}</For>
         <p class="text-xs text-muted-foreground">{t("git-settings.scope-note")}</p>
         <Show when={error()}><p role="alert" class="text-sm text-destructive">{error()}</p></Show><Show when={saved()}><p role="status" class="text-sm text-muted-foreground">{t("git-settings.saved")}</p></Show>
-        <DialogFooter class="gap-2"><Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button><Button type="submit" disabled={pending()}>{pending() ? t("git-settings.saving") : t("git-settings.save")}</Button></DialogFooter>
+        </div>
+        <DialogFooter class="shrink-0 gap-2 border-t bg-background pt-3"><Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button><Button type="submit" disabled={pending()}>{pending() ? t("git-settings.saving") : t("git-settings.save")}</Button></DialogFooter>
       </form>
     </Show>
   </Show>;
