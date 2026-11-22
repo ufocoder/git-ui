@@ -325,6 +325,7 @@
   "init.open": "Инициализировать и открыть",
   "init.opening": "Открываем…",
   "init.title": "Инициализировать Git?",
+  "language.chinese": "简体中文",
   "language.english": "English",
   "language.invalid": "Недопустимый язык интерфейса",
   "language.russian": "Русский",

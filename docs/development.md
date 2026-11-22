@@ -216,9 +216,15 @@ UI components should call `src/lib/git.ts` rather than invoke Git directly.
 Keep process execution and filesystem operations in the Rust backend.
 
 Use short, descriptive translation keys such as `stash.apply` and `diff.split`.
-Add each key to both `locales/ru.json` and `locales/en.json`.
+Add each key to `locales/ru.json`, `locales/en.json`, and `locales/zh.json`.
 Use `src/lib/i18n.ts` in the frontend; the Rust backend uses the same dictionaries
-through `locale.rs`. Keep keys and placeholders consistent across both languages.
+through `locale.rs`. Keep keys and placeholders consistent across all languages.
+
+In Simplified Chinese, retain specialized Git operation names in English:
+Fetch, Pull, Push, Rebase, Cherry-pick, Merge, Squash, Revert, Reset, Amend,
+Checkout, and Stash. Translate the surrounding explanations and common nouns
+such as commits, branches, and tags into Chinese. This rule does not apply to
+ordinary UI actions, such as resetting column widths.
 
 To add a Solid UI component:
 
