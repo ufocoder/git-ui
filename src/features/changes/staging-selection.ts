@@ -12,3 +12,11 @@ export function selectDiffScope(files: readonly StagingFile[], preferred?: Workt
   if (preferred && hasDiffScope(files, preferred)) return preferred;
   return hasDiffScope(files, "unstaged") ? "unstaged" : "staged";
 }
+
+export async function stageSelectedFiles(
+  selected: readonly CommitFile[], staged: boolean,
+  update: (paths: string[], staged: boolean) => Promise<{ files: CommitFile[] }>,
+) {
+  const paths = [...new Set(selected.filter(file => staged ? !file.staged || file.partially_staged : file.staged).map(file => file.path))];
+  return paths.length ? (await update(paths, staged)).files : undefined;
+}
