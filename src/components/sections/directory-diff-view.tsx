@@ -1,8 +1,11 @@
+import { diffLoader } from "~/lib/diff-loader";
+import { useLayoutScope } from "~/lib/layout-preferences";
+import { createDirectoryScrollAnchor } from "~/lib/directory-scroll-anchor";
 import { PanelHeader } from "~/components/ui/panel-header";
 import { FilePathLabel } from "~/components/ui/file-path-label";
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { Button } from "~/components/ui/button";
-import { git, type CommitFile, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
+import { type CommitFile, type FileDiff, type WorktreeDiffScope } from "~/lib/git";
 import { t } from "~/lib/i18n";
 import FileDiffView from "./file-diff-view";
 
@@ -12,6 +15,11 @@ type Props = HunkActions & { path: string; files: CommitFile[]; commit: string; 
 
 export default function DirectoryDiffView(props: Props) {
   let viewport!: HTMLDivElement;
+  const project = useLayoutScope();
+  let anchor: ReturnType<typeof createDirectoryScrollAnchor> | undefined;
+  onMount(() => { anchor = createDirectoryScrollAnchor(viewport); });
+  onCleanup(() => anchor?.dispose());
+  const preserve = (change: () => void) => anchor ? anchor.preserve(change) : change();
   const [activePath, setActivePath] = createSignal("");
   const tabPath = () => props.files.some(file => file.path === activePath()) ? activePath() : props.files[0]?.path;
   function navigateFile(event: KeyboardEvent) {
@@ -32,9 +40,9 @@ export default function DirectoryDiffView(props: Props) {
       <span class="shrink-0 text-muted-foreground">{t("details.files", { count: props.files.length })}</span>
     </PanelHeader>
     <div class="group/directory-files relative -mx-4 flex min-h-0 flex-1 flex-col">
-    <div ref={value => { viewport = value; }} class="min-h-0 flex-1 divide-y overflow-auto" onKeyDown={navigateFile}>
+    <div ref={value => { viewport = value; }} class="min-h-0 flex-1 divide-y overflow-auto [overflow-anchor:none]" onKeyDown={navigateFile}>
       <For each={props.files.map(file => file.path)}>{path =>
-        <DirectoryFileDiff tabIndex={path === tabPath() ? 0 : -1} onFocus={() => setActivePath(path)} path={path} commit={props.commit} stash={props.stash} scope={props.scope} revision={props.files} viewport={() => viewport}
+        <DirectoryFileDiff tabIndex={path === tabPath() ? 0 : -1} onFocus={() => setActivePath(path)} path={path} commit={props.commit} stash={props.stash} scope={props.scope} revision={props.files} viewport={() => viewport} preserve={preserve} project={project()}
           canStageHunk={props.canStageHunk} onStageHunk={props.onStageHunk} stageDisabled={props.stageDisabled} />
       }</For>
     </div>
@@ -43,7 +51,7 @@ export default function DirectoryDiffView(props: Props) {
   </section>;
 }
 
-function DirectoryFileDiff(props: HunkActions & { tabIndex: number; onFocus: () => void; path: string; commit: string; stash?: boolean; scope?: WorktreeDiffScope; revision: CommitFile[]; viewport: () => HTMLElement }) {
+function DirectoryFileDiff(props: HunkActions & { tabIndex: number; onFocus: () => void; path: string; commit: string; stash?: boolean; scope?: WorktreeDiffScope; revision: CommitFile[]; viewport: () => HTMLElement; preserve: (change: () => void) => void; project: string }) {
   let element!: HTMLDivElement;
   let generation = 0;
   let identity = "";
@@ -71,16 +79,19 @@ function DirectoryFileDiff(props: HunkActions & { tabIndex: number; onFocus: () 
   async function load() {
     const request = ++generation;
     const revision = props.revision, key = identity;
-    setLoading(true); setFailed(false);
+    const spec = { project: props.project, commit: props.commit, path: props.path, stash: props.stash, scope: props.scope, revision };
+    const cached = diffLoader.peek(spec);
+    if (cached) props.preserve(() => setDiff(cached));
+    setLoading(!cached); setFailed(false);
     try {
-      const result = await (props.stash ? git.getStashDiff(props.commit, props.path) : git.getFileDiff(props.commit, props.path, props.scope));
-      if (request === generation) { loadedIdentity = key; loadedRevision = revision; setDiff(result); }
+      const result = await diffLoader.load(spec, () => request === generation);
+      if (request === generation) { loadedIdentity = key; loadedRevision = revision; props.preserve(() => setDiff(result)); }
     } catch { if (request === generation) setFailed(true); }
     finally { if (request === generation) setLoading(false); }
   }
   return <div ref={value => { element = value; }} class="min-w-0 px-4 pb-4 outline-none [&:focus-visible_.panel-header]:ring-2 [&:focus-visible_.panel-header]:ring-inset [&:focus-visible_.panel-header]:ring-ring" data-directory-file={props.path} tabindex={props.tabIndex} aria-label={props.path} onFocus={props.onFocus}
     onClick={event => { if (event.target instanceof Element && event.target.closest("header") && !event.target.closest("button, a, input")) event.currentTarget.focus({ preventScroll: true }); }} aria-busy={loading()}>
-    <Show when={diff()} fallback={<div class="space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("details.loading-diff")}</p></Show></div>}>{data =>
+    <Show when={diff()} fallback={<div class="min-h-60 space-y-2 pt-4"><h3 class="flex min-w-0 flex-1"><FilePathLabel path={props.path} /></h3><Show when={!failed()}><p class="text-xs text-muted-foreground">{t("details.loading-diff")}</p></Show></div>}>{data =>
       <FileDiffView diff={data()} scope={props.scope} inline stageDisabled={props.stageDisabled || loading() || failed()}
         onStageHunk={props.canStageHunk?.(data()) && props.onStageHunk ? index => props.onStageHunk?.(data(), index) : undefined} />
     }</Show>

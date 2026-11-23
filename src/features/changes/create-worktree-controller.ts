@@ -1,3 +1,4 @@
+import { diffLoader } from "~/lib/diff-loader";
 import { createEffect, createMemo, createSignal, onCleanup, untrack, type Accessor } from "solid-js";
 import { hasDiffScope, selectDiffScope, stageSelectedFiles } from "./staging-selection";
 import { indexFileSelection } from "~/lib/file-selection-index";
@@ -122,7 +123,7 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
         if (!path || !file) { setSelectedPath(""); setDiff(undefined); setDiffLoading(false); return; }
         const scope = props.onCommitted ? selectDiffScope([file], group) : undefined;
         if (scope) setSelectedGroup(scope);
-        const next = await git.getFileDiff(WORKTREE, path, scope);
+        const next = await diffLoader.load({ project: props.history?.path ?? "", commit: WORKTREE, path, scope, revision: result.files }, () => mounted && request === loadRequest && diffVersion === diffRequest);
         if (mounted && request === loadRequest && diffVersion === diffRequest) setDiff(next);
       } catch { /* Preserve the current view; the terminal reports failures. */ }
       finally { if (mounted && request === loadRequest) setLoading(false); }
@@ -176,8 +177,10 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
     setSelectedDirectory("");
     const diffScope = props.onCommitted ? selectDiffScope([file], scope) : undefined;
     if (diffScope) setSelectedGroup(diffScope);
-    setSelectedPath(file.path); setDiff(undefined); setDiffLoading(true);
-    try { const result = await git.getFileDiff(WORKTREE, file.path, diffScope); if (request === diffRequest) setDiff(result); }
+    const spec = { project: props.history?.path ?? "", commit: WORKTREE, path: file.path, scope: diffScope, revision: files() };
+    const cached = diffLoader.peek(spec);
+    setSelectedPath(file.path); setDiff(cached); setDiffLoading(!cached);
+    try { const result = await diffLoader.load(spec, () => mounted && request === diffRequest); if (request === diffRequest) setDiff(result); }
     catch { /* The Git API reports failures in the terminal. */ }
     finally { if (request === diffRequest) setDiffLoading(false); }
   }

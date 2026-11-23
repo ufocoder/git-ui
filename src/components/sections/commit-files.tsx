@@ -1,3 +1,5 @@
+import { diffLoader } from "~/lib/diff-loader";
+import { useLayoutScope } from "~/lib/layout-preferences";
 import { readFilePresentation, saveFilePresentation } from "~/lib/file-presentation";
 import { PanelHeader } from "~/components/ui/panel-header";
 import DirectoryDiffView from "./directory-diff-view";
@@ -11,6 +13,7 @@ import FileDiffView from "~/components/sections/file-diff-view";
 import ChangedFilesBrowser from "./changed-files-browser";
 
 export default function CommitFiles(props: { commit: Commit; stash?: boolean; disabled: boolean }) {
+  const project = useLayoutScope();
   const [presentation, setPresentation] = createSignal(readFilePresentation());
   const [message, setMessage] = createSignal("");
   const [files, setFiles] = createSignal<CommitFile[]>([]);
@@ -39,9 +42,11 @@ export default function CommitFiles(props: { commit: Commit; stash?: boolean; di
   async function openFile(file: CommitFile) {
     if (props.disabled) return;
     const request = ++diffRequest;
-    setSelectedDirectory(""); setOpening(true); setDiff(undefined); setSelectedFile(file.path);
+    const spec = { project: project(), commit: props.commit.hash, path: file.path, stash: props.stash };
+    const cached = diffLoader.peek(spec);
+    setSelectedDirectory(""); setOpening(!cached); setDiff(cached); setSelectedFile(file.path);
     try {
-      const result = await (props.stash ? git.getStashDiff(props.commit.hash, file.path) : git.getFileDiff(props.commit.hash, file.path));
+      const result = await diffLoader.load(spec, () => request === diffRequest);
       if (request === diffRequest) setDiff(result);
     } catch { /* The Git API reports failures in the terminal. */ }
     finally { if (request === diffRequest) setOpening(false); }
