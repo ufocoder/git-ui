@@ -234,8 +234,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
         </div>
       </div>
       <Show when={rangeSelection().length > 1}>
-        <div class="flex shrink-0 items-center gap-2 border-b bg-muted/40 px-4 py-1">
-          <span role="status" class="mr-auto text-xs text-muted-foreground">{t("rewrite.selected", { count: rangeSelection().length })}</span>
+        <div class="flex shrink-0 items-center justify-end gap-2 border-b bg-muted/40 px-4 py-1">
           <Button size="sm" variant="ghost" class="h-7 text-xs" disabled={!canRewrite() || !linearRange(rangeSelection())}
             onClick={() => openRewrite(rangeSelection())}>{t("rewrite.combine")}</Button>
           <Button size="sm" variant="ghost" class="h-7 text-xs" onClick={() => { setRangeSelection([]); setSelectionAnchor(selectedCommit()?.hash); }}>{t("search.clear")}</Button>
