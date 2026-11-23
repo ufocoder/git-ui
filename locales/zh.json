@@ -145,7 +145,6 @@
   "diff.collapse": "折叠上下文",
   "diff.expand": "展开上下文",
   "diff.hidden-lines": "⋯ {count} 行未更改",
-  "diff.more-lines": "显示更多行",
   "diff.next": "下一处更改",
   "diff.previous": "上一处更改",
   "diff.previous-name": "原名称：{path}",
