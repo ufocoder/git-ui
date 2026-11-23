@@ -14,6 +14,7 @@ type RepositoryToolbarProps = {
   terminalOpen: boolean;
   onToggleTerminal: () => void;
   onConfigureUpstream: () => void;
+  onForcePush: () => void;
   onSync: (action: SyncAction, pullMode?: PullMode) => void;
 };
 function RemoteIcon() {
@@ -90,6 +91,8 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem disabled={props.busy || !props.history?.remotes.length} onSelect={props.onConfigureUpstream} title={!props.history?.sync.upstream ? t("sync.no-upstream") : undefined}>{props.history?.sync.upstream ? t("upstream.change") : t("upstream.set")}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem class="text-destructive focus:text-destructive" disabled={props.busy || props.history?.git_lfs_missing || !props.history?.sync.upstream || !props.history.sync.remote_tip || Boolean(props.history.operation)} onSelect={props.onForcePush}>{t("push.force-action")}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

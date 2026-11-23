@@ -260,13 +260,11 @@ fn force_target(
     if git(path, &["rev-parse", "--verify", "HEAD"])?.trim() != head {
         return Err(stale());
     }
-    let original = crate::history_rewrite::original_head(path, head, branch)?;
     crate::commit_diff_args(path, expected)?;
     let (remote, reference) = destination(path, branch)?;
     if git(path, &["rev-parse", "--verify", "@{upstream}"])?.trim() != expected {
         return Err(stale());
     }
-    git(path, &["merge-base", "--is-ancestor", expected, &original]).map_err(|_| stale())?;
     let urls = git(
         path,
         &["remote", "get-url", "--push", "--all", "--", &remote],
@@ -343,6 +341,63 @@ pub async fn force_push_with_lease(
 mod lease_tests {
     use super::*;
     use crate::tests::{TempRepo, commit_file};
+
+    #[test]
+    fn force_push_after_hard_reset_uses_an_exact_lease_without_rewrite_markers() {
+        let repo = TempRepo::new();
+        let remote = TempRepo::new();
+        repo.init();
+        git(&remote.0, &["init", "--bare"]).unwrap();
+        commit_file(&repo, "base", "base");
+        let base = git(&repo.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_owned();
+        let branch = current_branch(&repo.0, None).unwrap();
+        commit_file(&repo, "published", "published");
+        let published = git(&repo.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_owned();
+        git(
+            &repo.0,
+            &["remote", "add", "origin", remote.0.to_str().unwrap()],
+        )
+        .unwrap();
+        git(&repo.0, &["push", "-u", "origin", "HEAD:refs/heads/main"]).unwrap();
+        commit_file(&repo, "concurrent", "concurrent");
+        let concurrent = git(&repo.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_owned();
+        git(&repo.0, &["push", "origin", "HEAD:refs/heads/other"]).unwrap();
+        git(&repo.0, &["reset", "--hard", &base]).unwrap();
+        assert!(push_current(&repo.0).is_err());
+        let target = force_target(&repo.0, &branch, &base, &published).unwrap();
+        // Another writer changes the remote without updating our tracking ref.
+        git(
+            &remote.0,
+            &["update-ref", "refs/heads/main", &concurrent, &published],
+        )
+        .unwrap();
+        assert!(push_with_lease(&repo.0, &target).is_err());
+        git(
+            &remote.0,
+            &["update-ref", "refs/heads/main", &published, &concurrent],
+        )
+        .unwrap();
+        // Moving HEAD after confirmation also invalidates the preview.
+        git(&repo.0, &["reset", "--hard", &published]).unwrap();
+        assert!(push_with_lease(&repo.0, &target).is_err());
+        git(&repo.0, &["reset", "--hard", &base]).unwrap();
+        push_with_lease(&repo.0, &target).unwrap();
+        assert_eq!(
+            git(&remote.0, &["rev-parse", "refs/heads/main"])
+                .unwrap()
+                .trim(),
+            base
+        );
+    }
 
     #[test]
     fn force_push_rejects_a_remote_tip_changed_after_preview() {

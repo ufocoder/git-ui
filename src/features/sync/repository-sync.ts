@@ -13,6 +13,7 @@ export function createRepositorySync(api: SyncPort, session: {
   setHistory: (history: History) => void;
   onFetchCompleted: () => void;
   onPushCompleted: (history: History) => void;
+  onForcePushError: (error: unknown) => void;
 }) {
   const [action, setAction] = createSignal<SyncAction | null>(null);
   const [forceTarget, setForceTarget] = createSignal<ForcePushTarget>();
@@ -57,6 +58,21 @@ export function createRepositorySync(api: SyncPort, session: {
     }
   }
 
+  async function requestForcePush() {
+    if (session.busy()) return;
+    const before = session.history();
+    if (!before.current_branch || !before.tip || !before.sync.upstream || !before.sync.remote_tip || before.operation || before.git_lfs_missing) return;
+    session.setBusy(true);
+    try {
+      const target = await api.previewForcePush(before.current_branch, before.tip, before.sync.remote_tip);
+      const current = session.history();
+      if (current.path === before.path && current.current_branch === before.current_branch && current.tip === before.tip) setForceTarget(target);
+    } catch (error) {
+      await refreshAfterFailure();
+      session.onForcePushError(error);
+    } finally { session.setBusy(false); }
+  }
+
   async function configure(mode: TrackingMode, branch: string, remote: string, remoteBranch: string, url?: string) {
     if (session.busy()) throw new Error(t("history.busy"));
     session.setBusy(true);
@@ -89,5 +105,5 @@ export function createRepositorySync(api: SyncPort, session: {
     finally { setAction(null); session.setBusy(false); }
   }
 
-  return { action, trackingMode, setTrackingMode, request, configure, forceTarget, setForceTarget, forcePush };
+  return { action, trackingMode, setTrackingMode, request, requestForcePush, configure, forceTarget, setForceTarget, forcePush };
 }

@@ -91,6 +91,7 @@ export default function RepositoryWorkspace(props: {
   const [tagFetchRevision, setTagFetchRevision] = createSignal(0);
   const sync = createRepositorySync(git, {
     history, busy, setBusy, setHistory,
+    onForcePushError: error => reportTerminalError(error, t("push.lease-title")),
     onFetchCompleted: () => setTagFetchRevision(revision => revision + 1),
     onPushCompleted(updated) {
       const failed = failedCommitPush();
@@ -274,7 +275,7 @@ export default function RepositoryWorkspace(props: {
     <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />
     <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <RepositoryToolbar onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <RepositoryToolbar onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onForcePush={() => void sync.requestForcePush()} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <Show when={history().git_lfs_missing}>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
             <p role="status" class="text-xs">{t("setup.lfs-warning")}</p>
