@@ -20,7 +20,7 @@ type Props = {
 export default function ProjectSwitcherDialog(props: Props) {
   const projects = createMemo(() => [...new Set([props.currentPath, ...props.recentProjects].filter(Boolean))].slice(0, 3));
   return <Dialog open={props.open} onOpenChange={open => { if (!props.pending) props.onOpenChange(open); }}>
-    <Show when={props.open}><DialogContent class="gap-3 p-5 sm:max-w-[400px]">
+    <Show when={props.open}><DialogContent class="gap-3 p-5 sm:max-w-md">
       <DialogHeader>
         <DialogTitle>{t("project.switch")}</DialogTitle>
         <DialogDescription>{t("project.choose-recent")}</DialogDescription>

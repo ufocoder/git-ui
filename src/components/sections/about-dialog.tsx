@@ -17,7 +17,7 @@ export default function AboutDialog(props: { open: boolean; onOpenChange: (open:
     try { await openUrl(website); } catch { setFailed(true); }
   }
   return <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-    <Show when={props.open}><DialogContent class="sm:max-w-sm">
+    <Show when={props.open}><DialogContent class="sm:max-w-[27rem]">
       <DialogHeader>
         <img src={logo} alt="" class="mb-2 size-16" />
         <DialogTitle>{t("menu.about", { app: "git-ui" })}</DialogTitle>

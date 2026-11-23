@@ -211,7 +211,7 @@ function App() {
     <GitSettingsDialog repositoryOnly hasProject={isHistory() && Boolean(history())} open={repositorySettingsOpen()} onClose={() => setRepositorySettingsOpen(false)} />
     <GitSettingsDialog hasProject={isHistory() && Boolean(history())} open={settingsOpen()} onClose={() => setSettingsOpen(false)} />
     <Dialog open={updatesOpen()} onOpenChange={open => { if (!installingUpdate()) setUpdatesOpen(open); }}>
-      <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-lg">
+      <Show when={updatesOpen()}><DialogContent class="max-h-[90dvh] overflow-auto p-0 sm:max-w-xl">
         <DialogHeader class="sr-only"><DialogTitle>{t("update.title")}</DialogTitle><DialogDescription>{t("update.restart-note")}</DialogDescription></DialogHeader>
         <UpdateDialog onClose={() => setUpdatesOpen(false)} onInstallingChange={setInstallingUpdate} />
       </DialogContent></Show>

@@ -6,7 +6,7 @@ import { t } from "~/lib/i18n";
 export default function KeyboardShortcutsDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
   return <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-    <Show when={props.open}><DialogContent class="max-h-[85dvh] sm:max-w-2xl">
+    <Show when={props.open}><DialogContent class="max-h-[85dvh] sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle>{t("shortcuts.title")}</DialogTitle>
         <DialogDescription>{t("shortcuts.description")}</DialogDescription>

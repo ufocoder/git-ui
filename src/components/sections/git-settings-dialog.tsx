@@ -17,7 +17,7 @@ export default function GitSettingsDialog(props: { hasProject: boolean; reposito
   const [activeTab, setActiveTab] = createSignal(props.repositoryOnly ? "git" : "appearance");
   const form = createGitConfigForm(props);
   return <Dialog open={props.open} onOpenChange={open => { if (!open && !form.pending() && !languagePending()) props.onClose(); }}>
-    <DialogContent class="h-[min(640px,calc(100dvh_-_2rem))] w-[calc(100%_-_2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+    <DialogContent class="h-[min(640px,calc(100dvh_-_2rem))] w-[calc(100%_-_2rem)] max-w-[54rem] grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       <DialogHeader><DialogTitle>{props.repositoryOnly ? t("git-settings.repository") : t("settings.title")}</DialogTitle><DialogDescription>{props.repositoryOnly ? t("git-settings.inherit-description") : t("settings.description")}</DialogDescription></DialogHeader>
       <Tabs value={activeTab()} onChange={setActiveTab} class="flex min-h-0 min-w-0 flex-col">
         <Show when={props.repositoryOnly && props.hasProject}>
