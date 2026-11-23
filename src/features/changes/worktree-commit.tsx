@@ -1,4 +1,3 @@
-import { stagingSelection } from "./staging-selection";
 import { createWorktreeController, type WorktreeCommitProps } from "./create-worktree-controller";
 import { PanelHeader } from "~/components/ui/panel-header";
 import { TextField, TextFieldInput } from "~/components/ui/text-field";
@@ -29,7 +28,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
     sign, setSign, amendTarget, amendConfirmed, setAmendConfirmed, toggleAmend,
     pushRemote, setPushRemote, pushAfterCommit, setPushAfterCommit, message, setMessage,
     files, fileQuery, setFileQuery, searchOpen, setSearchOpen, closeSearch, fileFilter,
-    visibleFiles, loading, pending, selectedGroup, selectedDirectory, selectedPath,
+    visibleFiles, fileIndex, visibleIndex, loading, pending, selectedGroup, selectedDirectory, selectedPath,
     diff, diffLoading, directoryFiles, selectedFiles, showScopeSwitch, allSelection,
     stagedCount, disabled, canAmend, amendValid, canSubmit, canStageHunk, stageHunk,
     stageFile, stageFiles, openDirectory, openFile, submit, setSearchButton,
@@ -48,7 +47,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
                   <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuCheckboxItem checked={files().every(file => file.staged && !file.partially_staged)}
+                  <DropdownMenuCheckboxItem checked={fileIndex().root.checked}
                     onChange={checked => void stageFiles(files(), checked)}>
                     {t("stage.repository-files", { count: files().length.toLocaleString(locale()) })}
                   </DropdownMenuCheckboxItem>
@@ -100,15 +99,12 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
         <Show when={fileFilter() && !visibleFiles().length}><p role="status" class="px-4 py-3 text-xs text-muted-foreground">{t("changes.no-results")}</p></Show>
         <Show when={loading()}><p role="status" class="sr-only">{t("commit.loading-files")}</p></Show>
         <Show when={!loading() && !files().length}><div class="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground" role="status">{t("commit.clean")}</div></Show>
-        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<div classList={{ "-mx-4 [&_[data-file-row]]:px-5": presentation().view === "list" }}><ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} /></div>}>
+        <Show when={props.onCommitted && (loading() || files().length > 0)} fallback={<div classList={{ "-mx-4 [&_[data-file-row]]:px-5": presentation().view === "list" }}><ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} fileIndex={visibleIndex()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()} onSelect={file => void openFile(file)} onSelectDirectory={openDirectory} /></div>}>
 
-          <ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
+          <ChangedFilesTree virtual presentation={presentation()} files={visibleFiles()} fileIndex={visibleIndex()} selectedPath={selectedDirectory() || selectedPath()} disabled={disabled()}
             onSelect={file => void openFile(file)} onSelectDirectory={openDirectory}
-            renderDirectoryControl={(path, descendants) => {
-              const state = () => stagingSelection(descendants);
-              return <Checkbox class="space-x-0" checked={state().checked} indeterminate={state().indeterminate} disabled={disabled()}
-                onChange={checked => void stageFiles(descendants, checked)} aria-label={state().checked ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />;
-            }}
+            renderDirectoryControl={(path, directory) => <Checkbox class="space-x-0" checked={directory.checked} indeterminate={directory.indeterminate} disabled={disabled()}
+              onChange={checked => void stageFiles(directory.files(), checked)} aria-label={directory.checked ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />}
             renderControl={file => <Checkbox class="space-x-0" checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
               onChange={checked => void stageFile(file, checked)} aria-label={file.staged && !file.partially_staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
         </Show>

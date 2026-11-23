@@ -39,6 +39,15 @@ export function buildFileTree<T extends { path: string }>(files: readonly T[], o
   return roots;
 }
 
+export function sortFileTree<T extends { path: string }>(nodes: readonly FileTreeNode<T>[], options: { compareFiles?: (a: T, b: T) => number; descending?: boolean }): FileTreeNode<T>[] {
+  return nodes.map(node => node.kind === "directory" ? { ...node, children: sortFileTree(node.children, options) } : node).sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+    const comparison = a.kind === "file" && b.kind === "file" && options.compareFiles
+      ? options.compareFiles(a.value, b.value) : naturalOrder.compare(a.name, b.name) || a.name.localeCompare(b.name);
+    return options.descending ? -comparison : comparison;
+  });
+}
+
 export function filesInDirectory<T extends { path: string }>(files: readonly T[], directory: string): T[] {
   return files.filter(file => file.path.startsWith(`${directory}/`));
 }

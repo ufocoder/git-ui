@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, onCleanup, untrack, type Accessor } from "solid-js";
-import { stagingSelection, hasDiffScope, selectDiffScope, stageSelectedFiles } from "./staging-selection";
-import { filesInDirectory } from "~/lib/file-tree";
+import { hasDiffScope, selectDiffScope, stageSelectedFiles } from "./staging-selection";
+import { indexFileSelection } from "~/lib/file-selection-index";
 import { compareChangedFiles, type FilePresentation } from "~/lib/file-presentation";
 import { createCommitDraft, type CommitDraft } from "~/lib/repository-drafts";
 import type { CommitFlowState, CommitRequest } from "./commit-flow";
@@ -44,12 +44,12 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
     const timer = setTimeout(() => setFileFilter(query), 200);
     onCleanup(() => clearTimeout(timer));
   });
-  const visibleFiles = createMemo(() => files().filter(file => {
+  const fileIndex = createMemo(() => indexFileSelection(files()));
+  const visibleFiles = createMemo(() => {
     const query = fileFilter();
-    if (!query) return true;
-    const path = file.path.toLocaleLowerCase();
-    return path.includes(query);
-  }));
+    return query ? files().filter(file => file.path.toLocaleLowerCase().includes(query)) : files();
+  });
+  const visibleIndex = createMemo(() => visibleFiles() === files() ? fileIndex() : indexFileSelection(visibleFiles()));
   const [loading, setLoading] = createSignal(props.history?.worktree_files === undefined);
   const [pending, setPending] = createSignal(false);
   const [selectedGroup, setSelectedGroup] = createSignal<WorktreeDiffScope>("unstaged");
@@ -57,16 +57,16 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
   const [selectedPath, setSelectedPath] = createSignal("");
   const [diff, setDiff] = createSignal<FileDiff>();
   const [diffLoading, setDiffLoading] = createSignal(false);
-  const stagedFiles = createMemo(() => files().filter(file => file.staged));
-  const unstagedFiles = createMemo(() => files().filter(file => !file.staged || file.partially_staged));
-  const directoryFiles = createMemo(() => {
-    const group = props.onCommitted ? selectedGroup() === "staged" ? stagedFiles() : unstagedFiles() : files();
-    return filesInDirectory(group, selectedDirectory()).sort((a, b) => compareChangedFiles(a, b, presentation().sort) * (presentation().descending ? -1 : 1));
+  const selectedFiles = createMemo(() => {
+    if (selectedDirectory()) return fileIndex().filesIn(selectedDirectory());
+    const file = fileIndex().byPath.get(selectedPath());
+    return file ? [file] : [];
   });
-  const selectedFiles = createMemo(() => selectedDirectory() ? filesInDirectory(files(), selectedDirectory()) : files().filter(file => file.path === selectedPath()));
+  const directoryFiles = createMemo(() => selectedFiles().filter(file => !props.onCommitted || (selectedGroup() === "staged" ? file.staged : !file.staged || file.partially_staged))
+    .sort((a, b) => compareChangedFiles(a, b, presentation().sort) * (presentation().descending ? -1 : 1)));
   const showScopeSwitch = () => props.onCommitted && hasDiffScope(selectedFiles(), "staged") && hasDiffScope(selectedFiles(), "unstaged");
-  const allSelection = createMemo(() => stagingSelection(visibleFiles()));
-  const stagedCount = createMemo(() => files().filter(file => file.staged).length);
+  const allSelection = () => visibleIndex().root;
+  const stagedCount = () => fileIndex().root.stagedCount;
   const disabled = () => props.disabled || pending() || loading() || amendLoading();
   const canAmend = () => Boolean(props.history?.tip && props.history.current_branch && !props.history.operation && !props.history.conflicts.length);
   const amendValid = () => { const target = amendTarget(); return Boolean(target && canAmend() && target.head === props.history?.tip && target.branch === props.history?.current_branch); };
@@ -111,13 +111,14 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
         const result = snapshot ? { files: snapshot } : await git.getCommitDetails(WORKTREE);
         if (!mounted || request !== loadRequest) return;
         setFiles(result.files);
+        const nextIndex = untrack(fileIndex);
         if (directory) {
-          const descendants = filesInDirectory(result.files, directory);
+          const descendants = nextIndex.filesIn(directory);
           if (!descendants.length) setSelectedDirectory("");
           else if (props.onCommitted) setSelectedGroup(selectDiffScope(descendants, group));
           return;
         }
-        const file = result.files.find(file => file.path === path);
+        const file = nextIndex.byPath.get(path);
         if (!path || !file) { setSelectedPath(""); setDiff(undefined); setDiffLoading(false); return; }
         const scope = props.onCommitted ? selectDiffScope([file], group) : undefined;
         if (scope) setSelectedGroup(scope);
@@ -166,7 +167,7 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
   function openDirectory(path: string, scope?: WorktreeDiffScope) {
     if (disabled()) return;
     diffRequest++; setDiff(undefined); setDiffLoading(false); setSelectedPath("");
-    if (props.onCommitted) setSelectedGroup(selectDiffScope(filesInDirectory(files(), path), scope));
+    if (props.onCommitted) setSelectedGroup(selectDiffScope(fileIndex().filesIn(path), scope));
     setSelectedDirectory(path);
   }
   async function openFile(file: CommitFile, scope?: WorktreeDiffScope) {
@@ -202,7 +203,7 @@ export function createWorktreeController(props: WorktreeCommitProps, presentatio
     sign, setSign, amendTarget, amendConfirmed, setAmendConfirmed, toggleAmend,
     pushRemote, setPushRemote, pushAfterCommit, setPushAfterCommit, message, setMessage,
     files, fileQuery, setFileQuery, searchOpen, setSearchOpen, closeSearch, fileFilter,
-    visibleFiles, loading, pending, selectedGroup, selectedDirectory, selectedPath,
+    visibleFiles, fileIndex, visibleIndex, loading, pending, selectedGroup, selectedDirectory, selectedPath,
     diff, diffLoading, directoryFiles, selectedFiles, showScopeSwitch, allSelection,
     stagedCount, disabled, canAmend, amendValid, canSubmit, canStageHunk, stageHunk,
     stageFile, stageFiles, openDirectory, openFile, submit,
