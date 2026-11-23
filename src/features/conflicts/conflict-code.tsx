@@ -1,5 +1,5 @@
 import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js";
-import { textLines, visibleConflictLines, type LineBlock } from "~/lib/conflict-lines";
+import { textLines, visibleConflictLines, visibleLineBlocks, type LineBlock } from "~/lib/conflict-lines";
 import { TextField, TextFieldTextArea } from "~/components/ui/text-field";
 
 type Props = { text: string; label: string; identity: string; tone: "ours" | "theirs" | "result"; editable?: boolean; disabled?: boolean; onChange?: (value: string) => void; current: number; changes: LineBlock[]; markers?: LineBlock[]; target?: LineBlock; navigation: number };
@@ -23,6 +23,9 @@ export default function ConflictCode(props: Props) {
   const [padding, setPadding] = createSignal(12);
   const [height, setHeight] = createSignal(320);
   const visible = createMemo(() => visibleConflictLines(lines().length, top(), height(), lineHeight()));
+  const overlayRange = createMemo(() => ({ start: Math.max(0, Math.floor((top() - padding()) / lineHeight()) - 2), end: Math.max(0, Math.ceil((top() + height() - padding()) / lineHeight()) + 2) }));
+  const visibleChanges = createMemo(() => visibleLineBlocks(changes(), overlayRange().start, overlayRange().end));
+  const visibleMarkers = createMemo(() => visibleLineBlocks(markers(), overlayRange().start, overlayRange().end));
   const width = createMemo(() => lines().reduce((longest, line) => Math.max(longest, line.replace(/\t/g, "        ").length), 0));
   let scroll!: HTMLDivElement | HTMLTextAreaElement;
   let editor: HTMLTextAreaElement | undefined;
@@ -75,8 +78,8 @@ export default function ConflictCode(props: Props) {
         </div>
       }>
         <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <For each={changes()}>{block => <div class={changeClass()} style={{ position: "absolute", left: 0, right: 0, top: `${padding() + block.start * lineHeight() - top()}px`, height: `${(block.end - block.start + 1) * lineHeight()}px` }} />}</For>
-          <For each={markers()}>{block => <div class="bg-warning" style={{ position: "absolute", left: 0, right: 0, top: `${padding() + block.start * lineHeight() - top()}px`, height: `${(block.end - block.start + 1) * lineHeight()}px` }} />}</For>
+          <For each={visibleChanges()}>{block => <div class={changeClass()} style={{ position: "absolute", left: 0, right: 0, top: `${padding() + block.start * lineHeight() - top()}px`, height: `${(block.end - block.start + 1) * lineHeight()}px` }} />}</For>
+          <For each={visibleMarkers()}>{block => <div class="bg-warning" style={{ position: "absolute", left: 0, right: 0, top: `${padding() + block.start * lineHeight() - top()}px`, height: `${(block.end - block.start + 1) * lineHeight()}px` }} />}</For>
         </div>
         <TextField class="relative h-full min-h-0" value={props.text} onChange={value => props.onChange?.(value)} disabled={props.disabled}>
           <TextFieldTextArea ref={element => { scroll = element; editor = element; }} aria-label={props.label} class="h-full min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-3 font-mono text-diff leading-diff shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" wrap="off" spellcheck={false} onScroll={event => setTop(event.currentTarget.scrollTop)} />

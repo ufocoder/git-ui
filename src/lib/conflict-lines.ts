@@ -105,3 +105,21 @@ export function conflictMarkerBlocks(text: string): LineBlock[] {
 export function visibleConflictLines(count: number, top: number, height: number, stride: number) {
   return virtualRange(count, Math.max(0, top), height, stride);
 }
+
+// Blocks are sorted and disjoint (analysis merges changes and marker ranges).
+// Search by end to skip offscreen blocks; clip huge ranges to viewport bounds.
+export function visibleLineBlocks(blocks: readonly LineBlock[], start: number, end: number): LineBlock[] {
+  if (end <= start) return [];
+  let low = 0, high = blocks.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (blocks[middle].end < start) low = middle + 1;
+    else high = middle;
+  }
+  const result: LineBlock[] = [];
+  for (let index = low; index < blocks.length && blocks[index].start < end; index++) {
+    const block = blocks[index];
+    result.push({ start: Math.max(start, block.start), end: Math.min(end - 1, block.end) });
+  }
+  return result;
+}
