@@ -9,7 +9,7 @@ import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { createHistorySearch, type HistorySearch } from "~/lib/repository-drafts";
 import { locale, t } from "~/lib/i18n";
 import { For, Show, createMemo, createSignal, createUniqueId, onCleanup, onMount, batch } from "solid-js";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "~/components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "~/components/ui/context-menu";
 import CommitEditDialog, { type CommitEditAction } from "./commit-edit-dialog";
 import CommitActionsDialog, { type CommitDialogAction } from "./commit-actions-dialog";
 import { CommitDescription } from "~/components/ui/commit-description";
@@ -45,10 +45,15 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
   const [height, setHeight] = createSignal(500);
   const [jumpRef, setJumpRef] = search.jumpRef;
   const [branchPickerOpen, setBranchPickerOpen] = createSignal(false);
-  const branches = createMemo(() => [
-    { value: "all", label: t("history.all-branches") },
-    ...props.history.branches.map(branch => ({ value: `refs/heads/${branch}`, label: branch })),
-  ]);
+  const branches = createMemo(() => {
+    const preferred = props.branch === "all" ? `refs/heads/${props.history.current_branch}` : props.branch;
+    const options = props.history.branches.map(branch => ({ value: `refs/heads/${branch}`, label: branch }));
+    return [
+      { value: "all", label: t("history.all-branches") },
+      ...options.filter(option => option.value === preferred),
+      ...options.filter(option => option.value !== preferred),
+    ];
+  });
   const [filter, setFilter] = search.filter;
   const { jumpTip, filtered, debouncing, loading, error, setError, hasMore, displayedCommits, graphRevision, loadMore, retry, generation, resetContext } = createCommitHistory({
     history: () => props.history,
@@ -160,11 +165,11 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
     catch (e) { setError(String(e)); }
   }
 
-  async function saveCommitHash(commit: Commit) {
+  async function saveCommitHashes(commits: Commit[]) {
     setError(""); setCopyStatus("");
     try {
-      await navigator.clipboard.writeText(commit.hash);
-      setCopyStatus(t("history.hash-copied"));
+      await navigator.clipboard.writeText(commits.map(commit => commit.hash).join("\n"));
+      setCopyStatus(commits.length === 1 ? t("history.hash-copied") : t("history.hashes-copied", { count: commits.length }));
     } catch (e) { reportTerminalError(t("history.copy-failed", { p1: String(e) }), t("history.copy-hash")); }
   }
 
@@ -233,13 +238,6 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           </Button>
         </div>
       </div>
-      <Show when={rangeSelection().length > 1}>
-        <div class="flex shrink-0 items-center justify-end gap-2 border-b bg-muted/40 px-4 py-1">
-          <Button size="sm" variant="ghost" class="h-7 text-xs" disabled={!canRewrite() || !linearRange(rangeSelection())}
-            onClick={() => openRewrite(rangeSelection())}>{t("rewrite.combine")}</Button>
-          <Button size="sm" variant="ghost" class="h-7 text-xs" onClick={() => { setRangeSelection([]); setSelectionAnchor(selectedCommit()?.hash); }}>{t("search.clear")}</Button>
-        </div>
-      </Show>
       <Show when={filter().file}>
         <div class="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/40 px-3 py-1.5" role="status">
           <p class="min-w-0 break-all text-xs text-muted-foreground">{t("search.file-history", { path: filter().file })}</p>
@@ -320,7 +318,7 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
           <Show when={start() > 0}><TableRow aria-hidden="true" class="border-0 hover:bg-transparent"><TableCell colspan="5" class="p-0" style={{ height: `${start() * ROW_HEIGHT}px` }} /></TableRow></Show>
           <For each={visibleCommits()}>{(commit, index) => {
             const graphRow = () => graph().rows[start() + index()];
-            return <ContextMenu>
+            return <ContextMenu onOpenChange={open => { if (open && !rangeHashes().has(commit.hash)) selectRow(commit, false); }}>
               <ContextMenuTrigger as={TableRow} disabled={props.disabled || commit.uncommitted}
                 data-commit-index={start() + index()}
                 data-state={selectedCommit()?.hash === commit.hash || rangeHashes().has(commit.hash) ? "selected" : undefined}
@@ -356,19 +354,29 @@ export default function CommitTable(props: { branch: string; onBranchChange: (br
                 <TableCell class="text-muted-foreground tabular-nums"><Show when={commit.date} fallback="—"><time dateTime={commit.date} title={commit.date}>{date(commit.date)}</time></Show></TableCell>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHash(commit)}>{t("history.copy-sha")}</ContextMenuItem>
+                <Show when={squashRange(commit).length > 1} fallback={<>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHashes([commit])}>{t("history.copy-sha")}</ContextMenuItem>
+                <ContextMenuSeparator />
                 <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing} onSelect={() => void checkout(commit)}>{t("history.checkout")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("reset.to-commit")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "branch", commit })}>{t("branch.from-commit")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("tag.from-commit")}</ContextMenuItem>
+                <ContextMenuSeparator />
                 <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "cherry_pick", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.cherry-pick")}</ContextMenuItem>
                 <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch || props.history.has_changes || Boolean(props.history.operation)} title={props.history.has_changes ? t("operation.dirty") : undefined} onSelect={() => setEditAction({ kind: "revert", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.revert")}</ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem disabled={!canRewrite()} onSelect={() => openRewrite([commit])}>{t("rewrite.reword")}</ContextMenuItem>
                 <Show when={commit.hash === props.history.tip && props.history.has_changes}>
                   <ContextMenuItem disabled={props.disabled || !props.history.current_branch || Boolean(props.history.operation)}
                     onSelect={() => setEditAction({ kind: "amend", commit, head: props.history.tip, branch: props.history.current_branch })}>{t("operation.amend")}</ContextMenuItem>
                 </Show>
-                <ContextMenuItem disabled={!canRewrite()} onSelect={() => openRewrite([commit])}>{t("rewrite.reword")}</ContextMenuItem>
-                <ContextMenuItem disabled={!canRewrite() || !linearRange(squashRange(commit))} title={t("rewrite.select-range")} onSelect={() => openRewrite(squashRange(commit))}>{t("rewrite.squash")}</ContextMenuItem>
-                <ContextMenuItem disabled={props.disabled} onSelect={() => setDialogAction({ kind: "tag", commit })}>{t("tag.from-commit")}</ContextMenuItem>
+                <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || !props.history.current_branch} onSelect={() => setDialogAction({ kind: "reset", commit })}>{t("reset.to-commit")}</ContextMenuItem>
+                </>}>
+                  <ContextMenuItem disabled={props.disabled} onSelect={() => void saveCommitHashes(squashRange(commit))}>{t("history.copy-selected-shas")}</ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem disabled={!canRewrite() || !linearRange(squashRange(commit))} title={!linearRange(squashRange(commit)) ? t("rewrite.select-range") : undefined} onSelect={() => openRewrite(squashRange(commit))}>{t("rewrite.squash")}</ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem disabled={props.disabled} onSelect={() => { setRangeSelection([]); setSelectionAnchor(selectedCommit()?.hash); }}>{t("history.clear-selection")}</ContextMenuItem>
+                </Show>
               </ContextMenuContent>
             </ContextMenu>;
           }}</For>
