@@ -143,3 +143,11 @@ footer>span{display:none}
 .hero-version{min-height:1.6em}
 .hero-version[hidden]{display:block;visibility:hidden}
 #download-list{min-height:244px}
+
+/* Keep installer names, sizes and arrows inside the action on narrow screens. */
+.hero-actions .button{max-width:100%;min-width:0;line-height:1.4}
+.download-label{min-width:0;overflow-wrap:anywhere}
+.download-row{flex-wrap:wrap}
+.download-row>div{min-width:0;flex:1 1 120px;overflow-wrap:anywhere}
+.download-row a{display:inline-flex;align-items:center;justify-content:center;max-width:100%;min-width:0;line-height:1.4}
+.download-row .download-label{overflow-wrap:anywhere}

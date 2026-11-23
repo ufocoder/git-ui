@@ -48,7 +48,10 @@ try {
       arrow.className = 'download-arrow';
       arrow.setAttribute('aria-hidden', 'true');
       arrow.textContent = '↓';
-      action.append(size ? `Download · ${size} ` : 'Download ', arrow);
+      const text = document.createElement('span');
+      text.className = 'download-label';
+      text.textContent = size ? `Download · ${size}` : 'Download';
+      action.append(text, arrow);
       action.setAttribute('aria-label', `${size ? `Download · ${size}` : "Download"} for ${download.name} ${download.detail}`);
     } else {
       action.className = 'unavailable';
@@ -97,7 +100,7 @@ async function recommendInstaller(downloads) {
 
   primary.href = installer.url;
   const size = formatFileSize(installer.size);
-  primary.firstChild.textContent = size ? `${label} · ${size} ` : `${label} `;
+  primary.querySelector('.download-label').textContent = size ? `${label} · ${size}` : label;
 }
 
 
