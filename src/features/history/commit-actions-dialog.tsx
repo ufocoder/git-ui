@@ -46,17 +46,13 @@ export default function CommitActionsDialog(props: Props) {
   }
   return <Dialog open={Boolean(props.action)} onOpenChange={open => { if (!open && !pending()) props.onClose(); }}>
     <Show when={props.action}>{action => <DialogContent>
-      <DialogHeader>
+      <DialogHeader class="pr-6 text-left">
         <DialogTitle>{action().kind === "branch" ? t("branch.from-commit") : action().kind === "tag" ? t("tag.from-commit") : t("reset.to-commit")}</DialogTitle>
-        <DialogDescription>{action().kind === "branch" ? t("branch.from-commit-description") : action().kind === "tag" ? t("tag.from-commit-description") : t("reset.target", { p1: target().branch })}</DialogDescription>
+        <DialogDescription>{action().kind === "branch" ? t("branch.from-commit-description") : action().kind === "tag" ? t("tag.from-commit-description") : t("safety.branch-move", { branch: target().branch, from: target().head.slice(0, 8), to: action().commit.hash.slice(0, 8) })}</DialogDescription>
       </DialogHeader>
-      <p class="break-words text-sm"><code>{action().commit.hash.slice(0, 8)}</code> · {action().commit.subject}</p>
+      <p class="break-words text-sm"><Show when={action().kind !== "reset"}><code>{action().commit.hash.slice(0, 8)}</code> · </Show>{action().commit.subject}</p>
       <Show when={action().kind === "reset"}>
-        <div class="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
-          <p class="break-all font-medium">{t("safety.branch-move", { branch: target().branch, from: target().head.slice(0, 8), to: action().commit.hash.slice(0, 8) })}</p>
-          <p class="text-muted-foreground">{t("safety.reset-description")}</p>
-          <p class="text-muted-foreground">{props.hasChanges ? t("safety.dirty") : t("safety.clean")}</p>
-        </div>
+        <Show when={props.hasChanges}><p class="text-xs text-muted-foreground">{t("reset.local-changes")}</p></Show>
         <Show when={stale()}><p role="alert" class="text-sm text-destructive">{t("safety.stale-head")}</p></Show>
       </Show>
       <form onSubmit={submit} class="space-y-4">
@@ -64,9 +60,12 @@ export default function CommitActionsDialog(props: Props) {
           <ToggleGroup value={mode()} onChange={value => { if (value === "soft" || value === "mixed" || value === "hard") { setMode(value); setConfirmed(false); } }} disabled={pending()} aria-label={t("reset.mode")}>
             <ToggleGroupItem value="soft">{t("reset.soft")}</ToggleGroupItem><ToggleGroupItem value="mixed">{t("reset.mixed")}</ToggleGroupItem><ToggleGroupItem value="hard">{t("reset.hard")}</ToggleGroupItem>
           </ToggleGroup>
-          <p class="text-sm text-muted-foreground">{mode() === "soft" ? t("reset.soft-description") : mode() === "mixed" ? t("reset.mixed-description") : t("reset.hard-description")}</p>
+          <div class="space-y-2 text-sm leading-relaxed">
+            <p class="text-muted-foreground">{t("reset.local-only")}</p>
+            <p classList={{ "text-destructive": mode() === "hard", "text-muted-foreground": mode() !== "hard" }}>{mode() === "soft" ? t("reset.soft-description") : mode() === "mixed" ? t("reset.mixed-description") : t("reset.hard-description")}</p>
+          </div>
           <Show when={mode() === "hard"}>
-            <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} />{t("reset.confirm", { branch: target().branch, sha: action().commit.hash.slice(0, 8) })}</label>
+            <label class="flex items-start gap-2 text-sm leading-5"><Checkbox class="mt-0.5 shrink-0" checked={confirmed()} onChange={setConfirmed} disabled={pending()} /><span>{t("reset.confirm-discard")}</span></label>
           </Show>
         </>}>
           <TextField value={name()} onChange={setName} disabled={pending()} required><TextFieldLabel>{action().kind === "branch" ? t("branch.input-name") : t("tag.name")}</TextFieldLabel><TextFieldInput placeholder={action().kind === "branch" ? t("branch.name-example") : t("tag.example")} autocomplete="off" spellcheck={false} /></TextField>

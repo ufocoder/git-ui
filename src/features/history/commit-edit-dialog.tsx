@@ -63,7 +63,7 @@ export default function CommitEditDialog(props: {
             <TextFieldLabel>{t("commit.message")}</TextFieldLabel>
             <TextFieldTextArea class="max-h-56 min-h-28" rows={5} />
           </TextField>
-          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending() || loading()} />{t("operation.confirm-amend")}</label>
+          <label class="flex items-start gap-2 text-sm leading-5"><Checkbox class="mt-0.5 shrink-0" checked={confirmed()} onChange={setConfirmed} disabled={pending() || loading()} /><span>{t("operation.confirm-amend")}</span></label>
         </Show>
         <DialogFooter class="gap-2">
           <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button>
