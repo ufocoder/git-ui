@@ -129,10 +129,10 @@ export default function TagsSection(props: {
             </ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem onSelect={() => togglePin(tag)}>{pinnedTags().has(tag) ? t("tag.unpin") : t("tag.pin")}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("ref-action.rename")}</ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem disabled={disabled()} onSelect={() => open(tag)}>{publicationStatus(tag) === "unpublished" ? t("tag-status.publish") : t("tag-push.selected", { tag })}</ContextMenuItem>
-              <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tag-push.all")}</ContextMenuItem>
-              <ContextMenuItem disabled={disabled()} onSelect={() => props.onRename(tag)}>{t("ref-action.rename")}</ContextMenuItem>
+              <ContextMenuItem disabled={disabled()} onSelect={() => open(null)}>{t("tag-push.all")}…</ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem class="text-destructive" title={t("tag-delete.selected", { tag })} disabled={disabled()} onSelect={() => open(tag, true)}>{t("tag-delete.title")}</ContextMenuItem>
             </ContextMenuContent>

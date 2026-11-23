@@ -60,12 +60,13 @@ export default function RepositorySidebar(props: { tagFetchRevision: number; onS
   onCleanup(() => { comparisonGeneration++; clearTimeout(comparisonTimer); });
   function branchActions(branch: string) {
     return <>
-      {pinAction(localReference(branch))}
-      <ContextMenuSeparator />
       <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch} onSelect={() => props.onSwitchBranch(branch)}>{t("ref-action.switch")}</ContextMenuItem>
-      <ContextMenuItem title={branch !== props.history.current_branch ? t("ref-action.switch-before-push") : undefined} disabled={props.disabled || props.history.git_lfs_missing || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("push.action")}</ContextMenuItem>
+      <ContextMenuSeparator />
+      {pinAction(localReference(branch))}
       <ContextMenuItem disabled={props.disabled || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch })}>{t("ref-action.rename")}</ContextMenuItem>
-      <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branch-action.rebase")}</ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem title={branch !== props.history.current_branch ? t("ref-action.switch-before-push") : undefined} disabled={props.disabled || props.history.git_lfs_missing || branch !== props.history.current_branch || !props.history.tip} onSelect={props.onPushBranch}>{t("push.action")}</ContextMenuItem>
+      <ContextMenuItem disabled={props.disabled || props.history.git_lfs_missing || branch === props.history.current_branch || Boolean(props.history.operation) || props.history.has_changes || !props.history.current_branch} onSelect={() => props.onRebaseBranch(branch)}>{t("branch-action.rebase")}…</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem class="text-destructive data-[highlighted]:text-destructive" disabled={props.disabled || branch === props.history.current_branch || Boolean(props.history.operation)} onSelect={() => props.onReferenceAction({ kind: "branch", name: branch, deleting: true })}>{t("ref-action.delete-branch")}</ContextMenuItem>
     </>;
