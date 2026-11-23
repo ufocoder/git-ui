@@ -138,6 +138,7 @@ pub fn run() {
             stash::get_stash_details,
             stash::get_stash_diff,
             history_search::get_filtered_commit_page,
+            history_search::cancel_history_search,
             history::get_sync_commit_page,
             diffs::get_commit_files,
             diffs::get_commit_details,

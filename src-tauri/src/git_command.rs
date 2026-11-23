@@ -1,7 +1,10 @@
 use crate::{locale, process, terminal_log};
 use std::path::Path;
 
+pub(crate) const SEARCH_CANCELLED: &str = "__history_search_cancelled__";
+
 enum GitCommandError {
+    Cancelled,
     Process(std::io::Error),
     Exit { code: Option<i32>, stderr: String },
 }
@@ -9,6 +12,7 @@ enum GitCommandError {
 impl GitCommandError {
     fn user_message(&self) -> String {
         match self {
+            Self::Cancelled => SEARCH_CANCELLED.into(),
             Self::Process(error) => locale::format("error.start-git", &[("e", error.to_string())]),
             Self::Exit { stderr, .. } if missing_lfs(stderr) => {
                 locale::text("error.git-lfs-missing").into()
@@ -35,7 +39,7 @@ pub(super) fn git(path: &Path, args: &[&str]) -> Result<String, String> {
 }
 
 pub(super) fn git_bytes(path: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
-    run(path, args, None, &[]).map_err(|error| error.user_message())
+    run(path, args, None, &[], None).map_err(|error| error.user_message())
 }
 
 pub(super) fn git_with_input(
@@ -44,8 +48,18 @@ pub(super) fn git_with_input(
     input: &str,
     env: &[(&str, &str)],
 ) -> Result<String, String> {
-    let bytes = run(path, args, Some(input), env).map_err(|error| error.user_message())?;
+    let bytes = run(path, args, Some(input), env, None).map_err(|error| error.user_message())?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+pub(super) fn git_cancellable(
+    path: &Path,
+    args: &[&str],
+    cancelled: &std::sync::atomic::AtomicBool,
+) -> Result<String, String> {
+    run(path, args, None, &[], Some(cancelled))
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        .map_err(|error| error.user_message())
 }
 
 fn run(
@@ -53,6 +67,7 @@ fn run(
     args: &[&str],
     input: Option<&str>,
     env: &[(&str, &str)],
+    cancelled: Option<&std::sync::atomic::AtomicBool>,
 ) -> Result<Vec<u8>, GitCommandError> {
     let log_id = terminal_log::begin(path, args);
     // Large immutable branch snapshots can exceed the OS argument-size limit.
@@ -108,7 +123,9 @@ fn run(
     let input = input
         .map(str::to_owned)
         .or_else(|| (!revisions.is_empty()).then(|| revisions.join("\n") + "\n"));
-    let output = if let Some(input) = input {
+    let output = if let Some(cancelled) = cancelled {
+        process::output_cancellable(&mut command, input, cancelled)
+    } else if let Some(input) = input {
         use std::io::Write;
         use std::process::Stdio;
         command
@@ -136,6 +153,9 @@ fn run(
         command.output()
     }
     .map_err(|error| {
+        if cancelled.is_some() && error.kind() == std::io::ErrorKind::Interrupted {
+            return GitCommandError::Cancelled;
+        }
         let error = GitCommandError::Process(error);
         terminal_log::finish(path, log_id, error.user_message(), false, None);
         error

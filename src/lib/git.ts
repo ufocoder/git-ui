@@ -1,3 +1,4 @@
+import { createSearchRequests, SEARCH_CANCELLED } from "./search-requests";
 import { startOperation, finishOperation } from "./operation-feedback";
 import { t } from "~/lib/i18n";
 import { invoke } from "@tauri-apps/api/core";
@@ -88,11 +89,17 @@ async function request<T>(command: string, args?: Record<string, unknown>): Prom
     return result;
   }
   catch (error) {
+    if (command === "get_filtered_commit_page" && String(error) === SEARCH_CANCELLED) throw error;
     // Polling failures are rendered by the terminal itself, avoiding a feedback loop.
     if (command !== "get_project_terminal_log") reportTerminalError(error, command === "sync_project" ? t("git.command", { p1: String(args?.action) }) : operationLabels()[command] ?? command);
     throw error;
   }
 }
+
+const historySearch = createSearchRequests(
+  (requestId: string, args: Record<string, unknown>) => request<CommitPage>("get_filtered_commit_page", { ...args, requestId }),
+  requestId => invoke<void>("cancel_history_search", { requestId }),
+);
 
 // The Rust backend owns repository access; components use this typed API.
 export const git = {
@@ -119,7 +126,8 @@ export const git = {
   getHistory: () => request<History>("get_project_history"),
   getCommitPage: (tip: string, offset: number, allBranches = true, tips?: string[], firstParent = false) => request<CommitPage>("get_commit_page", { tip, offset, allBranches, tips, firstParent }),
   getSyncCommitPage: (localTip: string, remoteTip: string, direction: Exclude<HistoryScope, "all">, offset: number) => request<CommitPage>("get_sync_commit_page", { localTip, remoteTip, direction, offset }),
-  getFilteredCommitPage: (localTip: string, remoteTip: string | null, scope: HistoryScope, filter: HistoryFilter, offset: number, allBranches = true, tips?: string[], firstParent = false) => request<CommitPage>("get_filtered_commit_page", { localTip, remoteTip, scope, filter, offset, allBranches, tips, firstParent }),
+  getFilteredCommitPage: (localTip: string, remoteTip: string | null, scope: HistoryScope, filter: HistoryFilter, offset: number, allBranches = true, tips?: string[], firstParent = false) => historySearch.run({ localTip, remoteTip, scope, filter, offset, allBranches, tips, firstParent }),
+  cancelHistorySearch: historySearch.cancel,
   getCommitFiles: (commit: string) => request<CommitFile[]>("get_commit_files", { commit }),
   getCommitDetails: (commit: string) => request<CommitDetails>("get_commit_details", { commit }),
   getConflictFile: (file: string) => request<ConflictFile>("get_conflict_file", { file }),

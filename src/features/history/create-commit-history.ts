@@ -25,7 +25,7 @@ export function createCommitHistory(props: {
   const [debouncing, setDebouncing] = createSignal(false);
   const filtered = createMemo(() => Boolean(appliedFilter().text.trim() || appliedFilter().sha.trim() || appliedFilter().author.trim() || appliedFilter().file));
   createEffect(on(filter, value => {
-    generation++; setDebouncing(true); setLoading(false);
+    generation++; git.cancelHistorySearch(); setDebouncing(true); setLoading(false);
     const timer = window.setTimeout(() => { setAppliedFilter({ text: value.text.trim(), sha: value.sha.trim(), author: value.author.trim(), file: value.file }); setDebouncing(false); }, 250);
     onCleanup(() => window.clearTimeout(timer));
   }, { defer: true }));
@@ -81,6 +81,7 @@ export function createCommitHistory(props: {
     const anchor = previousRows[anchorIndex]?.hash;
     const offset = top - anchorIndex * props.rowHeight;
     const request = ++generation;
+    git.cancelHistorySearch();
     props.resetRange();
     setError(""); setLoading(true);
     if (!preserve) {
@@ -115,7 +116,7 @@ export function createCommitHistory(props: {
       finally { if (request === generation) setLoading(false); }
     })();
   });
-  onCleanup(() => { generation++; });
+  onCleanup(() => { generation++; git.cancelHistorySearch(); });
 
   async function loadMore() {
     if (debouncing() || loading() || !hasMore() || props.disabled()) return;
