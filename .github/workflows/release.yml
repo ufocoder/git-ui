@@ -45,7 +45,9 @@ jobs:
       - name: Test frontend utilities and locales
         run: node --experimental-strip-types --test tests/file-tree.test.mjs tests/locales.test.mjs
       - name: Test release validation
-        run: node --test tests/release-meta.test.mjs tests/updater-manifest.test.mjs
+        run: node --test tests/release-meta.test.mjs tests/updater-manifest.test.mjs tests/release-notes.test.mjs
+      - name: Prepare release notes
+        run: node .github/scripts/release-notes.mjs "${{ steps.meta.outputs.tag }}" release-body.md
       - name: Validate updater signing secret
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -62,7 +64,7 @@ jobs:
           if [[ "$release" == null ]]; then
             release_id=$(gh api --method POST "repos/{owner}/{repo}/releases" \
               -f tag_name="$RELEASE_TAG" -f target_commitish="$RELEASE_SHA" -f name="$RELEASE_TAG" \
-              -F draft=true -F generate_release_notes=true --jq .id)
+              -F draft=true -F body=@release-body.md --jq .id)
           elif [[ "$(jq -r .draft <<< "$release")" == true ]]; then
             release_id=$(jq -r .id <<< "$release")
           else
@@ -73,6 +75,7 @@ jobs:
             echo "Could not resolve the draft release ID for $RELEASE_TAG."
             exit 1
           fi
+          gh release edit "$RELEASE_TAG" --notes-file release-body.md
           echo "id=$release_id" >> "$GITHUB_OUTPUT"
 
   build:
@@ -150,14 +153,17 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Validate updater manifest
+      - name: Attach localized release notes and validate updater manifest
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           gh release download "$RELEASE_TAG" --pattern latest.json --dir updater-manifest
+          node .github/scripts/release-notes.mjs "$RELEASE_TAG" release-body.md updater-manifest/latest.json
           node .github/scripts/check-updater-manifest.mjs updater-manifest/latest.json "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" updater-manifest/latest.json --clobber
+          gh release edit "$RELEASE_TAG" --notes-file release-body.md
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

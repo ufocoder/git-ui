@@ -14,8 +14,10 @@ Before publishing:
 1. Configure the updater signing secret as described below.
 2. Keep the application version aligned in `package.json`, `package-lock.json`,
    `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json`.
-3. Commit and push the release changes.
-4. Run the workflow manually, or create and push the matching version tag:
+3. Add `releases/<version>/en.md` and, when available, `ru.md` and `zh.md`.
+   Keep descriptions short and focused on user-visible improvements.
+4. Commit and push the release changes.
+5. Run the workflow manually, or create and push the matching version tag:
 
 ```sh
 git tag v0.1.0
@@ -45,7 +47,33 @@ Updater signing is separate from operating-system code signing.
 To check release validation locally:
 
 ```sh
-node --test tests/release-meta.test.mjs tests/updater-manifest.test.mjs
+node --test tests/release-meta.test.mjs tests/updater-manifest.test.mjs tests/release-notes.test.mjs
+```
+
+## Release descriptions
+
+Release notes live in `releases/<version>/{en,ru,zh}.md`. English is required;
+missing translations fall back to English. Empty files fail validation. Use short
+bullet lists rather than raw commit logs. Prepare the notes before publishing, and keep their directory version aligned
+with the application version and release tag.
+
+The workflow validates notes before creating a draft, uses English as the main
+GitHub Release description, and adds translations in collapsible sections. After
+all platform builds complete, it adds `notes` (English) and `notesLocalized`
+(translations) to the generated `latest.json`, preserving download URLs and
+signatures. Both files are updated before the draft is published. Edit the source
+files and rerun the workflow to change a draft's description.
+
+The update dialog displays notes in the selected interface language inside a
+scrollable area. Older updater manifests containing only `notes` remain supported.
+Notes are displayed as plain text, so use `-` bullets and avoid complex Markdown
+formatting or HTML. The application reads the release asset directly; showing
+notes requires no additional GitHub API requests.
+
+Preview the GitHub Release body locally without publishing:
+
+```sh
+node .github/scripts/release-notes.mjs v0.4.2 /tmp/git-ui-release-body.md
 ```
 
 ## Updater signing

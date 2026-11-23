@@ -647,6 +647,7 @@
   "update.settings-error": "Could not read settings: {p1}",
   "update.title": "Application update",
   "update.unavailable": "Update is unavailable for this application version or platform.",
+  "update.whats-new": "What's new",
   "update.up-to-date": "You are up to date",
   "update.version-mismatch": "The release version does not match the update manifest.",
   "upstream.branch-changed": "The current branch has changed. Close the dialog and try again.",

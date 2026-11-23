@@ -3,7 +3,7 @@ import { downloadPercent } from "~/lib/update-progress";
 import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import gitForkIcon from "~/assets/logo.svg";
-import { t } from "~/lib/i18n";
+import { language, t } from "~/lib/i18n";
 import { updates, type UpdateInfo, type UpdateProgress } from "~/lib/updates";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
@@ -17,6 +17,10 @@ export default function UpdateDialog(props: { onClose: () => void; onInstallingC
   const [installing, setInstalling] = createSignal(false);
   const [progress, setProgress] = createSignal<UpdateProgress>();
   const [error, setError] = createSignal("");
+  const notes = createMemo(() => {
+    const result = info();
+    return result?.notesLocalized?.[language()]?.trim() || result?.notesLocalized?.en?.trim() || result?.notes?.trim();
+  });
   const busy = () => checking() || installing();
   const percent = createMemo(() => downloadPercent(progress()));
   let active = true;
@@ -64,7 +68,12 @@ export default function UpdateDialog(props: { onClose: () => void; onInstallingC
           {result().available ? t("update.available", { version: result().version ?? "" }) : result().notice || t("update.up-to-date")}
         </Badge>
         <Show when={result().available && result().notice}><p class="text-sm leading-relaxed text-muted-foreground">{result().notice}</p></Show>
-
+        <Show when={result().available && notes()}>
+          <section class="space-y-2" aria-labelledby="update-release-notes-title">
+            <h2 id="update-release-notes-title" class="text-sm font-medium">{t("update.whats-new")}</h2>
+            <div class="max-h-60 overflow-y-auto overscroll-contain whitespace-pre-wrap break-words pr-3 text-sm leading-relaxed [scrollbar-gutter:stable]" role="region" aria-label={t("update.whats-new")} tabindex={0}>{notes()}</div>
+          </section>
+        </Show>
       </>}</Show>
       <Show when={installing()}>
         <p class="text-sm" role="status">{progress()?.phase === "restarting" ? t("update.restarting") : progress()?.phase === "installing" ? t("update.installing") : t("update.downloading")}</p>

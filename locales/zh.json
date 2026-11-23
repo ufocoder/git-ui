@@ -647,6 +647,7 @@
   "update.settings-error": "无法读取设置：{p1}",
   "update.title": "应用更新",
   "update.unavailable": "此应用版本或平台不支持更新。",
+  "update.whats-new": "更新内容",
   "update.up-to-date": "已是最新版本",
   "update.version-mismatch": "发布版本与更新清单不匹配。",
   "upstream.branch-changed": "当前分支已更改。请关闭对话框后重试。",

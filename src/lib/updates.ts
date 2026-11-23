@@ -5,6 +5,7 @@ export type UpdateInfo = {
   currentVersion: string;
   version: string | null;
   notes: string | null;
+  notesLocalized?: Partial<Record<"en" | "ru" | "zh", string>>;
   available: boolean;
   installable: boolean;
   notice: string | null;

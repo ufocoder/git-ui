@@ -1,7 +1,7 @@
 use crate::locale;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::{collections::BTreeMap, path::PathBuf, time::Duration};
 use tauri::{AppHandle, Manager, State, ipc::Channel};
 use tauri_plugin_http::reqwest::{Client, Url};
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -32,11 +32,14 @@ pub struct PendingUpdate(pub tauri::async_runtime::Mutex<Option<Update>>);
 struct ManifestMetadata {
     version: String,
     notes: Option<String>,
+    #[serde(default, rename = "notesLocalized")]
+    notes_localized: BTreeMap<String, String>,
 }
 #[derive(Debug)]
 struct ReleaseMetadata {
     version: Version,
     notes: Option<String>,
+    notes_localized: BTreeMap<String, String>,
     manifest: bool,
 }
 #[derive(Serialize)]
@@ -45,6 +48,7 @@ pub struct UpdateInfo {
     current_version: String,
     version: Option<String>,
     notes: Option<String>,
+    notes_localized: BTreeMap<String, String>,
     available: bool,
     installable: bool,
     notice: Option<String>,
@@ -171,6 +175,7 @@ async fn read_release_metadata(
         return Ok(Some(ReleaseMetadata {
             version: version_from_release_url(repository, release.url())?,
             notes: None,
+            notes_localized: BTreeMap::new(),
             manifest: false,
         }));
     }
@@ -185,6 +190,7 @@ async fn read_release_metadata(
     Ok(Some(ReleaseMetadata {
         version: release_version(&metadata.version)?,
         notes: metadata.notes,
+        notes_localized: metadata.notes_localized,
         manifest: true,
     }))
 }
@@ -212,6 +218,7 @@ pub async fn check_app_update(
         current_version: current.to_string(),
         version: None,
         notes: None,
+        notes_localized: BTreeMap::new(),
         available: false,
         installable: false,
         notice: None,
@@ -229,6 +236,7 @@ pub async fn check_app_update(
     let latest = release.version;
     info.version = Some(latest.to_string());
     info.notes = release.notes;
+    info.notes_localized = release.notes_localized;
     if latest <= current {
         return Ok(info);
     }
@@ -310,6 +318,21 @@ pub async fn install_app_update(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reads_localized_and_legacy_release_notes() {
+        let localized: super::ManifestMetadata = serde_json::from_str(
+            r#"{"version":"0.4.2","notes":"English","notesLocalized":{"en":"English","ru":"Русский","zh":"中文"}}"#,
+        ).unwrap();
+        assert_eq!(
+            localized.notes_localized.get("ru").map(String::as_str),
+            Some("Русский")
+        );
+        let legacy: super::ManifestMetadata =
+            serde_json::from_str(r#"{"version":"0.4.1","notes":"Legacy"}"#).unwrap();
+        assert!(legacy.notes_localized.is_empty());
+        assert_eq!(legacy.notes.as_deref(), Some("Legacy"));
+    }
+
     use super::*;
     struct MockResponse {
         path: &'static str,
