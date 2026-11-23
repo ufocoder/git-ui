@@ -45,7 +45,7 @@ export default function HistoryRewriteDialog(props: {
     if (!request || !canSubmit()) return;
     setPending(true);
     try {
-      await props.onExecute(request, message(), Boolean(preview()?.published));
+      await props.onExecute({ ...request, accept_extension: Boolean(preview()?.extension && confirmed()) }, message(), Boolean(preview()?.published));
       props.onClose();
     } catch (failure) { setError(String(failure)); }
     finally { setPending(false); }
@@ -59,18 +59,28 @@ export default function HistoryRewriteDialog(props: {
           <DialogDescription>{t("rewrite.affected", { count: details().count })}</DialogDescription>
         }</Show>
       </DialogHeader>
-      <Show when={squash()}><ul class="max-h-24 overflow-auto text-sm">
-        <For each={action().commits}>{commit => <li class="break-words"><code>{commit.hash.slice(0, 8)}</code> · {commit.subject}</li>}</For>
-      </ul></Show>
+      <Show when={squash()}><details>
+        <summary class="text-sm text-muted-foreground">{t("rewrite.selected-list", { count: action().commits.length })}</summary>
+        <ul class="mt-2 max-h-32 space-y-1 overflow-auto text-sm">
+          <For each={action().commits}>{commit => <li class="grid grid-cols-[8ch_minmax(0,1fr)] items-baseline gap-3">
+            <code class="font-mono text-xs text-muted-foreground">{commit.hash.slice(0, 8)}</code>
+            <span class="min-w-0 break-words">{commit.subject}</span>
+          </li>}</For>
+        </ul>
+      </details></Show>
       <Show when={!preview() && !error()}><p role="status" class="text-sm text-muted-foreground">{t("common.loading")}</p></Show>
       <Show when={error()}><p role="alert" class="break-words text-sm text-destructive">{error()}</p></Show>
+      <Show when={preview()?.extension}><div class="space-y-2 text-sm">
+        <p class="text-destructive">{t("rewrite.extension-description", { branch: action().branch, sha: preview()!.extension!.slice(0, 8) })}</p>
+        <Show when={preview()?.published}><p class="text-muted-foreground">{t("rewrite.extension-published")}</p></Show>
+      </div></Show>
       <form onSubmit={submit} class="space-y-3">
         <Show when={preview()}>{details => <>
           <TextField value={message()} onChange={setMessage} disabled={pending()} required>
-            <TextFieldLabel>{t("commit.message")}</TextFieldLabel>
+            <TextFieldLabel>{squash() ? t("rewrite.combined-message") : t("commit.message")}</TextFieldLabel>
             <TextFieldTextArea class="max-h-56 min-h-24" rows={5} />
           </TextField>
-          <label class="flex items-start gap-2 text-sm"><Checkbox checked={confirmed()} onChange={setConfirmed} disabled={pending()} /><span classList={{ "text-destructive": details().published }}>{details().published ? t("rewrite.confirm-published") : t("rewrite.confirm")}</span></label>
+          <label class="flex items-start gap-2 text-sm leading-5"><Checkbox variant={details().published || details().extension ? "destructive" : "default"} class="mt-0.5 shrink-0 space-x-0" checked={confirmed()} onChange={setConfirmed} disabled={pending()} /><span classList={{ "text-destructive": details().published || Boolean(details().extension) }}>{details().extension ? t("rewrite.confirm-extension") : details().published ? t("rewrite.confirm-published") : t("rewrite.confirm")}</span></label>
         </>}</Show>
         <DialogFooter class="gap-2">
           <Button type="button" variant="outline" disabled={pending()} onClick={props.onClose}>{t("common.cancel")}</Button>

@@ -25,8 +25,8 @@ export type Commit = {
 };
 export type ForcePushTarget = { branch: string; head: string; remote: string; reference: string; expected: string; endpoint: string };
 export type RewriteRecovery = { branch: string; head: string };
-export type HistoryRewriteTarget = { head: string; branch: string; commits: string[] };
-export type HistoryRewritePreview = { count: number; published: boolean; messages: string[]; backup: string };
+export type HistoryRewriteTarget = { head: string; branch: string; commits: string[]; accept_extension?: boolean };
+export type HistoryRewritePreview = { count: number; published: boolean; messages: string[]; backup: string; extension?: string | null };
 export type CommitOperation = { kind: "cherry_pick" | "revert"; commit: string; mainline?: number } | { kind: "amend"; commit: string; message: string; confirmed: boolean } | { kind: "continue" } | { kind: "abort" | "skip"; confirmed: boolean };
 export type RepositoryMode = "history" | "commit" | "conflicts" | "stash";
 export type ConflictVersion = { exists: boolean; text: string | null; binary: boolean; large: boolean; mode: string | null; oid: string | null };

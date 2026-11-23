@@ -12,6 +12,8 @@ pub struct Target {
     branch: String,
     // Ordered from oldest to newest, as displayed in the confirmation dialog.
     commits: Vec<String>,
+    #[serde(default)]
+    accept_extension: bool,
 }
 
 #[derive(Serialize)]
@@ -20,9 +22,11 @@ pub struct Preview {
     published: bool,
     messages: Vec<String>,
     backup: String,
+    extension: Option<String>,
 }
 
 struct Plan {
+    source_tip: String,
     chain: Vec<String>,
     parents: Vec<String>,
     preview: Preview,
@@ -64,7 +68,19 @@ fn plan(path: &Path, target: &Target) -> Result<Plan, String> {
     if git(path, &["rev-parse", "--is-shallow-repository"])?.trim() == "true" {
         return Err(locale::text("rewrite.shallow").into());
     }
-    let range = format!("{oldest}..{}", target.head);
+    let newest = target.commits.last().ok_or_else(invalid)?;
+    crate::commit_diff_args(path, newest)?;
+    let source_tip = if git(path, &["merge-base", "--is-ancestor", newest, &target.head]).is_ok() {
+        target.head.clone()
+    } else if target.commits.len() > 1
+        && git(path, &["merge-base", "--is-ancestor", &target.head, newest]).is_ok()
+    {
+        newest.clone()
+    } else {
+        return Err(locale::text("rewrite.outside-branch").into());
+    };
+    let extension = (source_tip != target.head).then(|| source_tip.clone());
+    let range = format!("{oldest}..{source_tip}");
     let parents = read_parents(path, oldest)?;
     let squash = target.commits.len() > 1;
     let traversal = if squash {
@@ -98,7 +114,7 @@ fn plan(path: &Path, target: &Target) -> Result<Plan, String> {
             chain.push(row.into());
         }
     }
-    if chain.last() != Some(&target.head) || !chain.starts_with(&target.commits) {
+    if chain.last() != Some(&source_tip) || !chain.starts_with(&target.commits) {
         return Err(invalid());
     }
     let published = !git(
@@ -125,7 +141,9 @@ fn plan(path: &Path, target: &Target) -> Result<Plan, String> {
             published,
             messages,
             backup: format!("refs/git-ui/rewrites/{}", target.head),
+            extension,
         },
+        source_tip,
         chain,
         parents,
     })
@@ -213,6 +231,9 @@ fn rewrite(
     if plan.preview.published && !accept_published {
         return Err(locale::text("rewrite.published").into());
     }
+    if plan.preview.extension.is_some() && !target.accept_extension {
+        return Err(locale::text("rewrite.extension-confirm-required").into());
+    }
     let oldest = &target.commits[0];
     let newest = target.commits.last().unwrap();
     if target.commits.len() == 1 && message.trim() == plan.preview.messages[0].trim() {
@@ -235,10 +256,10 @@ fn rewrite(
             write_commit(path, commit, commit, &parents, &read_message(path, commit)?)?;
         replacements.insert(commit, replacement);
     }
-    let rewritten = &replacements[target.head.as_str()];
+    let rewritten = &replacements[plan.source_tip.as_str()];
     ensure_target(path, target)?;
     if rewritten != &target.head {
-        let before = format!("{}^{{tree}}", target.head);
+        let before = format!("{}^{{tree}}", plan.source_tip);
         let after = format!("{rewritten}^{{tree}}");
         let trees = git(path, &["rev-parse", &before, &after])?;
         let trees: Vec<_> = trees.lines().collect();
@@ -256,14 +277,44 @@ fn rewrite(
             target.branch,
             target.head,
         );
-        git_with_input(
-            path,
-            &["update-ref", "-m", "Git UI: rewrite history", "--stdin"],
-            &transaction,
-            &[],
-        )?;
+        update_branch_tree(path, &target.head, rewritten, &transaction)?;
     }
     read_history(path)
+}
+
+// Update clean worktrees only when the selected range extends beyond HEAD.
+// Keep the branch compare-and-swap and recovery refs in one transaction; if it
+// fails, restore the old tree without overwriting intervening local edits.
+fn update_branch_tree(
+    path: &Path,
+    before: &str,
+    after: &str,
+    transaction: &str,
+) -> Result<(), String> {
+    let before_tree = git(path, &["rev-parse", &format!("{before}^{{tree}}")])?;
+    let after_tree = git(path, &["rev-parse", &format!("{after}^{{tree}}")])?;
+    let changed = before_tree != after_tree;
+    if changed {
+        crate::development_guard::ensure_safe(path)?;
+        git(path, &["read-tree", "-u", "-m", before, after])?;
+    }
+    if let Err(error) = git_with_input(
+        path,
+        &["update-ref", "-m", "Git UI: rewrite history", "--stdin"],
+        transaction,
+        &[],
+    ) {
+        if changed {
+            if let Err(rollback) = git(path, &["read-tree", "-u", "-m", after, before]) {
+                return Err(format!(
+                    "{error}\n{}\n{rollback}",
+                    locale::text("rewrite.rollback-failed")
+                ));
+            }
+        }
+        return Err(error);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -329,11 +380,99 @@ mod tests {
     }
 
     #[test]
+    fn squash_can_extend_branch_with_explicit_approval_and_restore_the_original_tree() {
+        let (repo, commits, branch) = fixture();
+        git(&repo.0, &["update-ref", "refs/heads/other", &commits[2]]).unwrap();
+        git(
+            &repo.0,
+            &["update-ref", "refs/remotes/origin/main", &commits[2]],
+        )
+        .unwrap();
+        git(&repo.0, &["reset", "--hard", &commits[1]]).unwrap();
+        let mut target = Target {
+            head: commits[1].clone(),
+            branch: branch.clone(),
+            commits: commits.clone(),
+            accept_extension: false,
+        };
+        let preview = plan(&repo.0, &target).unwrap().preview;
+        assert_eq!(preview.extension.as_deref(), Some(commits[2].as_str()));
+        assert!(preview.published);
+        assert!(rewrite(&repo.0, &target, "combined", true).is_err());
+        assert_eq!(
+            git(&repo.0, &["rev-parse", "HEAD"]).unwrap().trim(),
+            commits[1]
+        );
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "two"
+        );
+        target.accept_extension = true;
+        assert!(rewrite(&repo.0, &target, "combined", false).is_err());
+        let result = rewrite(&repo.0, &target, "combined", true).unwrap();
+        assert_ne!(result.tip, commits[1]);
+        assert_eq!(
+            git(&repo.0, &["log", "--format=%s"]).unwrap().trim(),
+            "combined"
+        );
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "three"
+        );
+        assert!(!result.has_changes);
+        assert_eq!(
+            git(&repo.0, &["rev-parse", "refs/heads/other"])
+                .unwrap()
+                .trim(),
+            commits[2]
+        );
+        assert_eq!(
+            git(&repo.0, &["rev-parse", "refs/remotes/origin/main"])
+                .unwrap()
+                .trim(),
+            commits[2]
+        );
+        assert_eq!(
+            git(&repo.0, &["rev-parse", &preview.backup])
+                .unwrap()
+                .trim(),
+            commits[1]
+        );
+        let restored = restore(&repo.0, result.tip, branch).unwrap();
+        assert_eq!(restored.tip, commits[1]);
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "two"
+        );
+        assert!(!restored.has_changes);
+    }
+
+    #[test]
+    fn failed_ref_transaction_rolls_back_checked_out_tree() {
+        let (repo, commits, branch) = fixture();
+        let transaction = format!(
+            "option no-deref\nupdate refs/heads/{branch} {} {}\n",
+            commits[0], commits[1]
+        );
+        assert!(update_branch_tree(&repo.0, &commits[2], &commits[0], &transaction).is_err());
+        assert_eq!(
+            git(&repo.0, &["rev-parse", "HEAD"]).unwrap().trim(),
+            commits[2]
+        );
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "three"
+        );
+        assert!(crate::read_worktree_files(&repo.0).unwrap().is_empty());
+    }
+
+    #[test]
     fn reword_replays_descendants_and_keeps_recovery_ref() {
         let (repo, commits, branch) = fixture();
         let target = Target {
             head: commits[2].clone(),
             branch,
+            accept_extension: false,
             commits: vec![commits[1].clone()],
         };
         let preview = plan(&repo.0, &target).unwrap().preview;
@@ -367,6 +506,7 @@ mod tests {
         let target = Target {
             head: commits[2].clone(),
             branch: branch.clone(),
+            accept_extension: false,
             commits: vec![commits[2].clone()],
         };
         let updated = rewrite(&repo.0, &target, "rewritten", false).unwrap();
@@ -396,10 +536,12 @@ mod tests {
         let squash = Target {
             head,
             branch,
+            accept_extension: false,
             commits: commits[1..].to_vec(),
         };
         assert!(plan(&repo.0, &squash).is_err());
         let reword = Target {
+            accept_extension: false,
             commits: vec![commits[1].clone()],
             ..squash
         };
@@ -419,6 +561,7 @@ mod tests {
         let invalid = Target {
             head: commits[2].clone(),
             branch: branch.clone(),
+            accept_extension: false,
             commits: vec![commits[0].clone(), commits[2].clone()],
         };
         assert!(plan(&repo.0, &invalid).is_err());
@@ -469,27 +612,15 @@ fn restore(path: &Path, head: String, branch: String) -> Result<ProjectHistory, 
         head,
         branch,
         commits: Vec::new(),
+        accept_extension: false,
     };
     ensure_target(path, &target)?;
     let old = original_head(path, &target.head, &target.branch)?;
-    let before = format!("{}^{{tree}}", target.head);
-    let after = format!("{old}^{{tree}}");
-    let trees = git(path, &["rev-parse", &before, &after])?;
-    if !matches!(trees.lines().collect::<Vec<_>>().as_slice(), [before, after] if before == after) {
-        return Err(locale::text("operation.stale-target").into());
-    }
-    git(
-        path,
-        &[
-            "update-ref",
-            "--no-deref",
-            "-m",
-            "Git UI: restore history",
-            &format!("refs/heads/{}", target.branch),
-            &old,
-            &target.head,
-        ],
-    )?;
+    let transaction = format!(
+        "option no-deref\nupdate refs/heads/{} {} {}\n",
+        target.branch, old, target.head
+    );
+    update_branch_tree(path, &target.head, &old, &transaction)?;
     read_history(path)
 }
 
