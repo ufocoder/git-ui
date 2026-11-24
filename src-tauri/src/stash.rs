@@ -1,5 +1,9 @@
 use crate::{
-    git, locale, project_path, read_history, read_worktree_files, ProjectHistory, Projects,
+    diffs::read_worktree_files,
+    git_command::git,
+    history::{ProjectHistory, read_history},
+    locale,
+    projects::{Projects, project_path},
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -196,7 +200,8 @@ pub async fn get_stash_diff(
         {
             id.clone()
         } else {
-            untracked_parent(path, &id)?.ok_or_else(|| locale::text("error.file-not-found").to_string())?
+            untracked_parent(path, &id)?
+                .ok_or_else(|| locale::text("error.file-not-found").to_string())?
         };
         let mut diff = crate::read_file_diff(path, &source, &file_path)?;
         diff.commit = id;
@@ -223,7 +228,10 @@ mod tests {
                 restore_index: true,
             },
         ] {
-            assert_eq!(run(source, action).unwrap_err(), locale::text("stash.dev-checkout"));
+            assert_eq!(
+                run(source, action).unwrap_err(),
+                locale::text("stash.dev-checkout")
+            );
         }
     }
     #[test]

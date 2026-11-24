@@ -1,6 +1,9 @@
 use crate::{
-    CommitFile, ProjectHistory, Projects, git, git_command::git_with_input, locale, project_path,
-    read_history, read_worktree_files,
+    diffs::{CommitFile, read_worktree_files},
+    git_command::{git, git_with_input},
+    history::{ProjectHistory, read_history},
+    locale,
+    projects::{Projects, project_path},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path};
@@ -186,32 +189,38 @@ impl Drop for TemporaryIndex {
     }
 }
 
-fn discard(root: &Path, target: &DiscardTarget, confirmed: bool) -> Result<DiscardResult, String> {
-    if !confirmed {
-        return Err(locale::text("discard.confirm-required").into());
-    }
-    crate::development_guard::ensure_safe(root)?;
-    let current = preview(root, &target.paths)?;
-    if current.target != *target {
-        return Err(locale::text("discard.stale").into());
-    }
-    let mut paths = BTreeSet::new();
-    for file in &current.files {
-        paths.insert(file.path.clone());
-        if let Some(old) = &file.old_path {
-            paths.insert(old.clone());
+struct DiscardPaths {
+    tracked: BTreeSet<String>,
+    untracked: BTreeSet<String>,
+}
+impl DiscardPaths {
+    fn read(root: &Path, files: &[CommitFile]) -> Result<Self, String> {
+        let mut paths = BTreeSet::new();
+        for file in files {
+            paths.insert(file.path.clone());
+            if let Some(old) = &file.old_path {
+                paths.insert(old.clone());
+            }
         }
+        let untracked: BTreeSet<_> =
+            git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?
+                .split_terminator('\0')
+                .map(str::to_owned)
+                .filter(|path| paths.contains(path))
+                .collect();
+        let tracked: BTreeSet<_> = paths.difference(&untracked).cloned().collect();
+        Ok(Self { tracked, untracked })
     }
-    let untracked: BTreeSet<_> = git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?
-        .split_terminator('\0')
-        .map(str::to_owned)
-        .filter(|path| paths.contains(path))
-        .collect();
-    let tracked: BTreeSet<_> = paths.difference(&untracked).cloned().collect();
-    let message = locale::format(
-        "discard.backup-message",
-        &[("count", current.files.len().to_string())],
-    );
+}
+
+fn save_backup(
+    root: &Path,
+    target: &DiscardTarget,
+    paths: &DiscardPaths,
+    count: usize,
+) -> Result<String, String> {
+    let DiscardPaths { tracked, untracked } = paths;
+    let message = locale::format("discard.backup-message", &[("count", count.to_string())]);
     // Build a scoped stash without changing the real index or worktree. Git's
     // path-limited stash push fails for staged deletions and renamed old paths.
     let temporary = TemporaryIndex::new()?;
@@ -261,9 +270,15 @@ fn discard(root: &Path, target: &DiscardTarget, confirmed: bool) -> Result<Disca
     let backup = snapshot_commit(root, &worktree_tree, &parents, &message)?;
     // Publish the recovery copy before touching any selected path.
     git(root, &["stash", "store", "--message", &message, &backup])?;
-    if preview(root, &target.paths)?.target != *target {
-        return Err(locale::text("discard.stale").into());
-    }
+    Ok(backup)
+}
+
+fn restore_selected(
+    root: &Path,
+    target: &DiscardTarget,
+    paths: &DiscardPaths,
+) -> Result<(), String> {
+    let DiscardPaths { tracked, untracked } = paths;
     if !tracked.is_empty() {
         git_with_input(
             root,
@@ -289,6 +304,24 @@ fn discard(root: &Path, target: &DiscardTarget, confirmed: bool) -> Result<Disca
         args.extend(batch.iter().map(String::as_str));
         git(root, &args)?;
     }
+    Ok(())
+}
+
+fn discard(root: &Path, target: &DiscardTarget, confirmed: bool) -> Result<DiscardResult, String> {
+    if !confirmed {
+        return Err(locale::text("discard.confirm-required").into());
+    }
+    crate::development_guard::ensure_safe(root)?;
+    let current = preview(root, &target.paths)?;
+    if current.target != *target {
+        return Err(locale::text("discard.stale").into());
+    }
+    let paths = DiscardPaths::read(root, &current.files)?;
+    let backup = save_backup(root, target, &paths, current.files.len())?;
+    if preview(root, &target.paths)?.target != *target {
+        return Err(locale::text("discard.stale").into());
+    }
+    restore_selected(root, target, &paths)?;
     Ok(DiscardResult {
         history: read_history(root)?,
         backup,

@@ -1,4 +1,9 @@
-use crate::{git, locale, project_path, read_history, ProjectHistory, Projects};
+use crate::{
+    git_command::git,
+    history::{ProjectHistory, read_history},
+    locale,
+    projects::{Projects, project_path},
+};
 use serde::Serialize;
 use std::path::{Component, Path, PathBuf};
 use tauri::{State, WebviewWindow};
@@ -169,13 +174,17 @@ fn remote_browser_url(value: &str) -> Option<tauri::Url> {
         let url = tauri::Url::parse(value).ok()?;
         match url.scheme() {
             "http" | "https" => url,
-            "ssh" | "git" => tauri::Url::parse(&format!("https://{}{}", url.host_str()?, url.path())).ok()?,
+            "ssh" | "git" => {
+                tauri::Url::parse(&format!("https://{}{}", url.host_str()?, url.path())).ok()?
+            }
             _ => return None,
         }
     } else {
         let (host, path) = value.split_once(':')?;
         let (_, host) = host.rsplit_once('@')?;
-        if host.is_empty() || path.is_empty() || host.contains(['/', '\\']) { return None; }
+        if host.is_empty() || path.is_empty() || host.contains(['/', '\\']) {
+            return None;
+        }
         tauri::Url::parse(&format!("https://{host}/{}", path.trim_start_matches('/'))).ok()?
     };
     url.set_username("").ok()?;
@@ -198,22 +207,37 @@ pub async fn open_project_remote(
     let path = project_path(&window, &projects)?;
     tauri::async_runtime::spawn_blocking(move || {
         let error = || locale::text("project.remote-unavailable").to_owned();
-        let value = git(Path::new(&path), &["remote", "get-url", "--", &remote]).map_err(|_| error())?;
+        let value =
+            git(Path::new(&path), &["remote", "get-url", "--", &remote]).map_err(|_| error())?;
         let url = remote_browser_url(value.trim()).ok_or_else(error)?;
         tauri_plugin_opener::open_url(url.as_str(), None::<&str>).map_err(|error| error.to_string())
-    }).await.map_err(|error| error.to_string())?
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{commit_file, TempRepo};
+    use crate::tests::{TempRepo, commit_file};
     #[test]
     fn browser_remote_urls_omit_credentials_and_reject_local_paths() {
-        for remote in ["git@example.org:team/repo.git", "ssh://git@example.org/team/repo.git", "https://user:secret@example.org/team/repo.git?token=private"] {
-            assert_eq!(remote_browser_url(remote).unwrap().as_str(), "https://example.org/team/repo");
+        for remote in [
+            "git@example.org:team/repo.git",
+            "ssh://git@example.org/team/repo.git",
+            "https://user:secret@example.org/team/repo.git?token=private",
+        ] {
+            assert_eq!(
+                remote_browser_url(remote).unwrap().as_str(),
+                "https://example.org/team/repo"
+            );
         }
-        for remote in ["../repo.git", "C:/repo.git", "file:///tmp/repo.git", "ext::command"] {
+        for remote in [
+            "../repo.git",
+            "C:/repo.git",
+            "file:///tmp/repo.git",
+            "ext::command",
+        ] {
             assert!(remote_browser_url(remote).is_none());
         }
     }
@@ -290,24 +314,28 @@ mod tests {
         std::fs::write(repo.0.join("other.txt"), "keep").unwrap();
         git(&repo.0, &["add", "other.txt"]).unwrap();
         let before = preview(&repo.0, "file.txt", &old.tip[..8]).unwrap();
-        assert!(restore(
-            &repo.0,
-            "file.txt",
-            &old.tip,
-            &before.head,
-            &before.branch,
-            false
-        )
-        .is_err());
-        assert!(restore(
-            &repo.0,
-            "file.txt",
-            &old.tip,
-            &old.tip,
-            &before.branch,
-            true
-        )
-        .is_err());
+        assert!(
+            restore(
+                &repo.0,
+                "file.txt",
+                &old.tip,
+                &before.head,
+                &before.branch,
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            restore(
+                &repo.0,
+                "file.txt",
+                &old.tip,
+                &old.tip,
+                &before.branch,
+                true
+            )
+            .is_err()
+        );
         let result = restore(
             &repo.0,
             "file.txt",
