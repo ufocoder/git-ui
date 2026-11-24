@@ -265,16 +265,16 @@ fn search_page(
             HashSet::new()
         } else {
             let query = text.strip_prefix("./").unwrap_or(text);
-            let escaped: String = query
-                .chars()
-                .flat_map(|ch| {
-                    if "*?[]\\".contains(ch) {
-                        vec!['\\', ch]
-                    } else {
-                        vec![ch]
-                    }
-                })
-                .collect();
+            // Bracket expressions survive Git for Windows path normalization;
+            // backslash escaping of '[' and ']' does not.
+            let escaped: String = query.chars().map(|ch| match ch {
+                '[' => "[[]".into(),
+                ']' => "[]]".into(),
+                '*' => "[*]".into(),
+                '?' => "[?]".into(),
+                '\\' => "\\\\".into(),
+                other => other.to_string(),
+            }).collect();
             read_hashes(
                 vec![],
                 vec![
