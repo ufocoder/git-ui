@@ -100,7 +100,7 @@ jobs:
 
       - name: Build native UI test application
         if: runner.os == 'Windows'
-        run: npm run tauri -- build --debug --no-bundle --config tests/native/tauri.conf.json -- --locked
+        run: npm run tauri -- build --debug --features native-e2e --no-bundle --config tests/native/tauri.conf.json -- --locked
 
       - name: Test native UI with real repositories
         if: runner.os == 'Windows'

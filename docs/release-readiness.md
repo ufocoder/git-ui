@@ -46,7 +46,7 @@ WebDriver logs in the `native-ui-results` CI artifact, including failures.
 Run on Windows after installing matching msedgedriver:
 
 ```sh
-npm run tauri -- build --debug --no-bundle --config tests/native/tauri.conf.json -- --locked
+npm run tauri -- build --debug --features native-e2e --no-bundle --config tests/native/tauri.conf.json -- --locked
 npm run test:native
 ```
 
@@ -55,3 +55,8 @@ A successful CI run is required before calling Windows native smoke verified.
 The risk scenarios validate Git state and file contents after each UI action.
 For installed release builds, repeat the suite manually on macOS as well: this
 Windows WebDriver setup does not establish macOS UI behavior or installer correctness.
+
+The `native-e2e` feature is debug-only and explicitly forwards the driver's
+WebView2 browser arguments to the test window. Elevated Windows hosts can ignore
+the environment-only override (https://github.com/tauri-apps/wry/issues/1782).
+The feature is never enabled for normal builds and refuses release compilation.

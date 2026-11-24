@@ -54,6 +54,21 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(all(feature = "native-e2e", not(debug_assertions)))]
+    compile_error!("native-e2e instrumentation is restricted to debug builds");
+    let context = tauri::generate_context!();
+    #[cfg(all(windows, feature = "native-e2e"))]
+    let context = {
+        let mut context = context;
+        // Elevated WebView2 hosts can ignore the driver's environment override.
+        // Supply it explicitly only in the dedicated debug automation build.
+        if let Ok(arguments) = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") {
+            for window in &mut context.config_mut().app.windows {
+                window.additional_browser_args = Some(arguments.clone());
+            }
+        }
+        context
+    };
     tauri::Builder::default()
         .setup(|app| {
             locale::load(app.handle());
@@ -185,7 +200,7 @@ pub fn run() {
                 window.state::<Projects>().remove(window.label());
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect(locale::text("app.start-error"));
 }
 
