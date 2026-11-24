@@ -1,3 +1,6 @@
 node_modules
 dist
 .updater/
+
+# Native UI test screenshots and driver logs
+test-results/

@@ -105,7 +105,7 @@ export default function WorktreeCommit(props: WorktreeCommitProps) {
             onSelect={file => void openFile(file)} onSelectDirectory={openDirectory}
             renderDirectoryControl={(path, directory) => <Checkbox class="space-x-0" checked={directory.checked} indeterminate={directory.indeterminate} disabled={disabled()}
               onChange={checked => void stageFiles(directory.files(), checked)} aria-label={directory.checked ? t("stage.unstage-file", { path }) : t("stage.file", { path })} />}
-            renderControl={file => <Checkbox class="space-x-0" checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
+            renderControl={file => <Checkbox data-testid={`stage-${file.path}`} class="space-x-0" checked={file.staged && !file.partially_staged} indeterminate={file.partially_staged} disabled={disabled()}
               onChange={checked => void stageFile(file, checked)} aria-label={file.staged && !file.partially_staged ? t("stage.unstage-file", { path: file.path }) : t("stage.file", { path: file.path })} />} />
         </Show>
       </section>

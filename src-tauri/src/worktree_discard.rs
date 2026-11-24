@@ -429,13 +429,14 @@ mod tests {
     #[test]
     fn new_files_and_literal_names_are_saved_before_removal() {
         let repo = repo();
-        let paths = [
-            "new [1].txt",
-            "中文\nfile.txt",
-            ":(glob)*.txt",
-            "control\u{1}file.txt",
-        ];
-        for path in paths {
+        let paths = vec!["new [1].txt", "中文 file.txt"];
+        #[cfg(unix)]
+        let paths = {
+            let mut paths = paths;
+            paths.extend(["中文\nfile.txt", ":(glob)*.txt", "control\u{1}file.txt"]);
+            paths
+        };
+        for path in &paths {
             write(&repo, path, "saved new content\n");
         }
         write(&repo, "other.txt", "untouched\n");

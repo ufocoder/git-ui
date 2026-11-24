@@ -80,8 +80,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure deterministic Git test behavior
+        run: git config --global core.autocrlf false
+
       - name: Test Rust backend
-        if: runner.os == 'macOS'
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
 
       - name: Test Windows background processes
@@ -90,3 +92,25 @@ jobs:
 
       - name: Build Tauri application
         run: npm run tauri -- build --no-bundle -- --locked
+
+      - name: Install native UI test drivers
+        if: runner.os == 'Windows'
+        run: |
+          cargo install tauri-driver --locked
+          ./scripts/setup-edge-driver.ps1
+
+      - name: Build native UI test application
+        if: runner.os == 'Windows'
+        run: npm run tauri -- build --debug --no-bundle --config tests/native/tauri.conf.json -- --locked
+
+      - name: Test native UI with real repositories
+        if: runner.os == 'Windows'
+        run: npm run test:native
+
+      - name: Upload native UI evidence
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ui-results
+          path: test-results/native
+          if-no-files-found: ignore

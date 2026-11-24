@@ -118,8 +118,10 @@ jobs:
           workspaces: src-tauri -> target
           key: release-${{ matrix.target }}
       - run: npm ci
+      - name: Configure deterministic Git test behavior
+        run: git config --global core.autocrlf false
       - name: Test Rust backend
-        if: matrix.target == 'aarch64-apple-darwin'
+        if: matrix.target != 'x86_64-apple-darwin'
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
       - name: Build and upload installers to draft
         uses: tauri-apps/tauri-action@v1

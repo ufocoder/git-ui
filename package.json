@@ -10,6 +10,7 @@
     "serve": "vite preview",
     "tauri": "node scripts/tauri.mjs",
     "lint": "oxlint --max-warnings=0 .",
+    "test:native": "node tests/native/smoke.mjs",
     "lint:fix": "oxlint --fix --max-warnings=0 .",
     "site:build": "node website/scripts/build.mjs",
     "site:dev": "vite website/dist --port 1422"
