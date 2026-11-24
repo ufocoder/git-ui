@@ -1,3 +1,4 @@
+mod worktree_discard;
 mod projects;
 mod repository_operations;
 
@@ -111,6 +112,8 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            worktree_discard::preview_discard_changes,
+            worktree_discard::discard_worktree_changes,
             file_actions::file_actions_platform,
             file_actions::preview_restore_path,
             file_actions::restore_project_path,

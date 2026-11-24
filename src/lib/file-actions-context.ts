@@ -7,6 +7,7 @@ export type FileActions = {
   history: (path: string) => void;
   copy: (path: string) => void;
   reveal: (path: string) => void;
+  discard?: (path: string) => void;
   restore: (path: string, commit?: string) => void;
 };
 export const FileActionsContext = createContext<FileActions>();

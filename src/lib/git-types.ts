@@ -80,3 +80,7 @@ export type CommitPushTarget = {
 
 export type PullMode = "fast-forward-only" | "rebase" | "merge";
 export type SyncAction = "fetch" | "pull" | "push";
+
+export type DiscardTarget = { head: string; branch: string; paths: string[]; token: string };
+export type DiscardPreview = { target: DiscardTarget; files: CommitFile[] };
+export type DiscardResult = { history: History; backup: string; count: number };

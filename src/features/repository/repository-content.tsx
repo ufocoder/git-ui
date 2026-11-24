@@ -27,6 +27,7 @@ type RepositoryContentProps = {
   disabled: boolean;
   terminalOpen: boolean;
   onRefresh: () => Promise<void>;
+  onDiscard: (path: string) => void;
   onHistoryChange: (history: History) => void;
   onBusyChange: (busy: boolean) => void;
 };
@@ -36,7 +37,7 @@ export default function RepositoryContent(props: RepositoryContentProps) {
   const historySearch = createHistorySearch();
   const [terminalSizes, setTerminalSizes] = createSignal(readPanelSizes(props.history.path, "workspace.terminal", [0.75, 0.25]));
   const sizes = () => props.terminalOpen ? terminalSizes() : [1, 0];
-  return <FileActionsProvider history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onHistoryChange={props.onHistoryChange} onHistory={path => {
+  return <FileActionsProvider onDiscard={props.onDiscard} history={props.history} disabled={props.disabled} onBusyChange={props.onBusyChange} onHistoryChange={props.onHistoryChange} onHistory={path => {
     historySearch.jumpRef[1]("");
     historySearch.filter[1]({ text: "", sha: "", author: "", file: path });
     historySearch.open[1](true); props.onModeChange("history");

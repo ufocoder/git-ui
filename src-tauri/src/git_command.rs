@@ -98,11 +98,11 @@ fn run(
         .arg("-C")
         .arg(path)
         .args(&arguments)
-        .envs(env.iter().copied())
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
         .env_remove("GIT_COMMON_DIR")
+        .envs(env.iter().copied())
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_EDITOR", "true");
     #[cfg(target_os = "macos")]

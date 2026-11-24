@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::path::{Component, Path, PathBuf};
 use tauri::{State, WebviewWindow};
 
-fn target(root: &Path, file: &str) -> Result<PathBuf, String> {
+pub(super) fn target(root: &Path, file: &str) -> Result<PathBuf, String> {
     let relative = Path::new(file);
     if file.is_empty()
         || file.contains('\0')

@@ -10,7 +10,7 @@ import { TextField, TextFieldLabel, TextFieldInput } from "~/components/ui/text-
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
 
-export default function FileActionsProvider(props: { history: History; disabled: boolean; onHistory: (path: string) => void; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void; children: JSX.Element }) {
+export default function FileActionsProvider(props: { history: History; disabled: boolean; onHistory: (path: string) => void; onHistoryChange: (history: History) => void; onBusyChange: (busy: boolean) => void; onDiscard?: (path: string) => void; children: JSX.Element }) {
   const [platform, setPlatform] = createSignal("");
   const [path, setPath] = createSignal("");
   const [commit, setCommit] = createSignal("");
@@ -52,6 +52,7 @@ export default function FileActionsProvider(props: { history: History; disabled:
         .catch(failure => reportTerminalError(failure, t("file-action.copy-path")));
     },
     reveal: path => { void git.revealPath(path).catch(() => {}); },
+    discard: props.onDiscard,
     restore: (path, source) => { setPath(path); setCommit(source && source !== WORKTREE ? source : props.history.tip); setPreview(undefined); setConfirmed(false); setError(""); },
   }}>
     {props.children}

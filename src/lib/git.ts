@@ -38,6 +38,7 @@ import type {
 export * from "./git-types";
 
 const operationLabels = (): Record<string, string> => ({
+  preview_discard_changes: t("discard.title"), discard_worktree_changes: t("discard.title"),
   restore_project_path: t("file-action.reset"), preview_restore_path: t("file-action.reset"), reveal_project_path: t("file-action.reveal"),
   open_project_remote: t("project.view-remote"),
   get_branch_comparisons: t("sidebar.branches"),
@@ -62,7 +63,7 @@ const operationLabels = (): Record<string, string> => ({
   checkout_project_commit: t("command.detach"), reset_project_commit: t("command.reset"), set_project_file_staged: t("git.stage"),
   commit_project_changes: t("command.commit"), initialize_project: t("command.init"), can_initialize_project: t("git.check-folder"),
 });
-const mutations = new Set(["rewrite_history", "restore_rewritten_history", "stage_worktree_hunk", "force_push_with_lease","execute_branch_action","change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
+const mutations = new Set(["discard_worktree_changes", "rewrite_history", "restore_rewritten_history", "stage_worktree_hunk", "force_push_with_lease","execute_branch_action","change_project_reference","delete_project_tag","push_project_tags","restore_project_path","save_git_settings","resolve_conflict_file","run_commit_operation","publish_project_branch", "set_project_upstream","stash_project","create_project_branch_at_commit","switch_project_branch", "create_project_branch", "create_project_tag", "create_project_tag_at_commit",
   "add_project_remote", "checkout_project_commit", "reset_project_commit", "set_project_file_staged", "commit_project_changes", "initialize_project", "sync_project"]);
 function operationName(command: string, args?: Record<string, unknown>): string {
   if (command === "execute_branch_action") return args?.action === "delete" ? t("ref-action.delete-branch") : t("branch-action.rebase");
@@ -103,6 +104,8 @@ const historySearch = createSearchRequests(
 
 // The Rust backend owns repository access; components use this typed API.
 export const git = {
+  previewDiscardChanges: (paths: string[]) => request<import("./git-types").DiscardPreview>("preview_discard_changes", { paths }),
+  discardWorktreeChanges: (target: import("./git-types").DiscardTarget) => request<import("./git-types").DiscardResult>("discard_worktree_changes", { target, confirmed: true }),
   fileActionsPlatform: () => invoke<string>("file_actions_platform"),
   previewRestorePath: (file: string, commit: string) => request<RestorePreview>("preview_restore_path", { file, commit }),
   restorePath: (file: string, preview: RestorePreview, confirmed: boolean) => request<History>("restore_project_path", { file, commit: preview.commit, head: preview.head, branch: preview.branch, confirmed }),

@@ -6,6 +6,7 @@ import { git, type History, type PullMode, type RepositoryMode, type SyncAction 
 
 type RepositoryToolbarProps = {
   onStashAll: () => void;
+  onDiscardChanges: () => void;
   onStashActionsMount: (element: HTMLDivElement) => void;
   mode: RepositoryMode;
   busy: boolean;
@@ -103,6 +104,7 @@ export default function RepositoryToolbar(props: RepositoryToolbarProps) {
               disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation)} title={t("stash.save-changes")}>
               {t("stash.title")}
             </Button>
+            <Button variant="ghost" class="h-control-toolbar px-control-sm-x" onClick={props.onDiscardChanges} disabled={props.busy || !props.history?.has_changes || !props.history.tip || Boolean(props.history.operation) || Boolean(props.history.conflicts.length) || props.history.git_lfs_missing}>{t("discard.path-action")}</Button>
           </Show>
           <Show when={props.mode === "stash"}><div ref={props.onStashActionsMount} class="flex items-center gap-2" /></Show>
 

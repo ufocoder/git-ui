@@ -1,3 +1,4 @@
+import DiscardChangesDialog from "~/features/changes/discard-changes-dialog";
 import { createRepositoryOperation } from "./repository-operation";
 import type { RewriteRecovery } from "~/lib/git";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -34,6 +35,7 @@ export default function RepositoryWorkspace(props: {
   onSettings: () => void;
   onRepositorySettings: () => void;
 }) {
+  const [discardPath, setDiscardPath] = createSignal<string>();
   const busy = () => props.busy;
   const setBusy = props.onBusyChange;
   let disposed = false;
@@ -275,7 +277,7 @@ export default function RepositoryWorkspace(props: {
     <BranchActionDialog action={branchAction()} busy={busy()} onClose={() => setBranchAction(undefined)} onExecute={executeBranchAction} />
     <ReferenceActionDialog action={referenceAction()} busy={busy()} onClose={() => setReferenceAction(undefined)} onExecute={changeReference} />
     <main class="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <RepositoryToolbar onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onForcePush={() => void sync.requestForcePush()} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
+        <RepositoryToolbar onDiscardChanges={() => setDiscardPath("")} onStashActionsMount={setStashActionsMount} onStashAll={() => { void runStash({ kind: "save", message: "", include_untracked: true }).catch(() => setTerminalOpen(true)); }} mode={repositoryMode()} busy={busy()} history={history()} action={syncAction()} onSync={sync.request} onForcePush={() => void sync.requestForcePush()} onConfigureUpstream={() => sync.setTrackingMode("upstream")} terminalOpen={terminalOpen()} onToggleTerminal={() => setTerminalOpen(value => !value)} />
         <Show when={history().git_lfs_missing}>
           <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-warning px-4 py-2 text-warning-foreground">
             <p role="status" class="text-xs">{t("setup.lfs-warning")}</p>
@@ -312,9 +314,10 @@ export default function RepositoryWorkspace(props: {
           onSubmit={event => void createBranch(event)} />
         <Show when={busy()}><p role="status" class="sr-only">{t("app.refreshing")}</p></Show>
         <section aria-label={t("app.commits")} class="min-h-0 min-w-0 flex-1">
-              <RepositoryContent onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
+              <RepositoryContent onDiscard={setDiscardPath} onSubmitCommit={submitCommit} commitPhase={commitFlowState().kind} stashListMount={stashListMount()} stashActionsMount={stashActionsMount()} historyBranch={historyBranch()} onHistoryBranchChange={setHistoryBranch} onStash={runStash} onRefresh={refreshHistory} scope="all" mode={repositoryMode()} onModeChange={changeRepositoryMode} history={history()} disabled={busy()} terminalOpen={terminalOpen()} onHistoryChange={setHistory} onBusyChange={setBusy} />
         </section>
     </main>
+    <DiscardChangesDialog path={discardPath()} history={history()} busy={busy()} onClose={() => setDiscardPath(undefined)} onHistoryChange={setHistory} onBusyChange={setBusy} onOpenStash={() => changeRepositoryMode("stash")} />
     <Dialog open={Boolean(sync.forceTarget())} onOpenChange={open => { if (!open) sync.setForceTarget(undefined); }}>
       <Show when={sync.forceTarget()}>{target => <DialogContent>
         <DialogHeader>
