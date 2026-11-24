@@ -46,6 +46,28 @@ pub(crate) fn output_cancellable(
     input: Option<String>,
     cancelled: &std::sync::atomic::AtomicBool,
 ) -> std::io::Result<std::process::Output> {
+    output_controlled(command, input, cancelled, None)
+}
+
+pub(crate) fn output_with_timeout(
+    command: &mut Command,
+    input: Option<String>,
+    timeout: std::time::Duration,
+) -> std::io::Result<std::process::Output> {
+    output_controlled(
+        command,
+        input,
+        &std::sync::atomic::AtomicBool::new(false),
+        Some(timeout),
+    )
+}
+
+fn output_controlled(
+    command: &mut Command,
+    input: Option<String>,
+    cancelled: &std::sync::atomic::AtomicBool,
+    timeout: Option<std::time::Duration>,
+) -> std::io::Result<std::process::Output> {
     use std::{
         io::{Read, Write},
         sync::atomic::Ordering,
@@ -59,6 +81,12 @@ pub(crate) fn output_cancellable(
     if input.is_some() {
         command.stdin(Stdio::piped());
     }
+    #[cfg(unix)]
+    if timeout.is_some() {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let started = std::time::Instant::now();
     let mut child = command.spawn()?;
     let stdout = child.stdout.take().expect("piped stdout");
     let stderr = child.stderr.take().expect("piped stderr");
@@ -77,6 +105,23 @@ pub(crate) fn output_cancellable(
             .map(|mut stdin| std::thread::spawn(move || stdin.write_all(input.as_bytes())))
     });
     let status = loop {
+        if timeout.is_some_and(|limit| started.elapsed() >= limit) {
+            // End SSH / credential-helper descendants as well: they inherit pipes.
+            #[cfg(unix)]
+            let _ = background("kill")
+                .args(["-KILL", "--", &format!("-{}", child.id())])
+                .status();
+            #[cfg(windows)]
+            let _ = background("taskkill")
+                .args(["/PID", &child.id().to_string(), "/T", "/F"])
+                .status();
+            let _ = child.kill();
+            let _ = child.wait();
+            break Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "Git network operation timed out",
+            ));
+        }
         if cancelled.load(Ordering::Relaxed) {
             let _ = child.kill();
             let _ = child.wait();
@@ -158,6 +203,15 @@ mod cancellable_tests {
         assert!(output.status.success());
         assert!(output.stdout.len() >= 256 * 1024);
         assert!(output.stderr.len() >= 256 * 1024);
+    }
+    #[test]
+    fn timeout_reaps_child_and_drains_large_output() {
+        let start = Instant::now();
+        let error =
+            super::output_with_timeout(&mut child("wait"), None, Duration::from_millis(100))
+                .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+        assert!(start.elapsed() < Duration::from_secs(3));
     }
     #[test]
     fn cancellation_kills_and_reaps_a_running_child() {

@@ -4,6 +4,7 @@ use std::path::Path;
 pub(crate) const SEARCH_CANCELLED: &str = "__history_search_cancelled__";
 
 enum GitCommandError {
+    TimedOut,
     Cancelled,
     Process(std::io::Error),
     Exit { code: Option<i32>, stderr: String },
@@ -12,6 +13,7 @@ enum GitCommandError {
 impl GitCommandError {
     fn user_message(&self) -> String {
         match self {
+            Self::TimedOut => locale::text("git.network-timeout").into(),
             Self::Cancelled => SEARCH_CANCELLED.into(),
             Self::Process(error) => locale::format("error.start-git", &[("e", error.to_string())]),
             Self::Exit { stderr, .. } if missing_lfs(stderr) => {
@@ -123,7 +125,12 @@ fn run(
     let input = input
         .map(str::to_owned)
         .or_else(|| (!revisions.is_empty()).then(|| revisions.join("\n") + "\n"));
-    let output = if let Some(cancelled) = cancelled {
+    let network = args
+        .iter()
+        .any(|arg| matches!(*arg, "fetch" | "push" | "pull" | "ls-remote" | "clone"));
+    let output = if network {
+        process::output_with_timeout(&mut command, input, std::time::Duration::from_secs(120))
+    } else if let Some(cancelled) = cancelled {
         process::output_cancellable(&mut command, input, cancelled)
     } else if let Some(input) = input {
         use std::io::Write;
@@ -156,7 +163,11 @@ fn run(
         if cancelled.is_some() && error.kind() == std::io::ErrorKind::Interrupted {
             return GitCommandError::Cancelled;
         }
-        let error = GitCommandError::Process(error);
+        let error = if error.kind() == std::io::ErrorKind::TimedOut {
+            GitCommandError::TimedOut
+        } else {
+            GitCommandError::Process(error)
+        };
         terminal_log::finish(path, log_id, error.user_message(), false, None);
         error
     })?;
@@ -185,5 +196,97 @@ fn run(
     match failure {
         Some(error) => Err(error),
         None => Ok(output.stdout),
+    }
+}
+
+#[cfg(test)]
+mod network_tests {
+    use super::*;
+    use crate::tests::{TempRepo, commit_file};
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+        time::Duration,
+    };
+
+    #[test]
+    fn http_authentication_failure_preserves_head_index_and_worktree() {
+        let repo = TempRepo::new();
+        repo.init();
+        commit_file(&repo, "base\n", "base");
+        std::fs::write(repo.0.join("file.txt"), "keep\n").unwrap();
+        let head = git(&repo.0, &["rev-parse", "HEAD"]).unwrap();
+        let index = git(&repo.0, &["ls-files", "--stage"]).unwrap();
+        let server = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = server.local_addr().unwrap();
+        server.set_nonblocking(true).unwrap();
+        let stop = Arc::new(AtomicBool::new(false));
+        let finished = stop.clone();
+        let thread = std::thread::spawn(move || {
+            while !finished.load(Ordering::Relaxed) {
+                if let Ok((mut stream, _)) = server.accept() {
+                    stream
+                        .set_read_timeout(Some(Duration::from_secs(2)))
+                        .unwrap();
+                    let mut request = [0; 8192];
+                    let _ = stream.read(&mut request);
+                    let _ = stream.write_all(b"HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"test\"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                } else {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+            }
+        });
+        let result = git(
+            &repo.0,
+            &[
+                "-c",
+                "credential.helper=",
+                "-c",
+                "core.askPass=",
+                "ls-remote",
+                &format!("http://{address}/repo.git"),
+            ],
+        );
+        stop.store(true, Ordering::Relaxed);
+        thread.join().unwrap();
+        assert!(result.is_err());
+        assert_eq!(git(&repo.0, &["rev-parse", "HEAD"]).unwrap(), head);
+        assert_eq!(git(&repo.0, &["ls-files", "--stage"]).unwrap(), index);
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "keep\n"
+        );
+    }
+
+    #[test]
+    fn unreachable_ssh_remote_fails_without_prompting_or_changing_files() {
+        let repo = TempRepo::new();
+        repo.init();
+        commit_file(&repo, "base\n", "base");
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let before = git(&repo.0, &["rev-parse", "HEAD"]).unwrap();
+        let started = std::time::Instant::now();
+        let result = git(
+            &repo.0,
+            &[
+                "-c",
+                "core.sshCommand=ssh -F none -o BatchMode=yes -o ConnectTimeout=2 -o ConnectionAttempts=1",
+                "ls-remote",
+                &format!("ssh://git@127.0.0.1:{port}/repo.git"),
+            ],
+        );
+        assert!(result.is_err());
+        assert!(started.elapsed() < Duration::from_secs(10));
+        assert_eq!(git(&repo.0, &["rev-parse", "HEAD"]).unwrap(), before);
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("file.txt")).unwrap(),
+            "base\n"
+        );
     }
 }

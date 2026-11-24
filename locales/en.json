@@ -296,6 +296,7 @@
   "git.check-folder": "Check folder",
   "git.command": "git {p1}",
   "git.load-commits": "Load commits",
+  "git.network-timeout": "The network operation timed out. Check the repository and remote state before trying again.",
   "git.open": "Open project",
   "git.read-commit": "Read commit",
   "git.read-files": "Read files",

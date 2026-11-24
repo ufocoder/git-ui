@@ -296,6 +296,7 @@
   "git.check-folder": "检查文件夹",
   "git.command": "git {p1}",
   "git.load-commits": "加载提交",
+  "git.network-timeout": "网络操作超时。请检查仓库和远程分支状态后再重试。",
   "git.open": "打开项目",
   "git.read-commit": "读取提交",
   "git.read-files": "读取文件",
