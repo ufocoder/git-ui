@@ -53,6 +53,15 @@ async function click(value,using='xpath'){
   await command(`/element/${id}/click`,{});return true;
  },value);
 }
+async function fill(value,text,using='xpath'){
+ await until(async()=>{
+  const found=await command('/element',{using,value});
+  const id=found['element-6066-11e4-a52e-4f735466cecf'];
+  if(!await command(`/element/${id}/enabled`))return false;
+  await command(`/element/${id}/clear`,{});
+  await command(`/element/${id}/value`,{text});return true;
+ },value);
+}
 async function contains(text){return until(async()=>String(await command('/source')).includes(text),text);}
 async function screenshot(name){await writeFile(join(artifacts,`${name}.png`),Buffer.from(await command('/screenshot'),'base64'));}
 async function refresh(){await command('/execute/sync',{script:'window.dispatchEvent(new Event("focus")); return true;',args:[]});}
@@ -60,6 +69,7 @@ async function switchProject(name){
  await click('//button[@aria-haspopup="dialog" and starts-with(@aria-label,"Switch")]');
  await click(xpath(name));
  await until(async()=>String(await command('/title')).includes(name),`project ${name}`);
+ await element(`//button[@aria-label=${JSON.stringify('Switch project: '+name)}]`);
 }
 
 try{
@@ -70,7 +80,7 @@ try{
  await click(xpath('Changes'));
  await click('//*[@data-testid="stage-file.txt"]/*[last()]');
  await until(()=>git(repo,'diff','--cached','--name-only')==='file.txt','staging wrote real index');
- const message=await element('textarea','css selector');await command(`/element/${message}/value`,{text:'UI smoke commit'});
+ await fill('textarea','UI smoke commit','css selector');
  await click(xpath('Create commit'));
  await until(()=>git(repo,'log','-1','--format=%s')==='UI smoke commit','commit created');
  await screenshot('commit');
@@ -78,7 +88,9 @@ try{
  await command('/execute/sync',{script:'window.dispatchEvent(new Event("focus")); return true;',args:[]});
  await click(xpath('Changes'));await click(xpath('Discard changes…'));
  await contains('Discard file changes');
- await click('//label[contains(.,"I confirm")]/div');
+ await click('//label[contains(.,"I confirm")]/div/*[last()]');
+ const confirmation=await element('//label[contains(.,"I confirm")]//input');
+ assert.equal(await command(`/element/${confirmation}/selected`),true,'one control click must check confirmation exactly once');
  await click('//button[normalize-space(.)="Discard changes"]');
  await contains('Changes discarded');
  assert.equal(await readFile(join(repo,'file.txt'),'utf8'),'changed\n');assert.ok(git(repo,'stash','list'));
@@ -88,7 +100,7 @@ try{
  await click(xpath('history-project'));await contains('Initial commit');
  assert.ok(!String(await command('/source')).includes('UI smoke commit'));
  await screenshot('project-switch');
- await runRiskScenarios({command,element,click,contains,screenshot,until,git,repo,history:second,switchProject,refresh},fixtures);
+ await runRiskScenarios({command,element,click,fill,contains,screenshot,until,git,repo,history:second,switchProject,refresh},fixtures);
  console.log('Native UI smoke passed: staging, commit, external refresh, discard backup, Stash, project switch.');
 }catch(error){console.error('Native UI failure:',error);if(session){await screenshot('failure').catch(()=>{});await writeFile(join(artifacts,'failure.xml'),String(await command('/source').catch(()=>'')));}throw error;}
 finally{

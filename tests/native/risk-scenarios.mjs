@@ -23,7 +23,7 @@ export async function prepareRiskRepositories(root, history, git) {
 }
 
 export async function runRiskScenarios(ctx, fixtures) {
- const {command,element,click,contains,screenshot,until,git,repo,history,switchProject,refresh}=ctx;
+ const {command,element,click,fill,contains,screenshot,until,git,repo,history,switchProject,refresh}=ctx;
  const exact=text=>`//button[normalize-space(.)=${JSON.stringify(text)}]`;
  const row=subject=>`//*[@data-commit-index and contains(.,${JSON.stringify(subject)})]`;
  async function rightClick(selector){
@@ -54,7 +54,7 @@ export async function runRiskScenarios(ctx, fixtures) {
  await click(row('Third change'));
  await command('/actions',{actions:[{type:'key',id:'keyboard',actions:[{type:'keyDown',value:'\uE008'},{type:'keyDown',value:'\uE015'},{type:'keyUp',value:'\uE015'},{type:'keyUp',value:'\uE008'}]}]});
  await rightClick(row('Third change'));await click(menu('Squash commits'));
- const message=await element('//*[@role="dialog"]//textarea');await command(`/element/${message}/clear`,{});await command(`/element/${message}/value`,{text:'Squashed UI changes'});
+ await fill('//*[@role="dialog"]//textarea','Squashed UI changes');
  await click(confirm);await click(exact('Squash'));
  await until(()=>git(history,'log','-1','--format=%s')==='Squashed UI changes','squash result');
  assert.equal(git(history,'rev-list','--count','HEAD'),'2');assert.equal(await readFile(join(history,'file.txt'),'utf8'),'third\n');

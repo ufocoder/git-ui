@@ -19,7 +19,11 @@ const Checkbox = <T extends ValidComponent = "div">(
       {...others}
     >
       <CheckboxPrimitive.Input class="peer" spellcheck={false} autocorrect="off" autocapitalize="off" autocomplete="off" />
-      <CheckboxPrimitive.Control class={cn("size-4 shrink-0 rounded-sm border border-primary ring-offset-background disabled:cursor-not-allowed disabled:opacity-disabled peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 data-[checked]:border-none data-[indeterminate]:border-none data-[checked]:bg-primary data-[indeterminate]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:text-primary-foreground", local.variant === "destructive" && "border-destructive peer-focus-visible:ring-destructive data-[checked]:bg-destructive data-[indeterminate]:bg-destructive data-[checked]:text-destructive-foreground data-[indeterminate]:text-destructive-foreground")}>
+      <CheckboxPrimitive.Control
+        // Kobalte toggles the input itself. Prevent a wrapping native label
+        // from activating it a second time after the control's click bubbles.
+        onClick={event => event.preventDefault()}
+        class={cn("size-4 shrink-0 rounded-sm border border-primary ring-offset-background disabled:cursor-not-allowed disabled:opacity-disabled peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 data-[checked]:border-none data-[indeterminate]:border-none data-[checked]:bg-primary data-[indeterminate]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:text-primary-foreground", local.variant === "destructive" && "border-destructive peer-focus-visible:ring-destructive data-[checked]:bg-destructive data-[indeterminate]:bg-destructive data-[checked]:text-destructive-foreground data-[indeterminate]:text-destructive-foreground")}>
         <CheckboxPrimitive.Indicator>
           <Switch>
             <Match when={!others.indeterminate}>
