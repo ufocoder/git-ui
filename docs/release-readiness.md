@@ -32,7 +32,7 @@ cases stay on Unix; common filename, staging and recovery tests run on Windows.
 ## Native UI smoke
 
 Windows CI builds an application containing the real frontend and Rust backend,
-then drives its WebView through tauri-driver and a matching Edge WebDriver.
+then drives its WebView through a matching Edge WebDriver.
 There is no mocked Git IPC. The suite uses disposable repositories and an isolated
 application profile under a separate test application identifier; it must never run against user repositories.
 
@@ -43,7 +43,7 @@ a linear commit range, restoring the original history, rebasing onto another
 branch, resolving a real text conflict and continuing the merge. It checks the resulting Git files/history and captures screenshots and
 WebDriver logs in the `native-ui-results` CI artifact, including failures.
 
-Run on Windows after installing tauri-driver and matching msedgedriver:
+Run on Windows after installing matching msedgedriver:
 
 ```sh
 npm run tauri -- build --debug --no-bundle --config tests/native/tauri.conf.json -- --locked

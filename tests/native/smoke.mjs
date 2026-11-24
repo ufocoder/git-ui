@@ -24,11 +24,14 @@ await writeFile(join(repo,'file.txt'),'changed\n');
 await mkdir(settings);
 await writeFile(join(settings,'recent-projects.json'),JSON.stringify([repo,second,fixtures.rebase]));
 await writeFile(join(settings,'language.json'),'"en"');
-const driver=spawn('tauri-driver',[],{env:{...process.env},stdio:['ignore','pipe','pipe']});
+const driver=spawn('msedgedriver.exe',['--port=4444','--verbose',`--log-path=${join(artifacts,'edge-driver.log')}`],{
+ env:{...process.env,TAURI_AUTOMATION:'true',TAURI_WEBVIEW_AUTOMATION:'true'},stdio:['ignore','pipe','pipe'],
+});
+driver.on('error',error=>{console.error('Unable to start Edge WebDriver:',error);});
 let logs='';driver.stdout.on('data',chunk=>{logs+=chunk;});driver.stderr.on('data',chunk=>{logs+=chunk;});
 let session;
 async function request(path,body,method=body===undefined?'GET':'POST'){
- const response=await fetch('http://127.0.0.1:4444'+path,{method,body:body===undefined?undefined:JSON.stringify(body),headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000)});
+ const response=await fetch('http://127.0.0.1:4444'+path,{method,body:body===undefined?undefined:JSON.stringify(body),headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(path==='/session'?180000:30000)});
  const result=await response.json();if(result.value?.error)throw new Error(JSON.stringify(result.value));return result.value;
 }
 const command=(path,body,method)=>request(`/session/${session}${path}`,body,method);
@@ -51,7 +54,7 @@ async function switchProject(name){
 
 try{
  await until(()=>request('/status'),'WebDriver startup');
- const created=await request('/session',{capabilities:{alwaysMatch:{'tauri:options':{application:resolve(process.env.GIT_UI_E2E_APP??'src-tauri/target/debug/git-ui.exe')}}}});
+ const created=await request('/session',{capabilities:{alwaysMatch:{browserName:'webview2',pageLoadStrategy:'eager','ms:edgeOptions':{binary:resolve(process.env.GIT_UI_E2E_APP??'src-tauri/target/debug/git-ui.exe')}}}});
  session=created.sessionId;
  await click(xpath('smoke-project'));await contains('Initial commit');
  await click(xpath('Changes'));
@@ -77,7 +80,7 @@ try{
  await screenshot('project-switch');
  await runRiskScenarios({command,element,click,contains,screenshot,until,git,repo,history:second,switchProject,refresh},fixtures);
  console.log('Native UI smoke passed: staging, commit, external refresh, discard backup, Stash, project switch.');
-}catch(error){if(session){await screenshot('failure').catch(()=>{});await writeFile(join(artifacts,'failure.xml'),String(await command('/source').catch(()=>'')));}throw error;}
+}catch(error){console.error('Native UI failure:',error);if(session){await screenshot('failure').catch(()=>{});await writeFile(join(artifacts,'failure.xml'),String(await command('/source').catch(()=>'')));}throw error;}
 finally{
  if(session)await command('',undefined,'DELETE').catch(()=>{});
  driver.kill();await writeFile(join(artifacts,'driver.log'),logs);

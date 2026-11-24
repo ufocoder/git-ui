@@ -96,7 +96,6 @@ jobs:
       - name: Install native UI test drivers
         if: runner.os == 'Windows'
         run: |
-          cargo install tauri-driver --locked
           ./scripts/setup-edge-driver.ps1
 
       - name: Build native UI test application
