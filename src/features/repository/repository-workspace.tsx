@@ -1,3 +1,5 @@
+import { createRepositoryRefresh } from "./repository-refresh";
+import { createBranchCreation } from "./branch-creation";
 import DiscardChangesDialog from "~/features/changes/discard-changes-dialog";
 import { createRepositoryOperation } from "./repository-operation";
 import type { RewriteRecovery } from "~/lib/git";
@@ -6,17 +8,13 @@ import { createRepositorySync } from "~/features/sync/repository-sync";
 import { modeAfterStash } from "~/features/stash/stash-mode";
 import { createCommitFlow, matchesPushTarget, type CommitFlowState, type CommitRequest } from "~/features/changes/commit-flow";
 import OperationStatus from "~/components/sections/operation-status";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import BranchActionDialog, { type BranchAction } from "~/components/sections/branch-action-dialog";
 import type { BranchActionPreview, BranchRemoteTarget } from "~/lib/git";
 import ReferenceActionDialog, { type ReferenceAction } from "~/components/sections/reference-action-dialog";
-import { matchesShortcut } from "~/lib/keyboard-shortcuts";
 import { Button } from "~/components/ui/button";
 import { t } from "~/lib/i18n";
-import { Show, batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { Show, batch, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { git, pushCommittedBranch, type History, type RepositoryMode, type CommitOperation, type StashAction } from "~/lib/git";
-import { isTauri } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import RepositorySidebar from "~/components/sections/repository-sidebar";
 import BranchTrackingDialog from "~/features/sync/branch-tracking-dialog";
 import CommitOperationBar from "~/components/sections/commit-operation-bar";
@@ -46,24 +44,7 @@ export default function RepositoryWorkspace(props: {
   const [repositoryMode, setRepositoryMode] = createSignal<RepositoryMode>("history");
   const [terminalOpen, setTerminalOpen] = createSignal(false);
   const [history, setHistory] = createSignal(props.initialHistory);
-  const windowTitle = createMemo(() => {
-    const project = history();
-    const name = project.path.split(/[\\/]/).filter(Boolean).pop() ?? project.path;
-    return `${name} (${project.current_branch || "HEAD"})`;
-  });
-  createEffect(() => {
-    const title = windowTitle();
-    if (isTauri()) void getCurrentWindow().setTitle(title).catch(error => console.error(error));
-  });
-
-  createEffect(() => {
-    const project = history(), selected = historyBranch();
-    if (selected !== "all" && selected !== "current" && !project.branch_tips?.[selected] && !project.branches.some(name => `refs/heads/${name}` === selected)) setHistoryBranch("all");
-  });
-  const [branchDialogOpen, setBranchDialogOpen] = createSignal(false);
-  const [branchName, setBranchName] = createSignal("");
-  const [branchError, setBranchError] = createSignal("");
-  const [creatingBranch, setCreatingBranch] = createSignal(false);
+  const { branchDialogOpen, setBranchDialogOpen, branchName, setBranchName, branchError, setBranchError, creatingBranch, createBranch } = createBranchCreation({ busy, setBusy, setHistory });
   const [commitFlowState, setCommitFlowState] = createSignal<CommitFlowState>({ kind: "idle" });
   const failedCommitPush = createMemo(() => {
     const state = commitFlowState();
@@ -135,42 +116,7 @@ export default function RepositoryWorkspace(props: {
     if (mode === "conflicts" || mode === "commit" || mode === "stash") void refreshHistory();
   }
 
-  onMount(() => {
-    const refreshShortcut = (event: KeyboardEvent) => {
-      if (!matchesShortcut("refresh", event)) return;
-      event.preventDefault();
-      if (!event.repeat && !busy() && !props.installingUpdate) void refreshHistory();
-    };
-    window.addEventListener("keydown", refreshShortcut, { capture: true });
-    onCleanup(() => window.removeEventListener("keydown", refreshShortcut, { capture: true }));
-  });
-
-  onMount(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let pending = false;
-    let nativeUnlisten: UnlistenFn | undefined;
-    const flush = () => {
-      if (!pending || busy() || document.visibilityState === "hidden") return;
-      pending = false;
-      void refreshHistory();
-    };
-    const schedule = () => {
-      pending = true;
-      clearTimeout(timer);
-      timer = setTimeout(flush, 400);
-    };
-    window.addEventListener("focus", schedule);
-    document.addEventListener("visibilitychange", schedule);
-    createEffect(() => { if (!busy() && pending) { clearTimeout(timer); timer = setTimeout(flush, 400); } });
-    if (isTauri()) void listen("tauri://focus", schedule).then(unlisten => {
-      if (disposed) unlisten(); else nativeUnlisten = unlisten;
-    }).catch(() => { /* DOM focus remains available. */ });
-    onCleanup(() => {
-      clearTimeout(timer); nativeUnlisten?.();
-      window.removeEventListener("focus", schedule);
-      document.removeEventListener("visibilitychange", schedule);
-    });
-  });
+  createRepositoryRefresh({ history, historyBranch, setHistoryBranch, busy, installingUpdate: () => props.installingUpdate, refreshHistory });
 
   const runRepositoryOperation = createRepositoryOperation({
     busy, setBusy, setHistory,
@@ -252,23 +198,6 @@ export default function RepositoryWorkspace(props: {
     return runRepositoryOperation(() => git.addRemote(name, url));
   }
 
-  async function createBranch(event: SubmitEvent) {
-    event.preventDefault();
-    if (busy() || creatingBranch()) return;
-    const name = branchName().trim();
-    if (!name) { setBranchError(t("app.branch-required")); return; }
-    setCreatingBranch(true);
-    setBusy(true);
-    setBranchError("");
-    try {
-      setHistory(await git.createBranch(name));
-      setBranchDialogOpen(false);
-      setBranchName("");
-    } catch {
-      setBranchDialogOpen(false);
-      try { setHistory(await git.getHistory()); } catch { /* Keep the last loaded history. */ }
-    } finally { setCreatingBranch(false); setBusy(false); }
-  }
 
   return <>
     <RepositorySidebar tagFetchRevision={tagFetchRevision()} onStashListMount={setStashListMount} onSettings={props.onSettings} onRepositorySettings={props.onRepositorySettings} history={history()} mode={repositoryMode()} onModeChange={changeRepositoryMode} onChangeProject={props.onChangeProject} projectMenuOpen={props.projectMenuOpen} disabled={busy()} onSwitchBranch={branch => history().git_lfs_missing ? setHistoryBranch(`refs/heads/${branch}`) : void switchBranch(branch)}
