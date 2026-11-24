@@ -42,7 +42,17 @@ async function until(read,description){
 }
 const xpath=text=>`//button[contains(normalize-space(.),${JSON.stringify(text)})]`;
 async function element(value,using='xpath'){return until(async()=>{const e=await command('/element',{using,value});return e['element-6066-11e4-a52e-4f735466cecf'];},value);}
-async function click(value,using){const id=await element(value,using);await until(async()=>{await command(`/element/${id}/click`,{});return true;},value);}
+async function click(value,using='xpath'){
+ await until(async()=>{
+  // Re-resolve after rerenders. Custom controls are divs: native /enabled alone
+  // does not account for Kobalte's temporary data-disabled state during refresh.
+  const found=await command('/element',{using,value});
+  const id=found['element-6066-11e4-a52e-4f735466cecf'];
+  if(!await command(`/element/${id}/enabled`))return false;
+  if(await command(`/element/${id}/attribute/data-disabled`)!==null)return false;
+  await command(`/element/${id}/click`,{});return true;
+ },value);
+}
 async function contains(text){return until(async()=>String(await command('/source')).includes(text),text);}
 async function screenshot(name){await writeFile(join(artifacts,`${name}.png`),Buffer.from(await command('/screenshot'),'base64'));}
 async function refresh(){await command('/execute/sync',{script:'window.dispatchEvent(new Event("focus")); return true;',args:[]});}
