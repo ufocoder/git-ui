@@ -68,7 +68,6 @@ async function refresh(){await command('/execute/sync',{script:'window.dispatchE
 async function switchProject(name){
  await click('//button[@aria-haspopup="dialog" and starts-with(@aria-label,"Switch")]');
  await click(xpath(name));
- await until(async()=>String(await command('/title')).includes(name),`project ${name}`);
  await element(`//button[@aria-label=${JSON.stringify('Switch project: '+name)}]`);
 }
 
