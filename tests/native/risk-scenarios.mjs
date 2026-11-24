@@ -31,6 +31,7 @@ export async function runRiskScenarios(ctx, fixtures) {
   await command('/actions',{actions:[{type:'pointer',id:'mouse',parameters:{pointerType:'mouse'},actions:[{type:'pointerMove',duration:0,origin:{'element-6066-11e4-a52e-4f735466cecf':id},x:0,y:0},{type:'pointerDown',button:2},{type:'pointerUp',button:2}]}]});
  }
  const menu=text=>`//*[@role="menuitem" and starts-with(normalize-space(.),${JSON.stringify(text)})]`;
+ const dialogClosed=()=>until(async()=>(await command('/elements',{using:'css selector',value:'[role="dialog"]'})).length===0,'operation dialog closed');
  const confirm='//*[@role="dialog"]//label[.//input[@type="checkbox"]]/div/*[last()]';
  // The discard backup is restored through the visible Stash dialog.
  await switchProject('smoke-project');
@@ -48,7 +49,7 @@ export async function runRiskScenarios(ctx, fixtures) {
  await screenshot('hard-reset-confirmation');await click(confirm);await click(exact('Reset'));
  await until(()=>git(history,'rev-parse','HEAD')===fixtures.resetBase,'hard reset target');
  assert.equal(await readFile(join(history,'file.txt'),'utf8'),'base\n');assert.equal(git(history,'status','--porcelain'),'');
- await screenshot('hard-reset-result');
+ await dialogClosed();await screenshot('hard-reset-result');
  // Build a fresh linear range; selection, squash and recovery all run through UI.
  await fixtures.commit(history,'Second change','second\n');const beforeSquash=await fixtures.commit(history,'Third change','third\n');await refresh();await contains('Third change');
  await click(row('Third change'));
@@ -67,7 +68,7 @@ export async function runRiskScenarios(ctx, fixtures) {
  await click('//*[@role="dialog"]//button[normalize-space(.)="Rebase on branch"]');
  await until(()=>git(fixtures.rebase,'merge-base','HEAD','main')===git(fixtures.rebase,'rev-parse','main'),'rebase ancestry');
  assert.equal(await readFile(join(fixtures.rebase,'feature.txt'),'utf8'),'feature\n');assert.equal(await readFile(join(fixtures.rebase,'main.txt'),'utf8'),'main\n');
- assert.equal(git(fixtures.rebase,'status','--porcelain'),'');await screenshot('rebase-result');
+ assert.equal(git(fixtures.rebase,'status','--porcelain'),'');await dialogClosed();await screenshot('rebase-result');
  // Resolve a real merge conflict and finish the merge from the application.
  await fixtures.prepareConflict();await refresh();await contains('Conflicts');
  await click('//nav//button[contains(.,"Conflicts")]');
