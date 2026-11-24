@@ -45,14 +45,14 @@ export default function ProjectChooser(props: ProjectChooserProps) {
       <section aria-labelledby="recent-projects-title" class="mx-auto w-full max-w-lg">
         <div class="mb-2 flex items-center gap-3 px-3">
           <h2 id="recent-projects-title" class="shrink-0 text-xs font-medium text-muted-foreground">{t("home.recent")}</h2>
-          <div class="h-px flex-1 bg-border/60" aria-hidden="true" />
+          <div class="h-px flex-1 bg-muted-foreground/30" aria-hidden="true" />
         </div>
           <ul class="max-h-60 space-y-1 overflow-y-auto">
             <For each={props.recentProjects.slice(0, 3)}>{path =>
               <li>
                 <Button variant="ghost" class="group h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-left" disabled={props.busy}
                   onClick={() => void props.onOpenRecent(path)}>
-                  <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FolderIcon /></span>
+                  <span class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-muted-foreground/30 bg-muted text-muted-foreground"><FolderIcon /></span>
                   <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span class="truncate text-sm font-medium">{path.split(/[\\/]/).filter(Boolean).pop() ?? path}</span>
                     <span class="truncate text-xs font-normal text-muted-foreground">{displayProjectPath(path)}</span>
