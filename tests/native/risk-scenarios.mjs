@@ -30,7 +30,7 @@ export async function runRiskScenarios(ctx, fixtures) {
   const id=await element(selector);
   await command('/actions',{actions:[{type:'pointer',id:'mouse',parameters:{pointerType:'mouse'},actions:[{type:'pointerMove',duration:0,origin:{'element-6066-11e4-a52e-4f735466cecf':id},x:0,y:0},{type:'pointerDown',button:2},{type:'pointerUp',button:2}]}]});
  }
- const menu=text=>`//*[@role="menuitem" and normalize-space(.)=${JSON.stringify(text)}]`;
+ const menu=text=>`//*[@role="menuitem" and starts-with(normalize-space(.),${JSON.stringify(text)})]`;
  const confirm='//*[@role="dialog"]//label[.//input[@type="checkbox"]]/div/*[last()]';
  // The discard backup is restored through the visible Stash dialog.
  await switchProject('smoke-project');
