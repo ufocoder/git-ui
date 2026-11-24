@@ -1,3 +1,4 @@
+import { prepareRiskRepositories, runRiskScenarios } from "./risk-scenarios.mjs";
 // Drives the built application through its native WebView; no mocked Git IPC.
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
@@ -11,16 +12,17 @@ const root=await mkdtemp(join(tmpdir(),'git-ui-native-'));
 // Windows known-folder APIs do not reliably honor an overridden APPDATA.
 // Build with the dedicated test identifier instead of touching the normal profile.
 const settings=join(process.env.APPDATA,'com.ufocoder.git-ui.e2e');
-const repo=join(root,'smoke-project'), second=join(root,'second-project');
+const repo=join(root,'smoke-project'), second=join(root,'history-project');
 const artifacts=resolve('test-results/native');await mkdir(artifacts,{recursive:true});
 function git(path,...args){return execFileSync('git',['-C',path,...args],{encoding:'utf8'}).trim();}
 for(const path of [repo,second]){
  await mkdir(path);git(path,'init');git(path,'config','user.name','UI Test');git(path,'config','user.email','ui@example.com');git(path,'config','commit.gpgsign','false');
  await writeFile(join(path,'file.txt'),'base\n');git(path,'add','.');git(path,'commit','-m','Initial commit');
 }
+const fixtures=await prepareRiskRepositories(root,second,git);
 await writeFile(join(repo,'file.txt'),'changed\n');
 await mkdir(settings);
-await writeFile(join(settings,'recent-projects.json'),JSON.stringify([repo,second]));
+await writeFile(join(settings,'recent-projects.json'),JSON.stringify([repo,second,fixtures.rebase]));
 await writeFile(join(settings,'language.json'),'"en"');
 const driver=spawn('tauri-driver',[],{env:{...process.env},stdio:['ignore','pipe','pipe']});
 let logs='';driver.stdout.on('data',chunk=>{logs+=chunk;});driver.stderr.on('data',chunk=>{logs+=chunk;});
@@ -40,6 +42,13 @@ async function element(value,using='xpath'){return until(async()=>{const e=await
 async function click(value,using){const id=await element(value,using);await until(async()=>{await command(`/element/${id}/click`,{});return true;},value);}
 async function contains(text){return until(async()=>String(await command('/source')).includes(text),text);}
 async function screenshot(name){await writeFile(join(artifacts,`${name}.png`),Buffer.from(await command('/screenshot'),'base64'));}
+async function refresh(){await command('/execute/sync',{script:'window.dispatchEvent(new Event("focus")); return true;',args:[]});}
+async function switchProject(name){
+ await click('//button[@aria-haspopup="dialog" and starts-with(@aria-label,"Switch")]');
+ await click(xpath(name));
+ await until(async()=>String(await command('/title')).includes(name),`project ${name}`);
+}
+
 try{
  await until(()=>request('/status'),'WebDriver startup');
  const created=await request('/session',{capabilities:{alwaysMatch:{'tauri:options':{application:resolve(process.env.GIT_UI_E2E_APP??'src-tauri/target/debug/git-ui.exe')}}}});
@@ -63,9 +72,10 @@ try{
  await screenshot('discard');await click(xpath('Open backup in Stash'));await contains('Stash');
  // A separate project checks that selected files and history do not leak across projects.
  await click('//button[@aria-haspopup="dialog" and contains(@aria-label,"smoke-project")]');
- await click(xpath('second-project'));await contains('Initial commit');
+ await click(xpath('history-project'));await contains('Initial commit');
  assert.ok(!String(await command('/source')).includes('UI smoke commit'));
  await screenshot('project-switch');
+ await runRiskScenarios({command,element,click,contains,screenshot,until,git,repo,history:second,switchProject,refresh},fixtures);
  console.log('Native UI smoke passed: staging, commit, external refresh, discard backup, Stash, project switch.');
 }catch(error){if(session){await screenshot('failure').catch(()=>{});await writeFile(join(artifacts,'failure.xml'),String(await command('/source').catch(()=>'')));}throw error;}
 finally{

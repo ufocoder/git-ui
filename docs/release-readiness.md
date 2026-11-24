@@ -37,8 +37,10 @@ There is no mocked Git IPC. The suite uses disposable repositories and an isolat
 application profile under a separate test application identifier; it must never run against user repositories.
 
 Covered: opening a recent project, staging, creating a commit, refreshing after
-an external edit, discarding with a Stash backup, opening Stash, and switching
-projects. It checks the resulting Git files/history and captures screenshots and
+an external edit, discarding with a Stash backup, applying that backup, and switching
+projects. Risk scenarios also cover confirmed hard reset, selecting and squashing
+a linear commit range, restoring the original history, rebasing onto another
+branch, resolving a real text conflict and continuing the merge. It checks the resulting Git files/history and captures screenshots and
 WebDriver logs in the `native-ui-results` CI artifact, including failures.
 
 Run on Windows after installing tauri-driver and matching msedgedriver:
@@ -50,7 +52,6 @@ npm run test:native
 
 This suite tests the built application, not installation or an updater migration.
 A successful CI run is required before calling Windows native smoke verified.
-For installed release builds, also manually check reset, rebase, squash, conflict
-resolution and recovery on disposable repositories on both macOS and Windows.
-These destructive UI scenarios are covered at the backend layer but are not yet
-part of the native smoke suite.
+The risk scenarios validate Git state and file contents after each UI action.
+For installed release builds, repeat the suite manually on macOS as well: this
+Windows WebDriver setup does not establish macOS UI behavior or installer correctness.
