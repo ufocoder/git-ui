@@ -1,3 +1,4 @@
+import WelcomeBackground from "./welcome-background";
 import { displayProjectPath } from "~/lib/project-path";
 import { t } from "~/lib/i18n";
 import gitForkIcon from "~/assets/logo.svg";
@@ -15,7 +16,9 @@ type ProjectChooserProps = {
 };
 export default function ProjectChooser(props: ProjectChooserProps) {
   return (
-    <div class="mx-auto w-full max-w-2xl space-y-8">
+    <>
+    <WelcomeBackground />
+    <div class="relative z-10 mx-auto w-full max-w-2xl space-y-8">
       <section class="flex flex-col items-center text-center" aria-labelledby="welcome-title">
         <h1 id="welcome-title" class="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
           <span class="mb-3 flex items-center justify-center gap-3">
@@ -62,6 +65,7 @@ export default function ProjectChooser(props: ProjectChooserProps) {
       </section>
       </Show>
     </div>
+    </>
   );
 }
 
