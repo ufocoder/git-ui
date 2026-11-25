@@ -1,6 +1,6 @@
 use crate::{ProjectHistory, git, locale, read_history, terminal_log};
 use serde::Serialize;
-use std::{collections::HashMap, path::Path, sync::Mutex};
+use std::{collections::{HashMap, HashSet}, path::{Path, PathBuf}, sync::Mutex};
 use tauri::{Manager, State, WebviewWindow};
 
 #[derive(Default)]
@@ -23,14 +23,21 @@ pub(super) struct OpenProjectResult {
     warning: Option<String>,
 }
 
+// Resolve filesystem aliases (including Windows 8.3 and extended-length paths)
+// without dropping recent projects whose folders are temporarily unavailable.
+fn project_identity(path: &str) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| PathBuf::from(path))
+}
+
 pub(super) fn load_recent(file: &Path) -> Result<Vec<String>, String> {
     match std::fs::read(file) {
         Ok(bytes) => {
             let paths: Vec<String> = serde_json::from_slice(&bytes)
                 .map_err(|e| locale::format("error.read-recent", &[("e", e.to_string())]))?;
             let mut unique = Vec::new();
+            let mut identities = HashSet::new();
             for path in paths {
-                if !unique.contains(&path) {
+                if identities.insert(project_identity(&path)) {
                     unique.push(path);
                 }
             }
@@ -44,7 +51,8 @@ pub(super) fn load_recent(file: &Path) -> Result<Vec<String>, String> {
 
 pub(super) fn save_recent(file: &Path, path: String) -> Result<Vec<String>, String> {
     let mut paths = load_recent(file)?;
-    paths.retain(|existing| existing != &path);
+    let identity = project_identity(&path);
+    paths.retain(|existing| project_identity(existing) != identity);
     paths.insert(0, path);
     paths.truncate(5);
     let directory = file.parent().ok_or(locale::text("error.settings-dir"))?;

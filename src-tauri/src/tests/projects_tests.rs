@@ -92,3 +92,16 @@ fn missing_recent_project_is_removed_only_when_folder_is_absent() {
     assert!(Path::new(&existing).is_dir());
     assert_eq!(load_recent(&file).unwrap(), vec![existing]);
 }
+
+#[test]
+fn recent_projects_deduplicate_filesystem_aliases_before_limiting() {
+    let folder = TempRepo::new();
+    let file = folder.0.join("recent-projects.json");
+    let original = folder.0.to_string_lossy().to_string();
+    let alias = folder.0.join(".").to_string_lossy().to_string();
+    let canonical = folder.0.canonicalize().unwrap().to_string_lossy().to_string();
+    std::fs::write(&file, serde_json::to_vec(&vec![&original, &alias, &canonical, "/missing-project"]).unwrap()).unwrap();
+    assert_eq!(load_recent(&file).unwrap(), vec![original, "/missing-project".into()]);
+    save_recent(&file, canonical.clone()).unwrap();
+    assert_eq!(load_recent(&file).unwrap(), vec![canonical, "/missing-project".into()]);
+}
