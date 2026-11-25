@@ -178,7 +178,9 @@ pub fn read(path: &Path, file: &str) -> Result<Conflict, String> {
                     "hash-object",
                     "--no-filters",
                     "--",
-                    target.to_str().ok_or(locale::text("conflict.unsafe-path"))?,
+                    // Git for Windows cannot read extended-length absolute paths here.
+                    // The relative name has already passed target() validation.
+                    file,
                 ],
             )?;
             let text = if metadata.len() <= LIMIT as u64 {

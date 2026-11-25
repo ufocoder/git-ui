@@ -170,3 +170,16 @@ fn conflict_editor_does_not_follow_symlinks_outside_repository() {
         "topic"
     );
 }
+
+#[test]
+fn reads_and_resolves_conflicts_from_canonical_project_paths() {
+    let (repo, _) = text_merge_conflict();
+    // On Windows canonicalize() produces the extended-length path used by
+    // open_project, rather than the short temporary path used by fixtures.
+    let root = repo.0.canonicalize().unwrap();
+    let file = conflicts::read(&root, "file.txt").unwrap();
+    assert!(file.working_text.as_ref().unwrap().contains("<<<<<<<"));
+    let resolved = conflicts::resolve(&root, "file.txt", &file.token, conflicts::Resolution::Ours).unwrap();
+    assert!(resolved.conflicts.is_empty());
+    assert_eq!(std::fs::read_to_string(root.join("file.txt")).unwrap(), "main");
+}
