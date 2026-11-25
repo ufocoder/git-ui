@@ -1,7 +1,6 @@
 # GIT UI
 
 [![Latest release](https://img.shields.io/github/v/release/ufocoder/git-ui?label=version)](https://github.com/ufocoder/git-ui/releases/latest)
-[![GitHub release downloads](https://img.shields.io/github/downloads/ufocoder/git-ui/total?label=downloads)](https://github.com/ufocoder/git-ui/releases)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 GIT UI is a free desktop Git client for macOS and Windows. Browse commit history,
